@@ -3,7 +3,7 @@ import { format, isToday, isTomorrow, parseISO, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useCalendarStore, useEventTypeStore, useUIStore } from "../../store";
+import { useEventsStore, useEventTypeStore, useUIStore } from "../../store";
 import { EventChip, resolveStyle, resolveEventType } from "../events/EventChip";
 import { EventModal } from "../events/EventModal";
 import type { CalendarEvent } from "../../types";
@@ -17,7 +17,6 @@ function dayLabel(day: Date): string {
 
 export function AgendaView() {
   const { events } = useEventsStore();
-  const { calendars } = useCalendarStore();
   const { getType } = useEventTypeStore();
   const { currentDate, use24h, dateFormatEU } = useUIStore();
   const [modalOpen, setModalOpen] = useState(false);
@@ -59,8 +58,6 @@ export function AgendaView() {
     });
   }
 
-  const calendar = (id: string) => calendars.find((c) => c.id === id);
-
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
       {Object.keys(grouped).length === 0 && (
@@ -89,7 +86,6 @@ export function AgendaView() {
             <div className="space-y-2">
               {dayEvents.map((e) => {
                 const type = resolveEventType(e, getType);
-                const cal = calendar(e.calendarId);
                 const agendaStyle = resolveStyle(type, "agenda", e.allDay);
                 // For 'day' style in agenda: color the left border of the row
                 const isDayStyle  = agendaStyle === "day";
@@ -130,12 +126,6 @@ export function AgendaView() {
                         {type && (
                           <span className="text-xs font-medium" style={{ color: type.color }}>
                             {type.label}
-                          </span>
-                        )}
-                        {cal && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <span className="size-1.5 rounded-full" style={{ backgroundColor: cal.color }} />
-                            {cal.name}
                           </span>
                         )}
                         {e.location && (

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { CalendarEvent, CalendarMeta, CalendarView, DisplayStyle, EventType } from "../types";
+import type { CalendarEvent, CalendarView, DisplayStyle, EventType } from "../types";
 
 // ── Backend Store ──────────────────────────────────────────────────────────────
 export type BackendType = "mock" | "webcal" | "caldav";
@@ -97,22 +97,6 @@ export const useEventTypeStore = create<EventTypeStore>()(
     }
   )
 );
-
-// ── Calendar Store ─────────────────────────────────────────────────────────────
-interface CalendarStore {
-  calendars: CalendarMeta[];
-  setCalendars: (c: CalendarMeta[]) => void;
-  toggleCalendar: (id: string) => void;
-}
-
-export const useCalendarStore = create<CalendarStore>()((set) => ({
-  calendars: [],
-  setCalendars: (calendars) => set({ calendars }),
-  toggleCalendar: (id) =>
-    set((s) => ({
-      calendars: s.calendars.map((c) => (c.id === id ? { ...c, visible: !c.visible } : c)),
-    })),
-}));
 
 // ── Events Store ──────────────────────────────────────────────────────────────
 interface EventsStore {

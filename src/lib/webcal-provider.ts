@@ -7,7 +7,7 @@
  */
 
 import type { DataProvider } from "./data-provider";
-import type { CalendarEvent, CalendarMeta } from "../types";
+import type { CalendarEvent } from "../types";
 import type { WebCalSource } from "../store";
 
 // ── Minimal ICS parser ────────────────────────────────────────────────────────
@@ -133,15 +133,6 @@ export class WebCalProvider implements DataProvider {
   constructor(sources: WebCalSource[], proxyPrefix = "") {
     this.sources = sources;
     this.proxyPrefix = proxyPrefix;
-  }
-
-  async getCalendars(): Promise<CalendarMeta[]> {
-    return this.sources.map((s) => ({
-      id: s.id,
-      name: s.name,
-      color: s.color,
-      visible: true,
-    }));
   }
 
   async getEvents(start: Date, end: Date): Promise<CalendarEvent[]> {

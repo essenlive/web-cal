@@ -250,7 +250,7 @@ export function RBCCalendar() {
   const TimeEvent = useCallback(({ event: rbcEvt }: EventProps<RBCEvent>) => {
     const e    = rbcEvt.resource;
     const type = resolveEventType(e, getType);
-    const v: CalendarView = view === "day" ? "day" : "week";
+    const v: CalendarView = "week";
     const s    = resolveStyle(type, v, e.allDay);
     const color = type?.color ?? "#6366f1";
 
@@ -281,7 +281,7 @@ export function RBCCalendar() {
         <span className="text-xs font-medium text-white truncate">{e.title}</span>
       </div>
     );
-  }, [getType, view]);
+  }, [getType]);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -306,11 +306,8 @@ export function RBCCalendar() {
           month:           { event: MonthEvent as any },
         }}
         formats={{
-          timeGutterFormat:      use24h ? "HH:mm" : "h:mm a",
-          eventTimeRangeFormat:  ({ start, end }: { start: Date; end: Date }) =>
-            `${format(start, use24h ? "HH:mm" : "h:mm a")} – ${format(end, use24h ? "HH:mm" : "h:mm a")}`,
-          agendaTimeFormat:      use24h ? "HH:mm" : "h:mm a",
-          agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+          timeGutterFormat:     use24h ? "HH:mm" : "h:mm a",
+          eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
             `${format(start, use24h ? "HH:mm" : "h:mm a")} – ${format(end, use24h ? "HH:mm" : "h:mm a")}`,
         }}
         popup

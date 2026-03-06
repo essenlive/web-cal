@@ -4,13 +4,12 @@ import type { DataProvider } from "../lib/data-provider";
 import { MockDataProvider } from "../lib/mock-data-provider";
 import { WebCalProvider } from "../lib/webcal-provider";
 import { CalDAVProvider } from "../lib/caldav-provider";
-import { useCalendarStore, useEventsStore, useUIStore, useBackendStore } from "../store";
+import { useEventsStore, useUIStore, useBackendStore } from "../store";
 
 const DataCtx = createContext<DataProvider | null>(null);
 
 export function DataProviderContext({ children }: { children: ReactNode }) {
   const { config } = useBackendStore();
-  const { setCalendars } = useCalendarStore();
   const { setEvents } = useEventsStore();
   const { currentDate } = useUIStore();
 
@@ -39,10 +38,6 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     config.caldavPassword,
     config.caldavProxyUrl,
   ]);
-
-  useEffect(() => {
-    provider.getCalendars().then(setCalendars).catch(console.error);
-  }, [provider]);
 
   useEffect(() => {
     const start = subMonths(currentDate, 1);

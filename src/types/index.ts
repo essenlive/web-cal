@@ -20,16 +20,10 @@ export interface EventType {
   allDayStyle: DisplayStyle;
 }
 
-export interface CalendarMeta {
-  id: string;
-  name: string;
-  color: string;
-  visible: boolean;
-}
-
 export interface CalendarEvent {
   id: string;
   title: string;
+  /** Provider-internal collection identifier (CalDAV href, WebCal source id, etc.) */
   calendarId: string;
   /** Use "custom" for per-event styling via customColor / customIcon / customAllDayStyle */
   eventTypeId: string;
@@ -44,4 +38,4 @@ export interface CalendarEvent {
   customAllDayStyle?: DisplayStyle;
 }
 
-export type CalendarView = "month" | "week" | "day" | "agenda";
+export type CalendarView = "month" | "week" | "agenda";

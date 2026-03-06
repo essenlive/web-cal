@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useBackendStore, type BackendType, type WebCalSource } from "../../store";
-import { useCalendarStore, useEventsStore } from "../../store";
+import { useBackendStore, useEventsStore, type BackendType, type WebCalSource } from "../../store";
 import { MockDataProvider } from "../../lib/mock-data-provider";
 import { WebCalProvider } from "../../lib/webcal-provider";
 import { CalDAVProvider } from "../../lib/caldav-provider";
@@ -112,7 +111,6 @@ function useConnectionTest() {
 
 export function BackendSettings() {
   const { config, updateConfig } = useBackendStore();
-  const { setCalendars } = useCalendarStore();
   const { setEvents } = useEventsStore();
   const { state: testState, message: testMsg, test } = useConnectionTest();
 
@@ -124,10 +122,9 @@ export function BackendSettings() {
 
   const setType = (type: BackendType) => {
     updateConfig({ type });
-    // Re-seed calendar list when switching to mock
+    // Re-seed events when switching to mock
     if (type === "mock") {
       const mock = new MockDataProvider();
-      mock.getCalendars().then(setCalendars);
       const now = new Date();
       mock.getEvents(
         new Date(now.getFullYear(), now.getMonth() - 1, 1),

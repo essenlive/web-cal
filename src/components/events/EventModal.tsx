@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventTypeStore, useCalendarStore, useEventsStore, useUIStore } from "../../store";
+import { useEventTypeStore, useEventsStore, useUIStore } from "../../store";
 import { useDataProvider } from "../../context/DataProviderContext";
 import type { CalendarEvent, DisplayStyle } from "../../types";
 
@@ -42,7 +42,6 @@ const STYLE_OPTIONS: { id: DisplayStyle; label: string }[] = [
 
 export function EventModal({ open, onClose, event, defaultStart }: EventModalProps) {
   const { types }   = useEventTypeStore();
-  const { calendars } = useCalendarStore();
   const { upsertEvent, removeEvent } = useEventsStore();
   const { defaultEventTypeId, dateFormatEU } = useUIStore();
   const provider = useDataProvider();
@@ -90,7 +89,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
 
   if (!open) return null;
 
-  const calendarId = event?.calendarId ?? calendars[0]?.id ?? "default";
+  const calendarId = event?.calendarId ?? "default";
   const isCustom = eventTypeId === "custom";
 
   const handleSave = async () => {

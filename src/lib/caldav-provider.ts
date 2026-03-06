@@ -15,7 +15,15 @@
  */
 
 import type { DataProvider } from "./data-provider";
-import type { CalendarEvent, CalendarMeta } from "../types";
+import type { CalendarEvent } from "../types";
+
+/** Internal representation of a CalDAV calendar collection. */
+interface CalendarCollection {
+  id: string;
+  name: string;
+  color: string;
+  visible: boolean;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -156,7 +164,7 @@ export class CalDAVProvider implements DataProvider {
   }
 
   /** Discover calendar collections via PROPFIND. */
-  async getCalendars(): Promise<CalendarMeta[]> {
+  async getCalendars(): Promise<CalendarCollection[]> {
     const body = `<?xml version="1.0" encoding="utf-8"?>
 <D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
   <D:prop>
@@ -174,7 +182,7 @@ export class CalDAVProvider implements DataProvider {
     const doc = parser.parseFromString(xml, "application/xml");
     const responses = Array.from(doc.querySelectorAll("response"));
 
-    const calendars: CalendarMeta[] = [];
+    const calendars: CalendarCollection[] = [];
     const colors = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"];
 
     for (const r of responses) {

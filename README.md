@@ -1,92 +1,103 @@
-# WEB-CAL
+# web-cal
 
-## Core concept
-A personal calendar interface that connects to Proton Calendar via CalDAV, with strong visual customization per event type.
+A personal calendar PWA built with React 18 + TypeScript. Connects to CalDAV servers, WebCal/iCal subscriptions, or runs with local demo data. Strong visual customisation per event type.
 
 ---
 
 ## Tech stack
-- React 18 + TypeScript
-- Vite (PWA plugin: vite-plugin-pwa)
-- Tailwind CSS + shadcn/ui
-- tsdav (CalDAV client library) for Proton Calendar sync
-- ical.js for iCalendar parsing
-- date-fns for date manipulation
-- Zustand for state management
+
+- React 18 + TypeScript + Vite (vite-plugin-pwa)
+- Tailwind CSS
+- react-big-calendar + date-fns
+- Zustand (persist middleware)
 
 ---
 
-## CalDAV Integration (Proton Calendar)
-- Connect via CalDAV: https://calendar.proton.me
-- Auth: username + app password (Proton-specific token), stored in localStorage
-- On first launch, show a setup modal asking for CalDAV credentials
-- Sync calendars list, then fetch events for current view range
-- Support create / edit / delete events (PUT/DELETE on CalDAV)
-- Handle multiple calendars (each Proton calendar = one CalDAV collection)
+## Views
+
+| View    | Description                                    |
+| ------- | ---------------------------------------------- |
+| Month   | Grid with event chips per day, overflow hidden |
+| Week    | Time-based column grid with hourly slots       |
+| Agenda  | Chronological list grouped by date             |
 
 ---
 
-## Calendar views
-Implement 4 views with a top navigation to switch between them:
-1. **Month** – classic grid, show event pills per day, "+N more" overflow
-2. **Week** – time-based column grid (7 days), hourly slots, drag-friendly layout
-3. **Day** – single day time grid with detailed event blocks
-4. **Agenda / List** – chronological list of upcoming events, grouped by date
+## Event appearance system
+
+Each event has an **event type** (user-defined category). Per type, configure:
+
+- **Color** — color picker with presets
+- **Icon** — from lucide-react
+- **All-day display style** — `avatar-tl`, `avatar-bl`, `avatar-br` (corner badge), `block` (filled bar), `day` (full-day background tint)
+
+Timed events always render as a filled block regardless of style.
+
+Individual events can also use **Custom** type, which sets color/icon/style at the event level.
 
 ---
 
-## Event appearance system (key feature)
-Each event has an "event type" field (user-defined category). For each event type, the user can configure:
-- A **color** (color picker)
-- An **icon** (from lucide-react icon set, searchable)
-- A **display style** chosen from: `pill` (compact inline), `card` (elevated with shadow), `block` (flat filled rectangle), `outline` (border only)
-- A **label** / name for the type
+## Data backends
 
-Store event type definitions in localStorage. Apply them consistently across all views.
+Switch provider in Settings → Source de données.
 
-When creating/editing an event, the user selects an event type from their custom list (or creates a new one inline).
+### Demo (local)
 
----
+Seed events stored in `localStorage`. Full read/write. No network required.
 
-## UI / UX requirements
-- Full dark mode support (toggle in header)
-- Responsive: works on mobile and desktop
-- Today highlighted in all views
-- Mini month navigator in sidebar for quick navigation
-- Event creation: click on a time slot or day to open a creation modal
-- Event editing: click on existing event to open edit modal
-- Event modal fields: title, event type, start datetime, end datetime, location (optional), notes (optional), calendar (which Proton calendar)
-- Color-coded calendar list in sidebar with show/hide toggle per calendar
+### WebCal / iCal
 
----
+Read-only subscription to one or more `.ics` URLs (`webcal://` or `https://`). If the server doesn't send CORS headers, configure a proxy prefix (e.g. `https://corsproxy.io/?`).
 
-## PWA requirements
-- Manifest with name, icons, theme color
-- Service worker with cache-first strategy for app shell
-- Offline mode: show cached events when offline, queue writes for sync when back online
+### CalDAV
+
+Read/write via CalDAV (RFC 4791). Compatible with:
+
+- Proton Calendar (`https://calendar.proton.me/dav`)
+- Nextcloud, Fastmail, Baikal, Radicale
+- Apple Calendar Server
+- Google Calendar (`https://www.googleapis.com/caldav/v2/`)
+
+Auth: HTTP Basic (username + app-password). Most servers block browser-direct CORS — use a local proxy or `corsproxy.io`.
 
 ---
 
-## Settings page
-- CalDAV connection (credentials, test connection, disconnect)
-- Event types manager: list, add, edit, delete custom event types
-- Default view preference
-- Week starts on: Monday / Sunday
+## Settings
+
+- **Source de données** — switch backend, configure credentials, test connection
+- **Types d'événements** — add / edit / delete event types (color, icon, all-day style); pick the default type for new events
+- **Préférences** — week start (Monday/Sunday), 24h clock, date format (DD/MM/YYYY or MM/DD/YYYY)
+
+---
+
+## PWA
+
+Installable. Service worker caches the app shell for offline use.
 
 ---
 
 ## Project structure
+
+```text
 src/
   components/
-    calendar/       # view components (MonthView, WeekView, DayView, AgendaView)
-    events/         # EventModal, EventCard, EventPill
-    sidebar/        # MiniCalendar, CalendarList
-    settings/       # EventTypeEditor, CalDAVSettings
-  hooks/            # useCalDAV, useEvents, useEventTypes
-  store/            # Zustand stores
-  lib/              # caldav.ts, ical.ts, utils.ts
-  types/            # Event, Calendar, EventType interfaces
+    calendar/       # RBCCalendar, AgendaView
+    events/         # EventChip, EventModal
+    sidebar/        # Header, MiniCalendar
+    settings/       # BackendSettings, EventTypeEditor
+  context/          # DataProviderContext
+  lib/              # data-provider.ts, mock-*, caldav-provider.ts, webcal-provider.ts
+  pages/            # SettingsPage
+  store/            # Zustand stores (ui, eventTypes, events, backend)
+  types/            # CalendarEvent, EventType, DisplayStyle, CalendarView
+```
 
 ---
 
-Start by scaffolding the full project structure, then implement: the CalDAV connection layer, the event type system, and the Month view as the default landing screen.
+## Development
+
+```bash
+npm install
+npm run dev
+npm run build
+```
