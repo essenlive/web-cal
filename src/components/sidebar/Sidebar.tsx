@@ -6,7 +6,7 @@ import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
-import { useUIStore, useCalendarStore } from "../../store";
+import { useUIStore } from "../../store";
 
 interface SidebarProps {
   onNewEvent: () => void;
@@ -14,17 +14,16 @@ interface SidebarProps {
 
 export function Sidebar({ onNewEvent }: SidebarProps) {
   const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen } = useUIStore();
-  const { calendars, toggleCalendar } = useCalendarStore();
   const [miniDate, setMiniDate] = useState(currentDate);
   const weekStart = weekStartsOnMonday ? 1 : 0;
 
   if (!sidebarOpen) return null;
 
   const monthStart = startOfMonth(miniDate);
-  const monthEnd = endOfMonth(miniDate);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: weekStart });
-  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: weekStart });
-  const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const monthEnd   = endOfMonth(miniDate);
+  const gridStart  = startOfWeek(monthStart, { weekStartsOn: weekStart });
+  const gridEnd    = endOfWeek(monthEnd, { weekStartsOn: weekStart });
+  const days       = eachDayOfInterval({ start: gridStart, end: gridEnd });
   const dayHeaders = Array.from({ length: 7 }, (_, i) =>
     format(addDays(gridStart, i), "EEEEE", { locale: fr })
   );
@@ -75,30 +74,6 @@ export function Sidebar({ onNewEvent }: SidebarProps) {
               )}
             >
               {format(day, "d")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Calendars */}
-      <div className="px-3 pb-3">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Calendriers
-        </div>
-        <div className="space-y-1">
-          {calendars.map((cal) => (
-            <button
-              key={cal.id}
-              onClick={() => toggleCalendar(cal.id)}
-              className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-muted transition-colors text-left"
-            >
-              <span
-                className={cn("size-3 rounded-sm border-2 flex-shrink-0 transition-all", !cal.visible && "opacity-40")}
-                style={{ backgroundColor: cal.visible ? cal.color : "transparent", borderColor: cal.color }}
-              />
-              <span className={cn("text-sm text-foreground", !cal.visible && "text-muted-foreground")}>
-                {cal.name}
-              </span>
             </button>
           ))}
         </div>

@@ -1,76 +1,91 @@
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import type { CalendarEvent, EventType } from "../../types";
+import type { CalendarEvent, CalendarView, DisplayStyle, EventType } from "../../types";
 
 interface EventChipProps {
   event: CalendarEvent;
   eventType?: EventType;
   onClick?: (e?: React.MouseEvent) => void;
+  /** Hides the icon in block style (used in compact month-view cells). */
   compact?: boolean;
+  view?: CalendarView;
 }
 
-function getIcon(name: string, size = 12) {
+function getIcon(name: string | undefined, size: number, color?: string) {
+  if (!name) return null;
   const Icon = (Icons as any)[name];
-  return Icon ? <Icon size={size} /> : null;
+  return Icon ? <Icon size={size} color={color} /> : null;
 }
 
-export function EventChip({ event, eventType, onClick, compact = false }: EventChipProps) {
+/**
+ * Returns the effective EventType for an event, constructing a virtual one for "custom" events.
+ */
+export function resolveEventType(
+  event: CalendarEvent,
+  getType: (id: string) => EventType | undefined,
+): EventType | undefined {
+  if (event.eventTypeId === "custom") {
+    return {
+      id: "custom",
+      label: "Personnalisé",
+      color: event.customColor ?? "#6366f1",
+      icon: event.customIcon ?? "Calendar",
+      allDayStyle: event.customAllDayStyle ?? "block",
+    };
+  }
+  return getType(event.eventTypeId);
+}
+
+/** Timed events always render as "block". All-day events use the type's allDayStyle. */
+export function resolveStyle(
+  type: EventType | undefined,
+  _view: CalendarView,
+  allDay: boolean
+): DisplayStyle {
+  if (!allDay) return "block";
+  return type?.allDayStyle ?? "day";
+}
+
+export function EventChip({ event, eventType, onClick, compact = false, view = "month" }: EventChipProps) {
   const color = eventType?.color ?? "#6366f1";
-  const style = eventType?.style ?? "pill";
-  const icon = eventType?.icon;
+  const icon  = eventType?.icon;
+  const style = resolveStyle(eventType, view, event.allDay);
 
-  const base = "cursor-pointer select-none overflow-hidden transition-all duration-150 hover:brightness-95 active:scale-95";
+  const stopProp = (fn?: (e?: React.MouseEvent) => void) =>
+    (e: React.MouseEvent) => { e.stopPropagation(); fn?.(e); };
 
-  if (style === "pill") {
+  // ── Avatar badge (circular icon) ──────────────────────────────────────────
+  if (style === "avatar-tl" || style === "avatar-bl" || style === "avatar-br") {
     return (
       <div
-        onClick={onClick}
-        className={cn(base, "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium")}
-        style={{ backgroundColor: color + "22", color }}
+        onClick={stopProp(onClick)}
+        title={event.title}
+        className="inline-flex size-6 rounded-full items-center justify-center cursor-pointer shrink-0
+                   transition-all hover:scale-110 active:scale-95 hover:brightness-90 shadow-sm"
+        style={{ backgroundColor: color }}
       >
-        {icon && !compact && getIcon(icon, 10)}
-        <span className="truncate">{event.title}</span>
+        {getIcon(icon, 11, "#fff")}
       </div>
     );
   }
 
-  if (style === "outline") {
-    return (
-      <div
-        onClick={onClick}
-        className={cn(base, "flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium")}
-        style={{ borderColor: color, color }}
-      >
-        {icon && !compact && getIcon(icon, 11)}
-        <span className="truncate">{event.title}</span>
-      </div>
-    );
+  // ── Day style — returns null, rendering handled by parent cell ────────────
+  if (style === "day") {
+    return null;
   }
 
-  if (style === "card") {
-    return (
-      <div
-        onClick={onClick}
-        className={cn(base, "rounded-lg px-2 py-1 text-xs font-medium shadow-sm")}
-        style={{ backgroundColor: color + "18", borderLeft: `3px solid ${color}`, color }}
-      >
-        <div className="flex items-center gap-1.5">
-          {icon && !compact && getIcon(icon, 11)}
-          <span className="truncate font-semibold">{event.title}</span>
-        </div>
-      </div>
-    );
-  }
-
-  // block
+  // ── Block — full-width chip with title ────────────────────────────────────
   return (
     <div
-      onClick={onClick}
-      className={cn(base, "rounded-md px-2 py-1 text-xs font-medium")}
-      style={{ backgroundColor: color, color: "#fff" }}
+      onClick={stopProp(onClick)}
+      className={cn(
+        "w-full cursor-pointer select-none overflow-hidden rounded-md px-2 py-0.5",
+        "text-xs font-medium text-white transition-all hover:brightness-90 active:scale-95"
+      )}
+      style={{ backgroundColor: color }}
     >
-      <div className="flex items-center gap-1.5">
-        {icon && !compact && getIcon(icon, 11)}
+      <div className="flex items-center gap-1 min-w-0">
+        {!compact && getIcon(icon, 10, "#fff")}
         <span className="truncate">{event.title}</span>
       </div>
     </div>

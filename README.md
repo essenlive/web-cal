@@ -1,73 +1,92 @@
-# React + TypeScript + Vite
+# WEB-CAL
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Core concept
+A personal calendar interface that connects to Proton Calendar via CalDAV, with strong visual customization per event type.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tech stack
+- React 18 + TypeScript
+- Vite (PWA plugin: vite-plugin-pwa)
+- Tailwind CSS + shadcn/ui
+- tsdav (CalDAV client library) for Proton Calendar sync
+- ical.js for iCalendar parsing
+- date-fns for date manipulation
+- Zustand for state management
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## CalDAV Integration (Proton Calendar)
+- Connect via CalDAV: https://calendar.proton.me
+- Auth: username + app password (Proton-specific token), stored in localStorage
+- On first launch, show a setup modal asking for CalDAV credentials
+- Sync calendars list, then fetch events for current view range
+- Support create / edit / delete events (PUT/DELETE on CalDAV)
+- Handle multiple calendars (each Proton calendar = one CalDAV collection)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Calendar views
+Implement 4 views with a top navigation to switch between them:
+1. **Month** – classic grid, show event pills per day, "+N more" overflow
+2. **Week** – time-based column grid (7 days), hourly slots, drag-friendly layout
+3. **Day** – single day time grid with detailed event blocks
+4. **Agenda / List** – chronological list of upcoming events, grouped by date
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Event appearance system (key feature)
+Each event has an "event type" field (user-defined category). For each event type, the user can configure:
+- A **color** (color picker)
+- An **icon** (from lucide-react icon set, searchable)
+- A **display style** chosen from: `pill` (compact inline), `card` (elevated with shadow), `block` (flat filled rectangle), `outline` (border only)
+- A **label** / name for the type
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Store event type definitions in localStorage. Apply them consistently across all views.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+When creating/editing an event, the user selects an event type from their custom list (or creates a new one inline).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## UI / UX requirements
+- Full dark mode support (toggle in header)
+- Responsive: works on mobile and desktop
+- Today highlighted in all views
+- Mini month navigator in sidebar for quick navigation
+- Event creation: click on a time slot or day to open a creation modal
+- Event editing: click on existing event to open edit modal
+- Event modal fields: title, event type, start datetime, end datetime, location (optional), notes (optional), calendar (which Proton calendar)
+- Color-coded calendar list in sidebar with show/hide toggle per calendar
+
+---
+
+## PWA requirements
+- Manifest with name, icons, theme color
+- Service worker with cache-first strategy for app shell
+- Offline mode: show cached events when offline, queue writes for sync when back online
+
+---
+
+## Settings page
+- CalDAV connection (credentials, test connection, disconnect)
+- Event types manager: list, add, edit, delete custom event types
+- Default view preference
+- Week starts on: Monday / Sunday
+
+---
+
+## Project structure
+src/
+  components/
+    calendar/       # view components (MonthView, WeekView, DayView, AgendaView)
+    events/         # EventModal, EventCard, EventPill
+    sidebar/        # MiniCalendar, CalendarList
+    settings/       # EventTypeEditor, CalDAVSettings
+  hooks/            # useCalDAV, useEvents, useEventTypes
+  store/            # Zustand stores
+  lib/              # caldav.ts, ical.ts, utils.ts
+  types/            # Event, Calendar, EventType interfaces
+
+---
+
+Start by scaffolding the full project structure, then implement: the CalDAV connection layer, the event type system, and the Month view as the default landing screen.

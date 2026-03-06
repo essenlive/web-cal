@@ -4,14 +4,17 @@ import { ArrowLeft, Plus, Trash2, Edit2, Check } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
 import { useEventTypeStore, useUIStore } from "../store";
-import { EventChip } from "../components/events/EventChip";
-import type { EventType, DisplayStyle } from "../types";
+import { BackendSettings } from "../components/settings/BackendSettings";
+import type { DisplayStyle, EventType } from "../types";
 
-const STYLE_OPTIONS: { id: DisplayStyle; label: string }[] = [
-  { id: "pill", label: "Pill" },
-  { id: "card", label: "Card" },
-  { id: "block", label: "Block" },
-  { id: "outline", label: "Outline" },
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const STYLE_OPTIONS: { id: DisplayStyle; label: string; title: string }[] = [
+  { id: "avatar-tl", label: "↖ Badge", title: "Icône ronde haut-gauche"   },
+  { id: "avatar-bl", label: "↙ Badge", title: "Icône ronde bas-gauche"    },
+  { id: "avatar-br", label: "↘ Badge", title: "Icône ronde bas-droite"    },
+  { id: "block",     label: "Bloc",    title: "Chip texte pleine largeur" },
+  { id: "day",       label: "Fond",    title: "Colore le fond de la case" },
 ];
 
 const PRESET_COLORS = [
@@ -25,27 +28,64 @@ const ICON_OPTIONS = [
   "Home","Globe","Code","Briefcase","Target",
 ];
 
-function getIcon(name: string, size = 16) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getIconEl(name: string, size = 16, color?: string) {
   const Icon = (Icons as any)[name];
-  return Icon ? <Icon size={size} /> : null;
+  return Icon ? <Icon size={size} color={color} /> : null;
 }
 
-const PREVIEW_EVENT = { id: "preview", title: "Prévisualisation", calendarId: "x", eventTypeId: "preview", start: "", end: "", allDay: false };
+// ── StylePreview — calendar cell preview (all-day style only) ─────────────────
 
-function EventTypeRow({ type, onEdit, onDelete }: { type: EventType; onEdit: (t: EventType) => void; onDelete: (id: string) => void }) {
+const avatarDot = (color: string, icon: string) => (
+  <div className="size-5 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: color }}>
+    {getIconEl(icon, 9, "#fff")}
+  </div>
+);
+
+function StylePreview({ style, color, icon }: { style: DisplayStyle; color: string; icon: string }) {
+  if (style === "day") {
+    return (
+      <div
+        className="relative w-14 h-12 rounded-lg overflow-hidden shrink-0"
+        style={{ backgroundColor: color + "28", border: `2px solid ${color}` }}
+      >
+        <span className="absolute top-1 right-1.5 text-[10px] font-semibold" style={{ color }}>15</span>
+        <span className="absolute bottom-1 left-1 right-1 text-[9px] font-medium truncate" style={{ color, opacity: 0.65 }}>Titre</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-14 h-12 rounded-lg overflow-hidden shrink-0 border border-border bg-muted">
+      <span className="absolute top-1 right-1.5 text-[10px] font-semibold text-foreground/70">15</span>
+      {style === "avatar-tl" && <div className="absolute top-0.5 left-0.5">{avatarDot(color, icon)}</div>}
+      {style === "avatar-bl" && <div className="absolute bottom-0.5 left-0.5">{avatarDot(color, icon)}</div>}
+      {style === "avatar-br" && <div className="absolute bottom-0.5 right-0.5">{avatarDot(color, icon)}</div>}
+      {style === "block" && (
+        <div className="absolute bottom-1 left-1 right-1">
+          <div className="rounded px-1.5 py-0.5 text-[9px] font-medium text-white truncate" style={{ backgroundColor: color }}>
+            Titre
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── EventTypeRow ──────────────────────────────────────────────────────────────
+
+function EventTypeRow({ type, onEdit, onDelete }: {
+  type: EventType; onEdit: (t: EventType) => void; onDelete: (id: string) => void;
+}) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
       <div className="flex size-8 items-center justify-center rounded-lg shrink-0" style={{ backgroundColor: type.color + "20", color: type.color }}>
-        {getIcon(type.icon)}
+        {getIconEl(type.icon)}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-foreground">{type.label}</div>
-        <div className="text-xs text-muted-foreground capitalize">{type.style}</div>
-      </div>
-      <div className="shrink-0">
-        <EventChip event={PREVIEW_EVENT} eventType={type} />
-      </div>
-      <div className="flex gap-1">
+      <span className="flex-1 text-sm font-medium text-foreground truncate">{type.label}</span>
+      <StylePreview style={type.allDayStyle} color={type.color} icon={type.icon} />
+      <div className="flex gap-1 shrink-0">
         <button onClick={() => onEdit(type)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
           <Edit2 size={14} />
         </button>
@@ -57,13 +97,17 @@ function EventTypeRow({ type, onEdit, onDelete }: { type: EventType; onEdit: (t:
   );
 }
 
-function EventTypeForm({ type, onSave, onCancel }: { type?: EventType; onSave: (t: Omit<EventType, "id"> & { id?: string }) => void; onCancel: () => void }) {
-  const [label, setLabel] = useState(type?.label ?? "");
-  const [color, setColor] = useState(type?.color ?? PRESET_COLORS[0]);
-  const [icon, setIcon] = useState(type?.icon ?? "Calendar");
-  const [style, setStyle] = useState<DisplayStyle>(type?.style ?? "pill");
+// ── EventTypeForm ─────────────────────────────────────────────────────────────
 
-  const preview: EventType = { id: "preview", label: label || "Aperçu", color, icon, style };
+function EventTypeForm({ type, onSave, onCancel }: {
+  type?: EventType;
+  onSave: (t: Omit<EventType, "id"> & { id?: string }) => void;
+  onCancel: () => void;
+}) {
+  const [label,       setLabel]       = useState(type?.label       ?? "");
+  const [color,       setColor]       = useState(type?.color       ?? PRESET_COLORS[0]);
+  const [icon,        setIcon]        = useState(type?.icon        ?? "Calendar");
+  const [allDayStyle, setAllDayStyle] = useState<DisplayStyle>(type?.allDayStyle ?? "block");
 
   return (
     <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-4">
@@ -85,7 +129,7 @@ function EventTypeForm({ type, onSave, onCancel }: { type?: EventType; onSave: (
               key={c}
               onClick={() => setColor(c)}
               className="size-6 rounded-full border-2 transition-transform hover:scale-110"
-              style={{ backgroundColor: c, borderColor: color === c ? "#000" : "transparent" }}
+              style={{ backgroundColor: c, borderColor: color === c ? "var(--foreground)" : "transparent" }}
             />
           ))}
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="size-6 rounded cursor-pointer border border-border" />
@@ -101,38 +145,43 @@ function EventTypeForm({ type, onSave, onCancel }: { type?: EventType; onSave: (
               onClick={() => setIcon(i)}
               className={cn("p-1.5 rounded-lg border transition-all", icon === i ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}
             >
-              {getIcon(i, 14)}
+              {getIconEl(i, 14)}
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Style</label>
-        <div className="flex gap-2">
-          {STYLE_OPTIONS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setStyle(s.id)}
-              className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium transition-all", style === s.id ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Aperçu</label>
-        <div className="inline-block">
-          <EventChip event={PREVIEW_EVENT} eventType={preview} />
+        <label className="text-xs font-medium text-muted-foreground mb-2 block">Style — journée entière</label>
+        <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex gap-1 flex-wrap">
+              {STYLE_OPTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setAllDayStyle(s.id)}
+                  title={s.title}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
+                    allDayStyle === s.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:bg-muted text-muted-foreground"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <StylePreview style={allDayStyle} color={color} icon={icon} />
+          </div>
+          <p className="text-[10px] text-muted-foreground">Les événements horaires sont toujours affichés en bloc.</p>
         </div>
       </div>
 
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted">Annuler</button>
         <button
-          onClick={() => onSave({ id: type?.id, label, color, icon, style })}
+          onClick={() => onSave({ id: type?.id, label, color, icon, allDayStyle })}
           disabled={!label.trim()}
           className="px-3 py-2 rounded-lg text-sm bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90"
         >
@@ -144,12 +193,19 @@ function EventTypeForm({ type, onSave, onCancel }: { type?: EventType; onSave: (
   );
 }
 
+// ── SettingsPage ──────────────────────────────────────────────────────────────
+
 export function SettingsPage() {
   const { types, addType, updateType, removeType } = useEventTypeStore();
-  const { weekStartsOnMonday, toggleSidebar } = useUIStore();
+  const {
+    weekStartsOnMonday, toggleWeekStart,
+    defaultEventTypeId, setDefaultEventTypeId,
+    use24h, setUse24h,
+    dateFormatEU, setDateFormatEU,
+  } = useUIStore();
   const [editingType, setEditingType] = useState<EventType | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [tab, setTab] = useState<"types" | "prefs">("types");
+  const [creating,    setCreating]    = useState(false);
+  const [tab,         setTab]         = useState<"types" | "prefs" | "connection">("types");
 
   const handleSave = (t: Omit<EventType, "id"> & { id?: string }) => {
     if (t.id) updateType(t as EventType);
@@ -168,9 +224,12 @@ export function SettingsPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Tabs */}
         <div className="flex gap-1 rounded-xl bg-muted p-1 mb-6 w-fit">
-          {[{ id: "types", label: "Types d'événements" }, { id: "prefs", label: "Préférences" }].map((t) => (
+          {[
+            { id: "types",      label: "Types d'événements" },
+            { id: "prefs",      label: "Préférences"        },
+            { id: "connection", label: "Connexion"          },
+          ].map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id as any)}
@@ -184,17 +243,11 @@ export function SettingsPage() {
         {tab === "types" && (
           <div className="space-y-3">
             {types.map((t) =>
-              editingType?.id === t.id ? (
-                <EventTypeForm key={t.id} type={t} onSave={handleSave} onCancel={() => setEditingType(null)} />
-              ) : (
-                <EventTypeRow key={t.id} type={t} onEdit={setEditingType} onDelete={removeType} />
-              )
+              editingType?.id === t.id
+                ? <EventTypeForm key={t.id} type={t} onSave={handleSave} onCancel={() => setEditingType(null)} />
+                : <EventTypeRow  key={t.id} type={t} onEdit={setEditingType} onDelete={removeType} />
             )}
-
-            {creating && (
-              <EventTypeForm onSave={handleSave} onCancel={() => setCreating(false)} />
-            )}
-
+            {creating && <EventTypeForm onSave={handleSave} onCancel={() => setCreating(false)} />}
             {!creating && !editingType && (
               <button
                 onClick={() => setCreating(true)}
@@ -207,19 +260,93 @@ export function SettingsPage() {
           </div>
         )}
 
+        {tab === "connection" && <BackendSettings />}
+
         {tab === "prefs" && (
-          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-5">
+
+            {/* Week start */}
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-foreground">Semaine commence le lundi</div>
                 <div className="text-xs text-muted-foreground">Afficher lundi en premier dans la vue calendrier</div>
               </div>
               <button
-                onClick={() => useUIStore.getState().weekStartsOnMonday !== undefined && (useUIStore.setState as any)((s: any) => ({ ...s, weekStartsOnMonday: !s.weekStartsOnMonday }))}
+                onClick={toggleWeekStart}
                 className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", weekStartsOnMonday ? "bg-primary" : "bg-muted")}
               >
                 <span className={cn("size-4 rounded-full bg-white shadow transition-transform", weekStartsOnMonday ? "translate-x-6" : "translate-x-1")} />
               </button>
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* 24h clock */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-foreground">Format 24h</div>
+                <div className="text-xs text-muted-foreground">Afficher les heures au format 24h (ex : 14:30)</div>
+              </div>
+              <button
+                onClick={() => setUse24h(!use24h)}
+                className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", use24h ? "bg-primary" : "bg-muted")}
+              >
+                <span className={cn("size-4 rounded-full bg-white shadow transition-transform", use24h ? "translate-x-6" : "translate-x-1")} />
+              </button>
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Date format */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-foreground">Format de date européen</div>
+                <div className="text-xs text-muted-foreground">{dateFormatEU ? "JJ/MM/AAAA — ex : 15/03/2025" : "MM/JJ/AAAA — ex : 03/15/2025"}</div>
+              </div>
+              <button
+                onClick={() => setDateFormatEU(!dateFormatEU)}
+                className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", dateFormatEU ? "bg-primary" : "bg-muted")}
+              >
+                <span className={cn("size-4 rounded-full bg-white shadow transition-transform", dateFormatEU ? "translate-x-6" : "translate-x-1")} />
+              </button>
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Default event type */}
+            <div>
+              <div className="text-sm font-medium text-foreground mb-0.5">Type par défaut</div>
+              <div className="text-xs text-muted-foreground mb-3">Pré-sélectionné lors de la création d'un événement</div>
+              <div className="flex flex-wrap gap-2">
+                {types.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setDefaultEventTypeId(t.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all",
+                      defaultEventTypeId === t.id
+                        ? "border-transparent"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground"
+                    )}
+                    style={defaultEventTypeId === t.id ? { backgroundColor: t.color + "20", borderColor: t.color, color: t.color } : {}}
+                  >
+                    {getIconEl(t.icon, 12)}
+                    {t.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setDefaultEventTypeId("custom")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all",
+                    defaultEventTypeId === "custom"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {getIconEl("Palette", 12)}
+                  Personnalisé
+                </button>
+              </div>
             </div>
           </div>
         )}

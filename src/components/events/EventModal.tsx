@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventTypeStore, useCalendarStore, useEventsStore } from "../../store";
+import { useEventTypeStore, useCalendarStore, useEventsStore, useUIStore } from "../../store";
 import { useDataProvider } from "../../context/DataProviderContext";
-import type { CalendarEvent } from "../../types";
+import type { CalendarEvent, DisplayStyle } from "../../types";
 
 interface EventModalProps {
   open: boolean;
@@ -18,55 +18,97 @@ function getIcon(name: string, size = 14) {
   return Icon ? <Icon size={size} /> : null;
 }
 
-const fmt = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm");
+const fmtDT   = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm");
+const fmtDate = (d: Date) => format(d, "yyyy-MM-dd");
+
+const PRESET_COLORS = [
+  "#3b82f6","#6366f1","#8b5cf6","#ec4899","#ef4444",
+  "#f59e0b","#10b981","#14b8a6","#06b6d4","#64748b",
+];
+
+const ICON_OPTIONS = [
+  "Users","AlertCircle","Layers","Brain","FileText","Heart","Calendar",
+  "Clock","Star","Zap","Coffee","BookOpen","Video","Phone","Mail",
+  "Home","Globe","Code","Briefcase","Target",
+];
+
+const STYLE_OPTIONS: { id: DisplayStyle; label: string }[] = [
+  { id: "avatar-tl", label: "↖ Badge" },
+  { id: "avatar-bl", label: "↙ Badge" },
+  { id: "avatar-br", label: "↘ Badge" },
+  { id: "block",     label: "Bloc"    },
+  { id: "day",       label: "Fond"    },
+];
 
 export function EventModal({ open, onClose, event, defaultStart }: EventModalProps) {
-  const { types } = useEventTypeStore();
+  const { types }   = useEventTypeStore();
   const { calendars } = useCalendarStore();
   const { upsertEvent, removeEvent } = useEventsStore();
+  const { defaultEventTypeId } = useUIStore();
   const provider = useDataProvider();
 
-  const [title, setTitle] = useState("");
-  const [eventTypeId, setEventTypeId] = useState(types[0]?.id ?? "");
-  const [calendarId, setCalendarId] = useState(calendars[0]?.id ?? "");
-  const [start, setStart] = useState(fmt(defaultStart ?? new Date()));
-  const [end, setEnd] = useState(fmt(defaultStart ? new Date(defaultStart.getTime() + 3600000) : new Date()));
-  const [allDay, setAllDay] = useState(false);
-  const [location, setLocation] = useState("");
-  const [notes, setNotes] = useState("");
+  const resolvedDefault = defaultEventTypeId || types[0]?.id || "";
+
+  const [title,            setTitle]            = useState("");
+  const [eventTypeId,      setEventTypeId]      = useState(resolvedDefault);
+  const [start,            setStart]            = useState(fmtDT(defaultStart ?? new Date()));
+  const [end,              setEnd]              = useState(fmtDT(defaultStart ? new Date(defaultStart.getTime() + 3600000) : new Date()));
+  const [allDay,           setAllDay]           = useState(false);
+  const [location,         setLocation]         = useState("");
+  const [notes,            setNotes]            = useState("");
+  // Custom type fields
+  const [customColor,      setCustomColor]      = useState("#6366f1");
+  const [customIcon,       setCustomIcon]       = useState("Calendar");
+  const [customAllDayStyle, setCustomAllDayStyle] = useState<DisplayStyle>("block");
 
   useEffect(() => {
     if (event) {
       setTitle(event.title);
       setEventTypeId(event.eventTypeId);
-      setCalendarId(event.calendarId);
-      setStart(event.start.slice(0, 16));
-      setEnd(event.end.slice(0, 16));
       setAllDay(event.allDay);
+      setStart(event.allDay ? event.start.slice(0, 10) : event.start.slice(0, 16));
+      setEnd(event.allDay   ? event.end.slice(0, 10)   : event.end.slice(0, 16));
       setLocation(event.location ?? "");
       setNotes(event.notes ?? "");
+      setCustomColor(event.customColor ?? "#6366f1");
+      setCustomIcon(event.customIcon ?? "Calendar");
+      setCustomAllDayStyle(event.customAllDayStyle ?? "block");
     } else {
       setTitle("");
-      setEventTypeId(types[0]?.id ?? "");
-      setCalendarId(calendars[0]?.id ?? "");
+      setEventTypeId(resolvedDefault);
       const s = defaultStart ?? new Date();
-      setStart(fmt(s));
-      setEnd(fmt(new Date(s.getTime() + 3600000)));
       setAllDay(false);
+      setStart(fmtDT(s));
+      setEnd(fmtDT(new Date(s.getTime() + 3600000)));
       setLocation("");
       setNotes("");
+      setCustomColor("#6366f1");
+      setCustomIcon("Calendar");
+      setCustomAllDayStyle("block");
     }
   }, [event, defaultStart, open]);
 
   if (!open) return null;
 
+  const calendarId = event?.calendarId ?? calendars[0]?.id ?? "default";
+  const isCustom = eventTypeId === "custom";
+
   const handleSave = async () => {
     if (!title.trim()) return;
-    const data = {
-      title, eventTypeId, calendarId,
-      start: new Date(start).toISOString(),
-      end: new Date(end).toISOString(),
-      allDay, location: location || undefined, notes: notes || undefined,
+    const data: Omit<CalendarEvent, "id"> = {
+      title,
+      eventTypeId,
+      calendarId,
+      allDay,
+      start: allDay ? start : new Date(start).toISOString(),
+      end:   allDay ? end   : new Date(end).toISOString(),
+      location: location || undefined,
+      notes:    notes    || undefined,
+      ...(isCustom && {
+        customColor,
+        customIcon,
+        customAllDayStyle,
+      }),
     };
     if (event) {
       const updated = await provider.updateEvent({ ...event, ...data });
@@ -80,18 +122,16 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
 
   const handleDelete = async () => {
     if (!event) return;
-    await provider.deleteEvent(event.id);
+    await provider.deleteEvent(event.id, event.calendarId);
     removeEvent(event.id);
     onClose();
   };
-
-  const selectedType = types.find((t) => t.id === eventTypeId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
-        className="relative z-10 w-full max-w-md rounded-2xl bg-card shadow-2xl border border-border"
+        className="relative z-10 w-full max-w-md rounded-2xl bg-card shadow-2xl border border-border max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -110,6 +150,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
             autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSave()}
             placeholder="Titre de l'événement"
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
@@ -132,43 +173,105 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
                   {t.label}
                 </button>
               ))}
+              {/* Custom type */}
+              <button
+                onClick={() => setEventTypeId("custom")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all",
+                  isCustom ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground"
+                )}
+              >
+                {getIcon("Palette", 12)}
+                Personnalisé
+              </button>
             </div>
           </div>
 
-          {/* Calendar */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Calendrier</label>
-            <div className="flex gap-1.5">
-              {calendars.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setCalendarId(c.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all",
-                    calendarId === c.id ? "border-transparent text-white" : "border-border bg-background text-foreground"
-                  )}
-                  style={calendarId === c.id ? { backgroundColor: c.color } : {}}
-                >
-                  <span className="size-2 rounded-full" style={{ backgroundColor: c.color }} />
-                  {c.name}
-                </button>
-              ))}
+          {/* Custom type pickers */}
+          {isCustom && (
+            <div className="rounded-xl border border-border bg-background p-3 space-y-3">
+              {/* Color */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Couleur</label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {PRESET_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setCustomColor(c)}
+                      className="size-5 rounded-full border-2 transition-transform hover:scale-110"
+                      style={{ backgroundColor: c, borderColor: customColor === c ? "var(--foreground)" : "transparent" }}
+                    />
+                  ))}
+                  <input type="color" value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="size-5 rounded cursor-pointer border border-border" />
+                </div>
+              </div>
+              {/* Icon */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Icône</label>
+                <div className="flex flex-wrap gap-1">
+                  {ICON_OPTIONS.map((i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCustomIcon(i)}
+                      className={cn("p-1 rounded-lg border transition-all", customIcon === i ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}
+                    >
+                      {getIcon(i, 13)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* All-day style — only shown when allDay is checked */}
+              {allDay && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Style journée</label>
+                  <div className="flex flex-wrap gap-1">
+                    {STYLE_OPTIONS.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setCustomAllDayStyle(s.id)}
+                        className={cn(
+                          "px-2 py-1 rounded-md border text-xs font-medium transition-all",
+                          customAllDayStyle === s.id ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
+
+          {/* All-day toggle */}
+          <label className="flex items-center gap-2 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={allDay}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setAllDay(v);
+                if (v) {
+                  setStart(start.slice(0, 10));
+                  setEnd(end.slice(0, 10));
+                } else {
+                  const s = defaultStart ?? new Date();
+                  setStart(fmtDT(s));
+                  setEnd(fmtDT(new Date(s.getTime() + 3600000)));
+                }
+              }}
+              className="rounded"
+            />
+            <span className="text-xs font-medium text-muted-foreground">Journée entière</span>
+          </label>
 
           {/* Dates */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-muted-foreground">
-              <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} className="mr-1.5" />
-              Journée entière
-            </label>
-          </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Début</label>
               <input
                 type={allDay ? "date" : "datetime-local"}
-                value={start}
+                value={allDay ? start.slice(0, 10) : start}
                 onChange={(e) => setStart(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               />
@@ -177,7 +280,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Fin</label>
               <input
                 type={allDay ? "date" : "datetime-local"}
-                value={end}
+                value={allDay ? end.slice(0, 10) : end}
                 onChange={(e) => setEnd(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               />
@@ -213,10 +316,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
               </button>
             ) : <div />}
             <div className="flex gap-2">
-              <button
-                onClick={onClose}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-              >
+              <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
                 Annuler
               </button>
               <button
@@ -233,3 +333,6 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
     </div>
   );
 }
+
+void parseISO;
+void fmtDate;

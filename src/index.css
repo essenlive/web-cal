@@ -61,3 +61,137 @@
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { border-radius: 9999px; }
+
+/* ── react-big-calendar theme ──────────────────────────────────────────────── */
+
+/* Wrapper fills the flex container */
+.rbc-wrapper { display: flex; flex-direction: column; overflow: hidden; }
+.rbc-wrapper .rbc-calendar { flex: 1; min-height: 0; }
+
+/* Hide built-in toolbar — our Header handles navigation */
+.rbc-toolbar { display: none !important; }
+
+/* Root */
+.rbc-calendar {
+  font-family: inherit;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Outer borders */
+.rbc-month-view,
+.rbc-time-view { border-color: hsl(var(--border)); border-radius: 0; }
+
+/* Column/row headers */
+.rbc-header {
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  text-transform: capitalize;
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+}
+.rbc-header + .rbc-header { border-color: hsl(var(--border)); }
+
+/* Month rows and day cells */
+.rbc-month-row            { border-color: hsl(var(--border)); }
+.rbc-day-bg               { border-color: hsl(var(--border)); }
+.rbc-day-bg + .rbc-day-bg { border-color: hsl(var(--border)); }
+
+/* Off-month */
+.rbc-off-range-bg  { background: hsl(var(--muted) / 0.35); }
+.rbc-off-range > a { color: hsl(var(--muted-foreground)); opacity: 0.5; }
+
+/* Today */
+.rbc-today { background: hsl(var(--primary) / 0.06); }
+
+/* Date numbers */
+.rbc-date-cell { padding: 4px 6px; text-align: right; }
+.rbc-date-cell > a,
+.rbc-date-cell > span {
+  font-size: 12px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+.rbc-date-cell.rbc-now > a,
+.rbc-date-cell.rbc-now > span { color: hsl(var(--primary)); font-weight: 700; }
+
+/* Events */
+.rbc-event {
+  padding: 0.5rem !important;
+  border: none !important;
+  outline: none !important;
+  position: relative;
+  overflow: visible;   /* allow avatar badges to escape their container */
+}
+.rbc-event:focus        { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4); }
+.rbc-event.rbc-selected { box-shadow: 0 0 0 2px hsl(var(--ring) / 0.6) !important; }
+
+/* Month event row */
+.rbc-event-content { font-size: 11px; line-height: 1.2; }
+
+/* Overflow "+N more" */
+.rbc-show-more {
+  font-size: 10px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  padding: 0 4px;
+}
+.rbc-show-more:hover { color: hsl(var(--primary)); }
+
+/* ── Time grid ──────────────────────────────────────────────────────────────── */
+.rbc-time-view .rbc-time-header            { border-color: hsl(var(--border)); }
+.rbc-time-view .rbc-time-header-content    { border-color: hsl(var(--border)); }
+.rbc-time-view .rbc-allday-cell            { border-color: hsl(var(--border)); }
+.rbc-time-header-gutter                    { background: hsl(var(--card)); border-color: hsl(var(--border)); }
+.rbc-time-content                          { border-color: hsl(var(--border)); }
+.rbc-time-content > * + * > *             { border-color: hsl(var(--border)); }
+.rbc-timeslot-group                        { border-color: hsl(var(--border) / 0.5); min-height: 60px; }
+.rbc-time-slot                             { border-color: hsl(var(--border) / 0.25); }
+.rbc-label {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  padding: 0 6px;
+}
+.rbc-time-column .rbc-timeslot-group { border-color: hsl(var(--border) / 0.4); }
+
+/* Current time indicator */
+.rbc-current-time-indicator        { background: hsl(var(--primary)); height: 2px; }
+.rbc-current-time-indicator::before { background: hsl(var(--primary)); }
+
+/* Slot hover / selection */
+.rbc-slot-selection {
+  background: hsl(var(--primary) / 0.12);
+  border: 1px solid hsl(var(--primary) / 0.35);
+}
+.rbc-day-slot .rbc-background-event { opacity: 0.7; }
+
+/* Day cell hover in month view */
+.rbc-day-bg:hover { background: hsl(var(--muted) / 0.3); }
+
+/* Popup overlay ("+N more" expanded) */
+.rbc-overlay {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.15);
+  padding: 8px;
+  z-index: 100;
+}
+.rbc-overlay-header {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 6px 8px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-bottom: 4px;
+}
+
+/* All-day row (week/day view) */
+.rbc-allday-cell .rbc-event { min-height: 20px; }
+
+/* Row content stacking */
+.rbc-row-content { z-index: 1; }

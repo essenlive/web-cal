@@ -58,7 +58,7 @@ export class MockDataProvider implements DataProvider {
     return event;
   }
 
-  async deleteEvent(id: string): Promise<void> {
+  async deleteEvent(id: string, _calendarId?: string): Promise<void> {
     this.events = this.events.filter((e) => e.id !== id);
     save(STORAGE_KEYS.events, this.events);
   }

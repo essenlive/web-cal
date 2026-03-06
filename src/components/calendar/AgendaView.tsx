@@ -1,16 +1,13 @@
 import { useState } from "react";
-import { format, isToday, isTomorrow, parseISO, startOfDay, isFuture, addDays } from "date-fns";
+import { format, isToday, isTomorrow, parseISO, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useEventsStore, useCalendarStore, useEventTypeStore, useUIStore } from "../../store";
+import { EventChip, resolveStyle, resolveEventType } from "../events/EventChip";
 import { EventModal } from "../events/EventModal";
 import type { CalendarEvent } from "../../types";
 
-function getIcon(name: string, size = 14) {
-  const Icon = (Icons as any)[name];
-  return Icon ? <Icon size={size} /> : null;
-}
 
 function dayLabel(day: Date): string {
   if (isToday(day)) return "Aujourd'hui";
@@ -22,28 +19,45 @@ export function AgendaView() {
   const { events } = useEventsStore();
   const { calendars } = useCalendarStore();
   const { getType } = useEventTypeStore();
-  const { currentDate } = useUIStore();
+  const { currentDate, use24h, dateFormatEU } = useUIStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
-  const visibleCalendarIds = new Set(calendars.filter((c) => c.visible).map((c) => c.id));
+  // Expand all-day events across every day they span; group by day
+  const grouped: Record<string, CalendarEvent[]> = {};
+  const cutoff = startOfDay(currentDate);
 
-  const upcoming = events
-    .filter((e) => {
-      if (!visibleCalendarIds.has(e.calendarId)) return false;
+  for (const e of events) {
+    if (e.allDay) {
+      const eStart = startOfDay(parseISO(e.start));
+      const eEnd   = startOfDay(parseISO(e.end));
+      let d = eStart < cutoff ? cutoff : eStart;
+      while (d < eEnd) {
+        const key = format(d, "yyyy-MM-dd");
+        if (!grouped[key]) grouped[key] = [];
+        // Only push once per day (avoid duplicate if event already in list)
+        if (!grouped[key].find((x) => x.id === e.id)) grouped[key].push(e);
+        d = new Date(d.getTime() + 86400000);
+        if (d.getTime() - cutoff.getTime() > 60 * 86400000) break; // cap at 60 days
+      }
+    } else {
       const s = parseISO(e.start);
-      return s >= startOfDay(currentDate);
-    })
-    .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
-    .slice(0, 60);
+      if (s < cutoff) continue;
+      const key = format(s, "yyyy-MM-dd");
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(e);
+    }
+  }
 
-  // Group by day
-  const grouped = upcoming.reduce<Record<string, CalendarEvent[]>>((acc, e) => {
-    const key = format(parseISO(e.start), "yyyy-MM-dd");
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(e);
-    return acc;
-  }, {});
+  // Sort within each day, then cap total days shown
+  const sortedKeys = Object.keys(grouped).sort().slice(0, 60);
+  for (const key of sortedKeys) {
+    grouped[key].sort((a, b) => {
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      return parseISO(a.start).getTime() - parseISO(b.start).getTime();
+    });
+  }
 
   const calendar = (id: string) => calendars.find((c) => c.id === id);
 
@@ -56,39 +70,60 @@ export function AgendaView() {
         </div>
       )}
 
-      {Object.entries(grouped).map(([dateKey, dayEvents]) => {
+      {sortedKeys.map((dateKey) => {
+        const dayEvents = grouped[dateKey];
         const day = new Date(dateKey + "T12:00:00");
         return (
           <div key={dateKey}>
-            <div className={cn(
-              "text-sm font-semibold mb-2 capitalize",
-              isToday(day) ? "text-primary" : "text-foreground"
-            )}>
-              {dayLabel(day)}
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className={cn(
+                "text-sm font-semibold capitalize",
+                isToday(day) ? "text-primary" : "text-foreground"
+              )}>
+                {dayLabel(day)}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {format(day, dateFormatEU ? "dd/MM/yyyy" : "MM/dd/yyyy")}
+              </span>
             </div>
             <div className="space-y-2">
               {dayEvents.map((e) => {
-                const type = getType(e.eventTypeId);
+                const type = resolveEventType(e, getType);
                 const cal = calendar(e.calendarId);
+                const agendaStyle = resolveStyle(type, "agenda", e.allDay);
+                // For 'day' style in agenda: color the left border of the row
+                const isDayStyle  = agendaStyle === "day";
+                const rowColor    = isDayStyle ? type?.color : undefined;
                 return (
                   <div
                     key={e.id}
                     onClick={() => { setSelectedEvent(e); setModalOpen(true); }}
-                    className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors group"
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border bg-card px-4 py-3 cursor-pointer transition-colors group",
+                      isDayStyle ? "hover:brightness-95" : "border-border hover:bg-muted/40"
+                    )}
+                    style={rowColor ? {
+                      backgroundColor: rowColor + "12",
+                      borderColor: rowColor + "60",
+                      borderLeftColor: rowColor,
+                      borderLeftWidth: 3,
+                    } : undefined}
                   >
-                    {/* Type icon */}
-                    <div
-                      className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: (type?.color ?? "#6366f1") + "20", color: type?.color ?? "#6366f1" }}
-                    >
-                      {getIcon(type?.icon ?? "Calendar", 16)}
-                    </div>
+                    {/* Event chip — avatar badge or block chip; null for day style */}
+                    {!isDayStyle && (
+                      <div className="mt-0.5 shrink-0">
+                        <EventChip event={e} eventType={type} view="agenda" />
+                      </div>
+                    )}
+                    {isDayStyle && (
+                      <div className="mt-0.5 size-3 rounded-full shrink-0 self-center" style={{ backgroundColor: rowColor }} />
+                    )}
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-sm font-medium text-foreground truncate">{e.title}</span>
                         <span className="text-xs text-muted-foreground shrink-0">
-                          {e.allDay ? "Journée" : `${format(parseISO(e.start), "HH:mm")} – ${format(parseISO(e.end), "HH:mm")}`}
+                          {e.allDay ? "Journée" : `${format(parseISO(e.start), use24h ? "HH:mm" : "h:mm a")} – ${format(parseISO(e.end), use24h ? "HH:mm" : "h:mm a")}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
