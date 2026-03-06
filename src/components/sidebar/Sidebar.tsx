@@ -29,7 +29,12 @@ export function Sidebar({ onNewEvent }: SidebarProps) {
   );
 
   return (
-    <aside className="w-56 shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto">
+    <aside className="
+      fixed inset-y-0 left-0 z-40 w-56
+      sm:relative sm:inset-auto sm:z-auto sm:translate-x-0
+      shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto
+      transition-transform duration-200
+    ">
       {/* New event */}
       <div className="p-3">
         <button
@@ -56,8 +61,8 @@ export function Sidebar({ onNewEvent }: SidebarProps) {
         </div>
 
         <div className="grid grid-cols-7 gap-px">
-          {dayHeaders.map((d) => (
-            <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-0.5 uppercase">
+          {dayHeaders.map((d, i) => (
+            <div key={i} className="text-center text-[10px] font-medium text-muted-foreground py-0.5 uppercase">
               {d}
             </div>
           ))}

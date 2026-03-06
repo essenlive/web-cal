@@ -42,10 +42,10 @@ function AvatarBadge({
       title={event.title}
       onClick={(ev) => { ev.stopPropagation(); onEdit(event); }}
       style={{ backgroundColor: color, pointerEvents: "auto" }}
-      className="size-6 rounded-full flex items-center justify-center cursor-pointer shadow-sm
+      className="size-5 sm:size-6 rounded-full flex items-center justify-center cursor-pointer shadow-sm
                  transition-all hover:scale-110 hover:brightness-90 active:scale-95"
     >
-      {type?.icon && <LucideIcon name={type.icon} size={11} color="#fff" />}
+      {type?.icon && <LucideIcon name={type.icon} size={9} color="#fff" />}
     </div>
   );
 }

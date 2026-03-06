@@ -29,19 +29,19 @@ export function Header() {
   };
 
   return (
-    <header className="flex items-center h-14 px-4 border-b border-border bg-card shrink-0 gap-2">
+    <header className="flex items-center h-14 px-2 sm:px-4 border-b border-border bg-card shrink-0 gap-1 sm:gap-2">
       {/* Left */}
-      <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground mr-1">
+      <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
         <Menu size={18} />
       </button>
 
-      <span className="text-base font-bold text-foreground mr-2 hidden sm:block">Calendrier</span>
+      <span className="text-base font-bold text-foreground hidden sm:block sm:mr-2">Calendrier</span>
 
       <button
         onClick={() => setCurrentDate(new Date())}
-        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-foreground transition-colors"
+        className="text-xs font-medium px-2 sm:px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-foreground transition-colors"
       >
-        Aujourd'hui
+        Auj.
       </button>
 
       <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
@@ -51,16 +51,16 @@ export function Header() {
         <ChevronRight size={18} />
       </button>
 
-      <h1 className="text-sm font-semibold text-foreground capitalize ml-1 flex-1 truncate">{title()}</h1>
+      <h1 className="text-xs sm:text-sm font-semibold text-foreground capitalize ml-1 flex-1 truncate">{title()}</h1>
 
       {/* View switcher */}
-      <div className="flex rounded-xl border border-border overflow-hidden bg-background">
+      <div className="flex rounded-xl border border-border overflow-hidden bg-background shrink-0">
         {VIEWS.map((v) => (
           <button
             key={v.id}
             onClick={() => setView(v.id)}
             className={cn(
-              "px-3 py-1.5 text-xs font-medium transition-colors",
+              "px-2 sm:px-3 py-1.5 text-xs font-medium transition-colors",
               view === v.id
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -72,7 +72,7 @@ export function Header() {
       </div>
 
       {/* Right */}
-      <Link to="/settings" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground ml-1">
+      <Link to="/settings" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
         <Settings size={17} />
       </Link>
     </header>
