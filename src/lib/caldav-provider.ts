@@ -140,13 +140,16 @@ function parseSingleEvent(ics: string, calendarId: string): CalendarEvent | null
 
 export class CalDAVProvider implements DataProvider {
   private auth: string;
+  private serverUrl: string;
+  private proxy: string;
 
   constructor(
-    private serverUrl: string,  // e.g. https://calendar.proton.me/dav
+    serverUrl: string,  // e.g. https://calendar.proton.me/dav
     username: string,
     password: string,
-    private proxy = ""
+    proxy = ""
   ) {
+    this.proxy = proxy;
     this.auth = basicAuth(username, password);
     // Normalise: strip trailing slash
     this.serverUrl = serverUrl.replace(/\/$/, "");

@@ -44,7 +44,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
   const { types }   = useEventTypeStore();
   const { calendars } = useCalendarStore();
   const { upsertEvent, removeEvent } = useEventsStore();
-  const { defaultEventTypeId } = useUIStore();
+  const { defaultEventTypeId, dateFormatEU } = useUIStore();
   const provider = useDataProvider();
 
   const resolvedDefault = defaultEventTypeId || types[0]?.id || "";
@@ -275,6 +275,12 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
                 onChange={(e) => setStart(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               />
+              {start.length >= 10 && (
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  {format(new Date(start.slice(0, 10) + "T12:00:00"), dateFormatEU ? "dd/MM/yyyy" : "MM/dd/yyyy")}
+                  {!allDay && start.length >= 16 && ` · ${start.slice(11, 16)}`}
+                </span>
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Fin</label>
@@ -284,6 +290,12 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
                 onChange={(e) => setEnd(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               />
+              {end.length >= 10 && (
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  {format(new Date(end.slice(0, 10) + "T12:00:00"), dateFormatEU ? "dd/MM/yyyy" : "MM/dd/yyyy")}
+                  {!allDay && end.length >= 16 && ` · ${end.slice(11, 16)}`}
+                </span>
+              )}
             </div>
           </div>
 

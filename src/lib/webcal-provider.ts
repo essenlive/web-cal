@@ -127,10 +127,13 @@ function parseICS(text: string): ParsedEvent[] {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export class WebCalProvider implements DataProvider {
-  constructor(
-    private sources: WebCalSource[],
-    private proxyPrefix = ""
-  ) {}
+  private sources: WebCalSource[];
+  private proxyPrefix: string;
+
+  constructor(sources: WebCalSource[], proxyPrefix = "") {
+    this.sources = sources;
+    this.proxyPrefix = proxyPrefix;
+  }
 
   async getCalendars(): Promise<CalendarMeta[]> {
     return this.sources.map((s) => ({
