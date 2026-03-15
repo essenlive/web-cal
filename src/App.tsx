@@ -13,6 +13,7 @@ function DarkModeWatcher({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+
 export default function App() {
   return (
     <DataProviderContext>
