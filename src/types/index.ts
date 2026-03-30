@@ -38,4 +38,4 @@ export interface CalendarEvent {
   customAllDayStyle?: DisplayStyle;
 }
 
-export type CalendarView = "month" | "week" | "agenda";
+export type CalendarView = "month" | "week" | "day" | "agenda";

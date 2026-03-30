@@ -53,3 +53,16 @@ export function useDataProvider(): DataProvider {
   if (!ctx) throw new Error("useDataProvider must be used within DataProviderContext");
   return ctx;
 }
+
+// ── No-op provider for the dev preview page ───────────────────────────────────
+
+const devProvider: DataProvider = {
+  getEvents:    async ()  => [],
+  createEvent:  async (e) => ({ ...e, id: crypto.randomUUID() }),
+  updateEvent:  async (e) => e,
+  deleteEvent:  async ()  => {},
+};
+
+export function DevDataProviderContext({ children }: { children: ReactNode }) {
+  return <DataCtx.Provider value={devProvider}>{children}</DataCtx.Provider>;
+}

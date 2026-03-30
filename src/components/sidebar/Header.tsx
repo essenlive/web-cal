@@ -1,4 +1,4 @@
-import { format, addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
+import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Settings, Menu, Sun, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -9,6 +9,7 @@ import type { CalendarView } from "../../types";
 const VIEWS: { id: CalendarView; label: string }[] = [
   { id: "month",  label: "Mois"   },
   { id: "week",   label: "Sem."   },
+  { id: "day",    label: "Jour"   },
   { id: "agenda", label: "Agenda" },
 ];
 
@@ -19,12 +20,14 @@ export function Header() {
     const fns: Record<CalendarView, (d: Date, n: number) => Date> = {
       month:  (d, n) => (n > 0 ? addMonths(d, 1) : subMonths(d, 1)),
       week:   (d, n) => (n > 0 ? addWeeks(d, 1) : subWeeks(d, 1)),
+      day:    (d, n) => (n > 0 ? addDays(d, 1) : subDays(d, 1)),
       agenda: (d, n) => (n > 0 ? addMonths(d, 1) : subMonths(d, 1)),
     };
     setCurrentDate(fns[view](currentDate, dir));
   };
 
   const title = () => {
+    if (view === "day") return format(currentDate, "EEEE d MMMM yyyy", { locale: fr });
     return format(currentDate, "MMMM yyyy", { locale: fr });
   };
 
