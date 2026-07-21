@@ -142,7 +142,11 @@ export class WebCalProvider implements DataProvider {
       this.sources.map(async (source) => {
         try {
           const url = source.url.replace(/^webcal:\/\//i, "https://");
-          const fetchUrl = this.proxyPrefix ? `${this.proxyPrefix}${encodeURIComponent(url)}` : url;
+          // No external proxy configured — default to the app's own same-origin
+          // proxy, since most .ics hosts don't send CORS headers.
+          const fetchUrl = this.proxyPrefix
+            ? `${this.proxyPrefix}${encodeURIComponent(url)}`
+            : `/api/proxy?url=${encodeURIComponent(url)}`;
           const res = await fetch(fetchUrl);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const text = await res.text();

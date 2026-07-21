@@ -44,16 +44,26 @@ async function davRequest(
   body?: string,
   extraHeaders?: Record<string, string>
 ): Promise<Response> {
-  const res = await fetch(proxyUrl(url, proxy), {
-    method,
-    headers: {
-      Authorization: auth,
-      "Content-Type": body ? (method === "REPORT" || method === "PROPFIND" ? "application/xml; charset=utf-8" : "text/calendar; charset=utf-8") : "application/xml",
-      Depth: method === "PROPFIND" || method === "REPORT" ? "1" : "0",
-      ...extraHeaders,
-    },
-    body,
-  });
+  const headers: Record<string, string> = {
+    Authorization: auth,
+    "Content-Type": body ? (method === "REPORT" || method === "PROPFIND" ? "application/xml; charset=utf-8" : "text/calendar; charset=utf-8") : "application/xml",
+    Depth: method === "PROPFIND" || method === "REPORT" ? "1" : "0",
+    ...extraHeaders,
+  };
+
+  if (!proxy) {
+    // No external proxy configured — tunnel through the app's own same-origin
+    // proxy (PROPFIND/REPORT aren't standard fetch methods Next.js route
+    // handlers can dispatch on directly, hence the POST envelope).
+    const res = await fetch("/api/proxy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method, url, headers, body }),
+    });
+    return res;
+  }
+
+  const res = await fetch(proxyUrl(url, proxy), { method, headers, body });
   return res;
 }
 

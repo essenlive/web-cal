@@ -1,0 +1,106 @@
+import { NextRequest, NextResponse } from "next/server";
+
+/**
+ * Same-origin fetch relay for CalDAV/WebCal sources that don't send CORS
+ * headers. Only reachable targets are public http(s) hosts — anything that
+ * looks like it points back into this server's own network is rejected so
+ * the route can't be used to probe internal infrastructure or the cloud
+ * metadata endpoint.
+ *
+ * ponytail: hostname-string matching, not a resolved-IP check — a DNS name
+ * that resolves to a private IP at request time would slip through. Add a
+ * resolve-then-check step if that ever becomes a real threat here.
+ */
+function isBlockedHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h === "::1" || h === "0.0.0.0") return true;
+
+  const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const [a, b] = ipv4.slice(1, 3).map(Number);
+    if (a === 127 || a === 10 || a === 0) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true; // link-local + cloud metadata (169.254.169.254)
+  }
+
+  if (h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) return true; // IPv6 link-local/ULA
+
+  return false;
+}
+
+function validateTarget(raw: string | null): URL {
+  if (!raw) throw new Error("Missing url");
+  let target: URL;
+  try {
+    target = new URL(raw);
+  } catch {
+    throw new Error("Invalid url");
+  }
+  if (target.protocol !== "http:" && target.protocol !== "https:") {
+    throw new Error("Unsupported protocol");
+  }
+  if (isBlockedHost(target.hostname)) {
+    throw new Error("Target host not allowed");
+  }
+  return target;
+}
+
+/** Plain GET passthrough — used for WebCal .ics subscriptions. */
+export async function GET(req: NextRequest) {
+  let target: URL;
+  try {
+    target = validateTarget(req.nextUrl.searchParams.get("url"));
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+  }
+
+  const upstream = await fetch(target);
+  const body = await upstream.arrayBuffer();
+  return new NextResponse(body, {
+    status: upstream.status,
+    headers: { "Content-Type": upstream.headers.get("content-type") ?? "text/plain" },
+  });
+}
+
+const TUNNELED_METHODS = new Set(["PROPFIND", "REPORT", "PUT", "DELETE"]);
+
+interface TunnelPayload {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
+/**
+ * JSON tunnel for CalDAV's WebDAV verbs (PROPFIND, REPORT) and authenticated
+ * PUT/DELETE — Next.js route handlers only dispatch on standard HTTP method
+ * exports, so non-standard verbs travel as a POST envelope instead.
+ */
+export async function POST(req: NextRequest) {
+  const payload = (await req.json().catch(() => null)) as TunnelPayload | null;
+  if (!payload) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+
+  const method = payload.method?.toUpperCase() ?? "";
+  if (!TUNNELED_METHODS.has(method)) {
+    return NextResponse.json({ error: "Unsupported method" }, { status: 400 });
+  }
+
+  let target: URL;
+  try {
+    target = validateTarget(payload.url ?? null);
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+  }
+
+  const upstream = await fetch(target, {
+    method,
+    headers: payload.headers,
+    body: payload.body,
+  });
+  const text = await upstream.text();
+  return new NextResponse(text, {
+    status: upstream.status,
+    headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/xml" },
+  });
+}
