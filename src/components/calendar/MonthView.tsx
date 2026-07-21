@@ -8,9 +8,11 @@ import * as Icons from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore } from "../../store";
+import { useEventsStore, useEventTypeStore, useUIStore, useConnectionStore } from "../../store";
 import { EventChip, resolveEventType, resolveStyle } from "../events/EventChip";
-import type { CalendarEvent, EventType } from "../../types";
+import type { CalendarEvent, Connection, EventType } from "../../types";
+
+type GetConnection = (calendarId: string) => Connection | undefined;
 
 const DAY_LABELS_MON = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."];
 const DAY_LABELS_SUN = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
@@ -106,7 +108,7 @@ function assignLanes(
 // ── EventListModal ────────────────────────────────────────────────────────────
 
 function EventListModal({
-  open, onClose, title, events, onEventClick, getType,
+  open, onClose, title, events, onEventClick, getType, getConnection, defaultEventTypeId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -114,6 +116,8 @@ function EventListModal({
   events: CalendarEvent[];
   onEventClick: (e: CalendarEvent) => void;
   getType: (id: string) => EventType | undefined;
+  getConnection: GetConnection;
+  defaultEventTypeId: string;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && onClose()}>
@@ -133,7 +137,7 @@ function EventListModal({
               <EventChip
                 key={e.id}
                 event={e}
-                eventType={resolveEventType(e, getType)}
+                eventType={resolveEventType(e, getType, getConnection, defaultEventTypeId)}
                 onClick={() => { onClose(); onEventClick(e); }}
                 view="month"
               />
@@ -153,13 +157,15 @@ function EventListModal({
 // ── AllDayBar ─────────────────────────────────────────────────────────────────
 
 function AllDayBar({
-  le, onEventClick, getType,
+  le, onEventClick, getType, getConnection, defaultEventTypeId,
 }: {
   le: LanedEvent;
   onEventClick: (e: CalendarEvent) => void;
   getType: (id: string) => EventType | undefined;
+  getConnection: GetConnection;
+  defaultEventTypeId: string;
 }) {
-  const type = resolveEventType(le.event, getType);
+  const type = resolveEventType(le.event, getType, getConnection, defaultEventTypeId);
   const color = type?.color ?? "#6366f1";
   const colWidth = 100 / 7;
   const rLeft = le.isStart ? "5px" : "0px";
@@ -191,7 +197,7 @@ function AllDayBar({
 // ── OverflowMoreButton ────────────────────────────────────────────────────────
 
 function OverflowMoreButton({
-  col, day, events, usedLanes, onEventClick, getType,
+  col, day, events, usedLanes, onEventClick, getType, getConnection, defaultEventTypeId,
 }: {
   col: number;
   day: Date;
@@ -199,6 +205,8 @@ function OverflowMoreButton({
   usedLanes: number;
   onEventClick: (e: CalendarEvent) => void;
   getType: (id: string) => EventType | undefined;
+  getConnection: GetConnection;
+  defaultEventTypeId: string;
 }) {
   const [open, setOpen] = useState(false);
   const colWidth = 100 / 7;
@@ -223,6 +231,8 @@ function OverflowMoreButton({
         events={events}
         onEventClick={onEventClick}
         getType={getType}
+        getConnection={getConnection}
+        defaultEventTypeId={defaultEventTypeId}
       />
     </>
   );
@@ -255,12 +265,14 @@ function AvatarBadge({
 // ── OverflowPopover (timed events) ────────────────────────────────────────────
 
 function OverflowPopover({
-  events, count, onEventClick, getType,
+  events, count, onEventClick, getType, getConnection, defaultEventTypeId,
 }: {
   events: CalendarEvent[];
   count: number;
   onEventClick: (e: CalendarEvent) => void;
   getType: (id: string) => EventType | undefined;
+  getConnection: GetConnection;
+  defaultEventTypeId: string;
 }) {
   return (
     <Popover.Root>
@@ -284,7 +296,7 @@ function OverflowPopover({
             <EventChip
               key={e.id}
               event={e}
-              eventType={resolveEventType(e, getType)}
+              eventType={resolveEventType(e, getType, getConnection, defaultEventTypeId)}
               onClick={() => onEventClick(e)}
               view="month"
             />
@@ -310,12 +322,14 @@ interface DayCellProps {
   onEventClick: (e: CalendarEvent) => void;
   onSlotClick: (d: Date) => void;
   getType: (id: string) => EventType | undefined;
+  getConnection: GetConnection;
+  defaultEventTypeId: string;
 }
 
 function DayCell({
   day, isToday, isCurrentMonth,
   timedBlockEvents, tlAvatars, blAvatars, brAvatars, dayStyleEvents,
-  onEventClick, onSlotClick, getType,
+  onEventClick, onSlotClick, getType, getConnection, defaultEventTypeId,
 }: DayCellProps) {
   const [avatarModal, setAvatarModal] = useState<{ events: CalendarEvent[]; corner: string } | null>(null);
   const [dayStyleModal, setDayStyleModal] = useState(false);
@@ -325,7 +339,7 @@ function DayCell({
 
   const bgColor =
     dayStyleEvents.length === 1
-      ? (resolveEventType(dayStyleEvents[0], getType)?.color ?? "#6366f1") + "18"
+      ? (resolveEventType(dayStyleEvents[0], getType, getConnection, defaultEventTypeId)?.color ?? "#6366f1") + "18"
       : undefined;
 
   const bgClass = dayStyleEvents.length > 1 ? "bg-muted/30" : "";
@@ -386,7 +400,7 @@ function DayCell({
           <EventChip
             key={e.id}
             event={e}
-            eventType={resolveEventType(e, getType)}
+            eventType={resolveEventType(e, getType, getConnection, defaultEventTypeId)}
             onClick={(ev) => { ev?.stopPropagation(); onEventClick(e); }}
             compact
             view="month"
@@ -398,6 +412,8 @@ function DayCell({
             count={hiddenBlock.length}
             onEventClick={onEventClick}
             getType={getType}
+            getConnection={getConnection}
+            defaultEventTypeId={defaultEventTypeId}
           />
         )}
       </div>
@@ -409,7 +425,7 @@ function DayCell({
           style={{ maxWidth: "55%", pointerEvents: "none" }}
         >
           {tlAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
-            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType)} onEdit={onEventClick} />
+            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType, getConnection, defaultEventTypeId)} onEdit={onEventClick} />
           ))}
           {tlAvatars.length > MAX_VISIBLE_AVATARS && (
             <button
@@ -429,7 +445,7 @@ function DayCell({
       {blAvatars.length > 0 && (
         <div className="absolute bottom-1 left-1 flex flex-wrap gap-0.5">
           {blAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
-            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType)} onEdit={onEventClick} />
+            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType, getConnection, defaultEventTypeId)} onEdit={onEventClick} />
           ))}
           {blAvatars.length > MAX_VISIBLE_AVATARS && (
             <button
@@ -448,7 +464,7 @@ function DayCell({
       {brAvatars.length > 0 && (
         <div className="absolute bottom-1 right-1 flex flex-wrap gap-0.5">
           {brAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
-            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType)} onEdit={onEventClick} />
+            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType, getConnection, defaultEventTypeId)} onEdit={onEventClick} />
           ))}
           {brAvatars.length > MAX_VISIBLE_AVATARS && (
             <button
@@ -472,6 +488,8 @@ function DayCell({
           events={avatarModal.events}
           onEventClick={onEventClick}
           getType={getType}
+          getConnection={getConnection}
+          defaultEventTypeId={defaultEventTypeId}
         />
       )}
 
@@ -483,6 +501,8 @@ function DayCell({
         events={dayStyleEvents}
         onEventClick={onEventClick}
         getType={getType}
+        getConnection={getConnection}
+        defaultEventTypeId={defaultEventTypeId}
       />
     </div>
   );
@@ -500,7 +520,12 @@ interface Props {
 export function MonthView({ onEventClick, onSlotClick }: Props) {
   const { events } = useEventsStore();
   const { getType } = useEventTypeStore();
-  const { currentDate, weekStartsOnMonday } = useUIStore();
+  const { currentDate, weekStartsOnMonday, defaultEventTypeId } = useUIStore();
+  const { connections } = useConnectionStore();
+  const getConnection = useCallback(
+    (calendarId: string) => connections.find((c) => c.id === calendarId),
+    [connections],
+  );
 
   const weekStartsOn = weekStartsOnMonday ? 1 : 0;
   const today = startOfDay(new Date());
@@ -530,7 +555,7 @@ export function MonthView({ onEventClick, onSlotClick }: Props) {
   const weeks = useMemo<WeekData[]>(() => {
     const allDayBlockEvents = events.filter((e) => {
       if (!e.allDay) return false;
-      const type = resolveEventType(e, getType);
+      const type = resolveEventType(e, getType, getConnection, defaultEventTypeId);
       return resolveStyle(type, "month", true) === "block";
     });
 
@@ -540,7 +565,7 @@ export function MonthView({ onEventClick, onSlotClick }: Props) {
       result.push({ weekDays, ...assignLanes(allDayBlockEvents, weekDays) });
     }
     return result;
-  }, [days, events, getType]);
+  }, [days, events, getType, getConnection, defaultEventTypeId]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -584,6 +609,8 @@ export function MonthView({ onEventClick, onSlotClick }: Props) {
                   le={le}
                   onEventClick={onEventClick}
                   getType={getType}
+                  getConnection={getConnection}
+                  defaultEventTypeId={defaultEventTypeId}
                 />
               ))}
 
@@ -597,6 +624,8 @@ export function MonthView({ onEventClick, onSlotClick }: Props) {
                   usedLanes={week.usedLanes}
                   onEventClick={onEventClick}
                   getType={getType}
+                  getConnection={getConnection}
+                  defaultEventTypeId={defaultEventTypeId}
                 />
               ))}
             </div>
@@ -616,7 +645,7 @@ export function MonthView({ onEventClick, onSlotClick }: Props) {
               const dayStyleEvents: CalendarEvent[] = [];
 
               for (const e of dayEvents) {
-                const type = resolveEventType(e, getType);
+                const type = resolveEventType(e, getType, getConnection, defaultEventTypeId);
                 const s = resolveStyle(type, "month", e.allDay);
                 if (s === "block" && !e.allDay) timedBlockEvents.push(e);
                 else if (s === "avatar-tl") tlAvatars.push(e);
@@ -640,6 +669,8 @@ export function MonthView({ onEventClick, onSlotClick }: Props) {
                   onEventClick={onEventClick}
                   onSlotClick={onSlotClick}
                   getType={getType}
+                  getConnection={getConnection}
+                  defaultEventTypeId={defaultEventTypeId}
                 />
               );
             })}

@@ -56,9 +56,10 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
   const [location,         setLocation]         = useState("");
   const [notes,            setNotes]            = useState("");
   // Custom type fields
-  const [customColor,      setCustomColor]      = useState("#6366f1");
-  const [customIcon,       setCustomIcon]       = useState("Calendar");
+  const [customColor,       setCustomColor]       = useState("#6366f1");
+  const [customIcon,        setCustomIcon]        = useState("Calendar");
   const [customAllDayStyle, setCustomAllDayStyle] = useState<DisplayStyle>("block");
+  const [customTimedStyle,  setCustomTimedStyle]  = useState<DisplayStyle>("block");
 
   useEffect(() => {
     if (event) {
@@ -72,6 +73,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
       setCustomColor(event.customColor ?? "#6366f1");
       setCustomIcon(event.customIcon ?? "Calendar");
       setCustomAllDayStyle(event.customAllDayStyle ?? "block");
+      setCustomTimedStyle(event.customTimedStyle ?? "block");
     } else {
       setTitle("");
       setEventTypeId(resolvedDefault);
@@ -84,6 +86,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
       setCustomColor("#6366f1");
       setCustomIcon("Calendar");
       setCustomAllDayStyle("block");
+      setCustomTimedStyle("block");
     }
   }, [event, defaultStart, open]);
 
@@ -107,6 +110,7 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
         customColor,
         customIcon,
         customAllDayStyle,
+        customTimedStyle,
       }),
     };
     if (event) {
@@ -231,6 +235,26 @@ export function EventModal({ open, onClose, event, defaultStart }: EventModalPro
                         className={cn(
                           "px-2 py-1 rounded-md border text-xs font-medium transition-all",
                           customAllDayStyle === s.id ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Timed style — only shown for timed events */}
+              {!allDay && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Style horaire</label>
+                  <div className="flex flex-wrap gap-1">
+                    {STYLE_OPTIONS.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setCustomTimedStyle(s.id)}
+                        className={cn(
+                          "px-2 py-1 rounded-md border text-xs font-medium transition-all",
+                          customTimedStyle === s.id ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground"
                         )}
                       >
                         {s.label}

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, Edit2, Check } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
-import { useEventTypeStore, useUIStore } from "../store";
+import { useEventTypeStore, useUIStore, useConnectionStore, useEventsStore } from "../store";
 import { BackendSettings } from "../components/settings/BackendSettings";
 import type { DisplayStyle, EventType } from "../types";
 
@@ -99,8 +99,9 @@ function EventTypeRow({ type, onEdit, onDelete }: {
 
 // ── EventTypeForm ─────────────────────────────────────────────────────────────
 
-function EventTypeForm({ type, onSave, onCancel }: {
+function EventTypeForm({ type, existingLabels = [], onSave, onCancel }: {
   type?: EventType;
+  existingLabels?: string[];
   onSave: (t: Omit<EventType, "id"> & { id?: string }) => void;
   onCancel: () => void;
 }) {
@@ -108,6 +109,12 @@ function EventTypeForm({ type, onSave, onCancel }: {
   const [color,       setColor]       = useState(type?.color       ?? PRESET_COLORS[0]);
   const [icon,        setIcon]        = useState(type?.icon        ?? "Calendar");
   const [allDayStyle, setAllDayStyle] = useState<DisplayStyle>(type?.allDayStyle ?? "block");
+  const [timedStyle,  setTimedStyle]  = useState<DisplayStyle>(type?.timedStyle  ?? "block");
+
+  const trimmed = label.trim();
+  const isDuplicate = existingLabels
+    .filter((l) => !type || l !== type.label)
+    .some((l) => l.toLowerCase() === trimmed.toLowerCase());
 
   return (
     <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-4">
@@ -117,8 +124,14 @@ function EventTypeForm({ type, onSave, onCancel }: {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Nom du type"
-          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+          className={cn(
+            "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2",
+            isDuplicate ? "border-destructive focus:ring-destructive/30" : "border-border focus:ring-primary/30"
+          )}
         />
+        {isDuplicate && (
+          <p className="text-xs text-destructive mt-1">Ce nom est déjà utilisé.</p>
+        )}
       </div>
 
       <div>
@@ -174,15 +187,40 @@ function EventTypeForm({ type, onSave, onCancel }: {
             </div>
             <StylePreview style={allDayStyle} color={color} icon={icon} />
           </div>
-          <p className="text-[10px] text-muted-foreground">Les événements horaires sont toujours affichés en bloc.</p>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground mb-2 block">Style — événements horaires</label>
+        <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex gap-1 flex-wrap">
+              {STYLE_OPTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setTimedStyle(s.id)}
+                  title={s.title}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
+                    timedStyle === s.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:bg-muted text-muted-foreground"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <StylePreview style={timedStyle} color={color} icon={icon} />
+          </div>
         </div>
       </div>
 
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted">Annuler</button>
         <button
-          onClick={() => onSave({ id: type?.id, label, color, icon, allDayStyle })}
-          disabled={!label.trim()}
+          onClick={() => onSave({ id: type?.id, label, color, icon, allDayStyle, timedStyle })}
+          disabled={!trimmed || isDuplicate}
           className="px-3 py-2 rounded-lg text-sm bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90"
         >
           <Check size={14} className="inline mr-1.5" />
@@ -197,21 +235,41 @@ function EventTypeForm({ type, onSave, onCancel }: {
 
 export function SettingsPage() {
   const { types, addType, updateType, removeType } = useEventTypeStore();
+  const { connections } = useConnectionStore();
+  const { events }      = useEventsStore();
   const {
     weekStartsOnMonday, toggleWeekStart,
     defaultEventTypeId, setDefaultEventTypeId,
     use24h, setUse24h,
     dateFormatEU, setDateFormatEU,
   } = useUIStore();
-  const [editingType, setEditingType] = useState<EventType | null>(null);
-  const [creating,    setCreating]    = useState(false);
-  const [tab,         setTab]         = useState<"types" | "prefs" | "connection">("types");
+  const [editingType,    setEditingType]    = useState<EventType | null>(null);
+  const [creating,       setCreating]       = useState(false);
+  const [tab,            setTab]            = useState<"types" | "prefs" | "connection">("types");
+  const [deletingTypeId, setDeletingTypeId] = useState<string | null>(null);
+
+  const existingLabels = types.map((t) => t.label);
 
   const handleSave = (t: Omit<EventType, "id"> & { id?: string }) => {
     if (t.id) updateType(t as EventType);
     else addType(t);
     setEditingType(null);
     setCreating(false);
+  };
+
+  const handleDeleteRequest = (id: string) => {
+    const usedByConnections = connections.filter((c) => c.displayTypeId === id).length;
+    const usedByEvents      = events.filter((e) => e.eventTypeId === id).length;
+    if (usedByConnections > 0 || usedByEvents > 0) {
+      setDeletingTypeId(id);
+    } else {
+      removeType(id);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deletingTypeId) removeType(deletingTypeId);
+    setDeletingTypeId(null);
   };
 
   return (
@@ -228,7 +286,7 @@ export function SettingsPage() {
           {[
             { id: "types",      label: "Types d'événements" },
             { id: "prefs",      label: "Préférences"        },
-            { id: "connection", label: "Connexion"          },
+            { id: "connection", label: "Data Sources"       },
           ].map((t) => (
             <button
               key={t.id}
@@ -242,12 +300,42 @@ export function SettingsPage() {
 
         {tab === "types" && (
           <div className="space-y-3">
+            {deletingTypeId && (() => {
+              const usedByConnections = connections.filter((c) => c.displayTypeId === deletingTypeId).length;
+              const usedByEvents      = events.filter((e) => e.eventTypeId === deletingTypeId).length;
+              return (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 space-y-2">
+                  <p className="text-sm font-medium text-destructive">Supprimer ce type ?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ce type est utilisé par{" "}
+                    {usedByConnections > 0 && `${usedByConnections} calendrier${usedByConnections > 1 ? "s" : ""}`}
+                    {usedByConnections > 0 && usedByEvents > 0 && " et "}
+                    {usedByEvents > 0 && `${usedByEvents} événement${usedByEvents > 1 ? "s" : ""}`}.
+                    {" "}Ils reviendront au style par défaut.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setDeletingTypeId(null)}
+                      className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={confirmDelete}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Supprimer quand même
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
             {types.map((t) =>
               editingType?.id === t.id
-                ? <EventTypeForm key={t.id} type={t} onSave={handleSave} onCancel={() => setEditingType(null)} />
-                : <EventTypeRow  key={t.id} type={t} onEdit={setEditingType} onDelete={removeType} />
+                ? <EventTypeForm key={t.id} type={t} existingLabels={existingLabels} onSave={handleSave} onCancel={() => setEditingType(null)} />
+                : <EventTypeRow  key={t.id} type={t} onEdit={setEditingType} onDelete={handleDeleteRequest} />
             )}
-            {creating && <EventTypeForm onSave={handleSave} onCancel={() => setCreating(false)} />}
+            {creating && <EventTypeForm existingLabels={existingLabels} onSave={handleSave} onCancel={() => setCreating(false)} />}
             {!creating && !editingType && (
               <button
                 onClick={() => setCreating(true)}

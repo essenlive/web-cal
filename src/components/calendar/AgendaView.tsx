@@ -3,7 +3,7 @@ import { format, isToday, isTomorrow, parseISO, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore } from "../../store";
+import { useEventsStore, useEventTypeStore, useUIStore, useConnectionStore } from "../../store";
 import { EventChip, resolveStyle, resolveEventType } from "../events/EventChip";
 import { EventModal } from "../events/EventModal";
 import type { CalendarEvent } from "../../types";
@@ -18,7 +18,9 @@ function dayLabel(day: Date): string {
 export function AgendaView() {
   const { events } = useEventsStore();
   const { getType } = useEventTypeStore();
-  const { currentDate, use24h, dateFormatEU } = useUIStore();
+  const { currentDate, use24h, dateFormatEU, defaultEventTypeId } = useUIStore();
+  const { connections } = useConnectionStore();
+  const getConnection = (calendarId: string) => connections.find((c) => c.id === calendarId);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
@@ -85,7 +87,7 @@ export function AgendaView() {
             </div>
             <div className="space-y-2">
               {dayEvents.map((e) => {
-                const type = resolveEventType(e, getType);
+                const type = resolveEventType(e, getType, getConnection, defaultEventTypeId);
                 const agendaStyle = resolveStyle(type, "agenda", e.allDay);
                 // For 'day' style in agenda: color the left border of the row
                 const isDayStyle  = agendaStyle === "day";

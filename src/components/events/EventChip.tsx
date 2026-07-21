@@ -1,6 +1,6 @@
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import type { CalendarEvent, CalendarView, DisplayStyle, EventType } from "../../types";
+import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType } from "../../types";
 
 interface EventChipProps {
   event: CalendarEvent;
@@ -18,12 +18,19 @@ function getIcon(name: string | undefined, size: number, color?: string) {
 }
 
 /**
- * Returns the effective EventType for an event, constructing a virtual one for "custom" events.
+ * Returns the effective EventType for an event using a 4-level precedence chain:
+ *  1. Per-event "custom" fields (highest priority)
+ *  2. Named EventType from the store matching event.eventTypeId
+ *  3. Calendar-level display type (connection.displayTypeId)
+ *  4. Application default type (defaultTypeId)
  */
 export function resolveEventType(
   event: CalendarEvent,
   getType: (id: string) => EventType | undefined,
+  getConnection?: (calendarId: string) => Connection | undefined,
+  defaultTypeId?: string,
 ): EventType | undefined {
+  // Level 1: per-event custom configuration
   if (event.eventTypeId === "custom") {
     return {
       id: "custom",
@@ -31,18 +38,36 @@ export function resolveEventType(
       color: event.customColor ?? "#6366f1",
       icon: event.customIcon ?? "Calendar",
       allDayStyle: event.customAllDayStyle ?? "block",
+      timedStyle: event.customTimedStyle ?? "block",
     };
   }
-  return getType(event.eventTypeId);
+
+  // Level 2: named display type on the event itself
+  const namedType = getType(event.eventTypeId);
+  if (namedType) return namedType;
+
+  // Level 3: calendar-level display type from the connection
+  if (getConnection) {
+    const conn = getConnection(event.calendarId);
+    if (conn?.displayTypeId) {
+      const calType = getType(conn.displayTypeId);
+      if (calType) return calType;
+    }
+  }
+
+  // Level 4: application default type
+  if (defaultTypeId) return getType(defaultTypeId);
+
+  return undefined;
 }
 
-/** Timed events always render as "block". All-day events use the type's allDayStyle. */
+/** Timed events use the type's timedStyle. All-day events use the type's allDayStyle. */
 export function resolveStyle(
   type: EventType | undefined,
   _view: CalendarView,
   allDay: boolean
 ): DisplayStyle {
-  if (!allDay) return "block";
+  if (!allDay) return type?.timedStyle ?? "block";
   return type?.allDayStyle ?? "day";
 }
 

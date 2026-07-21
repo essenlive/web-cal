@@ -16,8 +16,10 @@ export interface EventType {
   label: string;
   color: string;
   icon: string;
-  /** How all-day events are displayed. Timed events always use "block". */
+  /** How all-day events are displayed. */
   allDayStyle: DisplayStyle;
+  /** How timed (scheduled) events are displayed. Defaults to "block". */
+  timedStyle: DisplayStyle;
 }
 
 export interface CalendarEvent {
@@ -36,6 +38,62 @@ export interface CalendarEvent {
   customColor?: string;
   customIcon?: string;
   customAllDayStyle?: DisplayStyle;
+  customTimedStyle?: DisplayStyle;
 }
 
 export type CalendarView = "month" | "week" | "day" | "agenda";
+
+// ── Connection types ──────────────────────────────────────────────────────────
+
+/**
+ * Runtime-only connection health status. Never persisted.
+ * Derived during getEvents() calls in DataProviderContext.
+ */
+export type ConnectionStatus = "unchecked" | "loading" | "active" | "error";
+
+/** Keyed by Connection.id — tracks live health of each connection. */
+export type ConnectionStatusMap = Record<string, ConnectionStatus>;
+
+/** Read-only ICS/WebCal subscription. */
+export interface WebCalConnection {
+  type: "webcal";
+  /** Stable UUID generated at creation time. */
+  id: string;
+  /** User-supplied display name, e.g. "Work Holidays". */
+  name: string;
+  /** https:// or webcal:// URL pointing to an .ics feed. */
+  url: string;
+  /** Hex color string, e.g. "#6366f1". */
+  color: string;
+  /** Optional CORS proxy prefix URL. */
+  proxyUrl?: string;
+  /** Optional display type applied to all events from this calendar. References EventType.id. */
+  displayTypeId?: string;
+}
+
+/** CalDAV server connection (RFC 4791). Read-only in v1. */
+export interface CalDAVConnection {
+  type: "caldav";
+  /** Stable UUID generated at creation time. */
+  id: string;
+  /** User-supplied display name, e.g. "Nextcloud – Personal". */
+  name: string;
+  /** CalDAV principal or calendar collection URL. */
+  url: string;
+  /** Account username or email. */
+  username: string;
+  /** Account password or app-specific password. Stored in localStorage only. */
+  password: string;
+  /** Hex color string, e.g. "#6366f1". */
+  color: string;
+  /** Optional CORS proxy prefix URL. */
+  proxyUrl?: string;
+  /** Optional display type applied to all events from this calendar. References EventType.id. */
+  displayTypeId?: string;
+}
+
+/**
+ * Discriminated union — use `conn.type` to narrow to the specific variant.
+ * TypeScript provides exhaustive narrowing via switch/case.
+ */
+export type Connection = WebCalConnection | CalDAVConnection;
