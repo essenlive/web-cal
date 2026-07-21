@@ -1,6 +1,15 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType } from "../types";
+
+// Next.js server-renders "use client" components once for the initial HTML,
+// where `localStorage` doesn't exist — fall back to a no-op store there.
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+const storage = createJSONStorage(() => (typeof window !== "undefined" ? localStorage : noopStorage));
 
 // ── Backend Store ──────────────────────────────────────────────────────────────
 export type BackendType = "mock" | "webcal" | "caldav";
@@ -46,7 +55,7 @@ export const useBackendStore = create<BackendStore>()(
       updateConfig: (patch) => set((s) => ({ config: { ...s.config, ...patch } })),
       resetConfig: () => set({ config: DEFAULT_BACKEND }),
     }),
-    { name: "webcal:backend" }
+    { name: "webcal:backend", storage }
   )
 );
 
@@ -74,8 +83,9 @@ export const useConnectionStore = create<ConnectionStore>()(
     }),
     {
       name: "webcal:connections",
+      storage,
       onRehydrateStorage: () => (state) => {
-        if (!state) return;
+        if (!state || typeof window === "undefined") return;
         // Migrate legacy webcal:backend config to the new connection model.
         // Runs once on first load after the upgrade; removes the old key.
         try {
@@ -174,6 +184,7 @@ export const useEventTypeStore = create<EventTypeStore>()(
     }),
     {
       name: "proton-cal:event-types",
+      storage,
       onRehydrateStorage: () => (state) => {
         if (state) state.types = state.types.map(migrateType);
       },
@@ -242,6 +253,7 @@ export const useUIStore = create<UIStore>()(
     }),
     {
       name: "proton-cal:ui",
+      storage,
       partialize: (s) => ({
         view: s.view,
         darkMode: s.darkMode,

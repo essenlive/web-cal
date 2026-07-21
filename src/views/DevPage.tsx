@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { addDays, startOfWeek, setHours, setMinutes, format } from "date-fns";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { ArrowLeft, FlaskConical, X } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
@@ -399,7 +399,7 @@ export function DevPage() {
         </p>
 
         <Link
-          to="/"
+          href="/"
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap ml-auto"
         >
           <ArrowLeft size={13} />

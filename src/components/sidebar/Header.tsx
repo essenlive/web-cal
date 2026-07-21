@@ -1,7 +1,7 @@
 import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Settings, Menu, Sun, Moon } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { cn } from "../../lib/utils";
 import { useUIStore } from "../../store";
 import type { CalendarView } from "../../types";
@@ -78,7 +78,7 @@ export function Header() {
       <button onClick={toggleDark} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground" aria-label="Basculer le thème">
         {darkMode ? <Sun size={17} /> : <Moon size={17} />}
       </button>
-      <Link to="/settings" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+      <Link href="/settings" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
         <Settings size={17} />
       </Link>
     </header>

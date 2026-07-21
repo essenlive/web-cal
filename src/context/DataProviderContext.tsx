@@ -50,7 +50,6 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDataProvider(): DataProvider {
   const ctx = useContext(DataCtx);
   if (!ctx) throw new Error("useDataProvider must be used within DataProviderContext");
@@ -58,7 +57,6 @@ export function useDataProvider(): DataProvider {
 }
 
 /** Returns live connection status map. Updates on every fetch attempt. */
-// eslint-disable-next-line react-refresh/only-export-components
 export function useConnectionStatusMap(): ConnectionStatusMap {
   return useContext(StatusCtx);
 }

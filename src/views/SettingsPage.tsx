@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Edit2, Check } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
@@ -275,7 +275,7 @@ export function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-3 h-14 px-4 border-b border-border bg-card">
-        <Link to="/" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+        <Link href="/" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
           <ArrowLeft size={18} />
         </Link>
         <h1 className="text-base font-semibold text-foreground">Paramètres</h1>
