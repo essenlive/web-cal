@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
+import { toast } from "sonner";
 import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
 import { DrawerHeader, DrawerTitle } from "../components/ui/drawer";
@@ -13,17 +14,20 @@ export function PreferencesPanel() {
     dateFormatEU, setDateFormatEU,
   } = useUIStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importError, setImportError] = useState("");
+
+  function handleExport() {
+    downloadSettingsExport();
+    toast.success("Paramètres exportés");
+  }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     try {
-      setImportError("");
       await importSettingsFile(file);
     } catch {
-      setImportError("Fichier de paramètres invalide.");
+      toast.error("Fichier de paramètres invalide.");
     }
   }
 
@@ -75,12 +79,11 @@ export function PreferencesPanel() {
             <div className="text-xs text-muted-foreground">Exporter ou importer connexions, types, règles, préférences et thèmes</div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={downloadSettingsExport}>Exporter</Button>
+            <Button variant="outline" size="sm" onClick={handleExport}>Exporter</Button>
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Importer</Button>
             <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
           </div>
         </div>
-        {importError && <p className="text-xs text-destructive">{importError}</p>}
 
       </div>
     </>

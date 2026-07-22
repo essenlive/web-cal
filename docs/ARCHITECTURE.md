@@ -124,6 +124,12 @@ Managed via `ThemeSelector` ([components/sidebar/ThemeSelector.tsx](../src/compo
 
 ---
 
+## Notifications
+
+Transient feedback (export/import confirmations, errors) uses [sonner](https://sonner.emilkowal.ski/) — call `toast.success(...)` / `toast.error(...)` from any client component, no plumbing needed. The host `<Toaster />` ([components/ui/sonner.tsx](../src/components/ui/sonner.tsx)) is mounted once in [app/providers.tsx](../src/app/providers.tsx), styled with the app's `popover`/`border` tokens so it matches whichever theme is active. This doesn't replace `ActionButton`'s inline armed/pending/success/error state (used for connection tests and destructive confirmations) — that pattern stays for feedback that's local to a specific button.
+
+---
+
 ## Persistence (localStorage)
 
 Everything lives in the browser. There is no server-side database — the Next.js API route is a stateless relay, not storage.

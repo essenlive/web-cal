@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useThemeStore } from "../store";
 import { getActiveTheme, resolveThemeCssVars } from "../lib/theme";
+import { Toaster } from "../components/ui/sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const { customThemes, selectedThemeId } = useThemeStore();
@@ -17,5 +18,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [activeTheme]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <Toaster theme={activeTheme.mode} />
+    </>
+  );
 }
