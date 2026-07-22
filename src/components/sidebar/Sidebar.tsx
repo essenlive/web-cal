@@ -14,6 +14,7 @@ import { AddConnectionModal } from "../settings/AddConnectionModal";
 import { EventTypeModal, getIconEl } from "../settings/EventTypeModal";
 import { RulesModal } from "../../views/RulesPage";
 import { ThemeSelector } from "./ThemeSelector";
+import { PresetSelector } from "./PresetSelector";
 import type { Connection, ConnectionStatus, EventType } from "../../types";
 
 // ── Compact data source row ───────────────────────────────────────────────────
@@ -162,6 +163,11 @@ export function Sidebar() {
           ))}
         </div>
       </div>
+
+      <div className="border-t border-border" />
+
+      {/* Presets */}
+      <PresetSelector />
 
       <div className="border-t border-border" />
 

@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Rule, RuleMatchType, Theme } from "../types";
+import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Preset, Rule, RuleMatchType, Theme } from "../types";
 import { BUILTIN_THEMES } from "../lib/theme";
+import { capturePresetState } from "../lib/presets";
 
 // Next.js server-renders "use client" components once for the initial HTML,
 // where `localStorage` doesn't exist — fall back to a no-op store there.
@@ -317,6 +318,51 @@ export const useRuleStore = create<RuleStore>()(
         if (state) state.rules = seedCatchAllRule(state.rules);
       },
     }
+  )
+);
+
+// ── Preset Store ───────────────────────────────────────────────────────────────
+
+interface PresetStore {
+  presets: Preset[];
+  addPreset: (name: string) => void;
+  updatePreset: (preset: Preset) => void;
+  removePreset: (id: string) => void;
+  applyPreset: (id: string) => void;
+}
+
+export const usePresetStore = create<PresetStore>()(
+  persist(
+    (set, get) => ({
+      presets: [],
+      addPreset: (name) =>
+        set((s) => ({
+          presets: [
+            ...s.presets,
+            {
+              id: crypto.randomUUID(),
+              name,
+              ...capturePresetState(useConnectionStore.getState().connections, useEventTypeStore.getState().types),
+            },
+          ],
+        })),
+      updatePreset: (preset) =>
+        set((s) => ({ presets: s.presets.map((p) => (p.id === preset.id ? preset : p)) })),
+      removePreset: (id) => set((s) => ({ presets: s.presets.filter((p) => p.id !== id) })),
+      applyPreset: (id) => {
+        const preset = get().presets.find((p) => p.id === id);
+        if (!preset) return;
+        const { connections, updateConnection } = useConnectionStore.getState();
+        for (const c of connections) {
+          if (c.id in preset.connections) updateConnection({ ...c, hidden: preset.connections[c.id] });
+        }
+        const { types, updateType } = useEventTypeStore.getState();
+        for (const t of types) {
+          if (t.id in preset.eventTypes) updateType({ ...t, hidden: preset.eventTypes[t.id] });
+        }
+      },
+    }),
+    { name: "webcal:presets", storage }
   )
 );
 
