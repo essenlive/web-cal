@@ -1,10 +1,11 @@
 import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Settings, Menu, Sun, Moon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Menu } from "lucide-react";
 import Link from "next/link";
 import { cn } from "../../lib/utils";
 import { useUIStore } from "../../store";
 import type { CalendarView } from "../../types";
+import { ThemeSelector } from "./ThemeSelector";
 
 const VIEWS: { id: CalendarView; label: string }[] = [
   { id: "month",  label: "Mois"   },
@@ -14,7 +15,7 @@ const VIEWS: { id: CalendarView; label: string }[] = [
 ];
 
 export function Header() {
-  const { view, setView, currentDate, setCurrentDate, toggleSidebar, darkMode, toggleDark } = useUIStore();
+  const { view, setView, currentDate, setCurrentDate, toggleSidebar } = useUIStore();
 
   const navigate = (dir: 1 | -1) => {
     const fns: Record<CalendarView, (d: Date, n: number) => Date> = {
@@ -75,9 +76,7 @@ export function Header() {
       </div>
 
       {/* Right */}
-      <button onClick={toggleDark} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground" aria-label="Basculer le thème">
-        {darkMode ? <Sun size={17} /> : <Moon size={17} />}
-      </button>
+      <ThemeSelector />
       <Link href="/settings" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
         <Settings size={17} />
       </Link>
