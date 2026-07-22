@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType } from "../types";
+import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Theme } from "../types";
+import { BUILTIN_THEMES } from "../lib/theme";
 
 // Next.js server-renders "use client" components once for the initial HTML,
 // where `localStorage` doesn't exist — fall back to a no-op store there.
@@ -262,6 +263,67 @@ export const useUIStore = create<UIStore>()(
         use24h: s.use24h,
         dateFormatEU: s.dateFormatEU,
       }),
+    }
+  )
+);
+
+// ── Theme Store ────────────────────────────────────────────────────────────────
+//
+// Built-in themes ("light"/"dark", see src/lib/theme.ts BUILTIN_THEMES) are NOT
+// stored here — only user-created custom themes and the current selection are
+// persisted. See specs/005-global-theming/data-model.md.
+
+interface ThemeStore {
+  customThemes: Theme[];
+  selectedThemeId: string;
+  /** Internal one-time migration guard — not meant to be read by UI code. */
+  migratedLegacyDarkMode: boolean;
+  addTheme: (t: Omit<Theme, "id">) => void;
+  updateTheme: (t: Theme) => void;
+  removeTheme: (id: string) => void;
+  selectTheme: (id: string) => void;
+}
+
+export const useThemeStore = create<ThemeStore>()(
+  persist(
+    (set) => ({
+      customThemes: [],
+      selectedThemeId: BUILTIN_THEMES[0].id, // "light"
+      migratedLegacyDarkMode: false,
+      addTheme: (t) =>
+        set((s) => ({ customThemes: [...s.customThemes, { ...t, id: crypto.randomUUID() }] })),
+      updateTheme: (t) =>
+        set((s) => ({ customThemes: s.customThemes.map((x) => (x.id === t.id ? t : x)) })),
+      removeTheme: (id) =>
+        set((s) => ({ customThemes: s.customThemes.filter((x) => x.id !== id) })),
+      selectTheme: (id) => set({ selectedThemeId: id }),
+    }),
+    {
+      name: "proton-cal:themes",
+      storage,
+      partialize: (s) => ({
+        customThemes: s.customThemes,
+        selectedThemeId: s.selectedThemeId,
+        migratedLegacyDarkMode: s.migratedLegacyDarkMode,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (!state || typeof window === "undefined" || state.migratedLegacyDarkMode) return;
+        // One-time migration: honor the legacy darkMode toggle's preference
+        // (proton-cal:ui) for users upgrading from before this feature existed.
+        // Read-only — proton-cal:ui / useUIStore.darkMode are left untouched.
+        try {
+          const raw = localStorage.getItem("proton-cal:ui");
+          if (raw) {
+            const parsed = JSON.parse(raw) as { state?: { darkMode?: boolean } };
+            if (parsed?.state?.darkMode === true) {
+              state.selectedThemeId = "dark";
+            }
+          }
+        } catch {
+          // Migration failure is non-fatal; keep the default "light" selection.
+        }
+        state.migratedLegacyDarkMode = true;
+      },
     }
   )
 );
