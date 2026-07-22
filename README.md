@@ -1,6 +1,6 @@
 # web-cal
 
-A personal calendar app built with Next.js + TypeScript. Merges events from multiple CalDAV/WebCal connections (or local demo data) into one calendar, with per-event-type visual customisation, rule-based styling, quick-hide, and per-user themes.
+A personal calendar app built with Next.js + TypeScript. Merges events from multiple ICS/WebCal feeds (or local demo data) into one calendar, with per-event-type visual customisation, rule-based styling, quick-hide, and per-user themes.
 
 Everything runs client-side — no backend database, all state lives in `localStorage`.
 

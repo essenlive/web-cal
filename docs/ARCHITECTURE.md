@@ -145,7 +145,7 @@ Everything lives in the browser. There is no server-side database — the Next.j
 
 ## Settings map
 
-- **Data Sources** — sidebar **Sources** section: add/edit CalDAV or WebCal connections (`AddConnectionModal`), see live per-connection status, hide/show, delete, shortcut to create a source-matching rule.
+- **Data Sources** — sidebar **Sources** section: add ICS/WebCal connections, edit any existing connection including legacy CalDAV ones (`AddConnectionModal`), see live per-connection status, hide/show, delete, shortcut to create a source-matching rule. CalDAV is no longer offered for new connections — see [types/index.ts](../src/types/index.ts) `CalDAVConnection` — but `CalDAVProvider` keeps serving any already-persisted one.
 - **Types d'événements** — sidebar **Types** section, see [Display types](#display-types).
 - **Règles d'affichage** — sidebar modal, see [Display rules engine](#display-rules-engine).
 - **Thème** — `ThemeSelector` popover in the sidebar footer, see [Global theming](#global-theming).

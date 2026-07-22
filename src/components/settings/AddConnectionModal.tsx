@@ -1,9 +1,10 @@
 /**
- * AddConnectionModal — two-step wizard dialog for adding a new calendar connection.
+ * AddConnectionModal — dialog for adding or editing a calendar connection.
  *
- * Step 1: Choose type (WebCal or CalDAV)
- * Step 2a: WebCal form (name, URL, colour, optional proxy)
- * Step 2b: CalDAV form (name, URL, username, password, colour, optional proxy)
+ * New connections are ICS/WebCal feeds only (name, URL, colour, optional proxy).
+ * CalDAV is no longer offered for new connections, but a connection already
+ * persisted with type "caldav" still opens its original form (name, URL,
+ * username, password, colour, optional proxy) so existing sources keep working.
  *
  * The [Test] button validates connectivity without saving.
  * The [Add Source] button fires onAdd with the completed connection data.
@@ -199,7 +200,6 @@ export interface AddConnectionModalProps {
 
 export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, connection, onUpdate, onDelete }: AddConnectionModalProps) {
   const editing = !!connection;
-  const [step, setStep] = useState<1 | 2>(editing ? 2 : 1);
   const [type, setType] = useState<"webcal" | "caldav">(connection?.type ?? "webcal");
 
   // Shared fields
@@ -226,7 +226,6 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   function reset() {
-    setStep(editing ? 2 : 1);
     setType(connection?.type ?? "webcal");
     setName(connection?.name ?? "");
     setColor(connection?.color ?? pickInitialColor(existingColors));
@@ -274,7 +273,12 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
     try {
       if (type === "webcal") {
         const url = wcUrl.trim().replace(/^webcal:\/\//i, "https://");
-        const fetchUrl = proxyUrl.trim() ? `${proxyUrl.trim()}${encodeURIComponent(url)}` : url;
+        // Same default as WebCalProvider.getEvents: route through the app's
+        // own same-origin proxy unless an external proxy is configured,
+        // since most .ics hosts don't send CORS headers.
+        const fetchUrl = proxyUrl.trim()
+          ? `${proxyUrl.trim()}${encodeURIComponent(url)}`
+          : `/api/proxy?url=${encodeURIComponent(url)}`;
         const res = await fetch(fetchUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } else {
@@ -322,7 +326,7 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
 
   const title = editing
     ? `Edit ${type === "webcal" ? "WebCal" : "CalDAV"} Source`
-    : step === 1 ? "Add Calendar Source" : type === "webcal" ? "Add WebCal Source" : "Add CalDAV Source";
+    : "Add Calendar Source";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -331,49 +335,8 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
           <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
         </DialogHeader>
 
-          {/* Step 1 — type selection */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                {(["webcal", "caldav"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setType(t)}
-                    className={cn(
-                      "rounded-xl border px-4 py-3 text-left transition-all",
-                      type === t
-                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-border hover:border-primary/40 bg-background"
-                    )}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={cn(
-                          "size-3 rounded-full border-2",
-                          type === t ? "border-primary bg-primary" : "border-muted-foreground"
-                        )}
-                      />
-                      <span className="text-sm font-medium text-foreground">
-                        {t === "webcal" ? "WebCal" : "CalDAV"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground ml-5">
-                      {t === "webcal" ? "ICS feed subscription (read-only)" : "CalDAV server (read-only in v1)"}
-                    </p>
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-end pt-1">
-                <Button type="button" onClick={() => setStep(2)}>
-                  Next →
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2a — WebCal form */}
-          {step === 2 && type === "webcal" && (
+          {/* WebCal form — the only option for new connections */}
+          {type === "webcal" && (
             <div className="space-y-4">
               <Field
                 label="Name *"
@@ -390,6 +353,14 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
                 error={errors.wcUrl}
                 hint="Link to an .ics file or WebCal subscription URL"
               />
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer select-none hover:text-foreground">Where do I find this?</summary>
+                <ul className="mt-1.5 ml-4 list-disc space-y-1">
+                  <li><strong className="text-foreground">Google Calendar:</strong> Settings → [calendar] → "Secret address in iCal format"</li>
+                  <li><strong className="text-foreground">Apple iCloud:</strong> Calendar app → Share Calendar → Public Calendar, then copy the link</li>
+                  <li><strong className="text-foreground">Microsoft / Outlook:</strong> Settings → Shared calendars → Publish a calendar → ICS link</li>
+                </ul>
+              </details>
               <ColorPicker value={color} onChange={setColor} />
               {editing && (
                 <button
@@ -405,11 +376,7 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
                 {editing
                   ? (onDelete && <DeleteControl confirming={confirmingDelete} onConfirmingChange={setConfirmingDelete} onDelete={onDelete} />)
-                  : (
-                    <Button type="button" variant="ghost" onClick={() => setStep(1)} className="text-muted-foreground">
-                      ← Back
-                    </Button>
-                  )}
+                  : <div />}
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="outline" onClick={handleTest} disabled={testStatus === "testing"} className="gap-1.5">
                     <RefreshCw size={13} className={testStatus === "testing" ? "animate-spin" : ""} />
@@ -424,8 +391,8 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
             </div>
           )}
 
-          {/* Step 2b — CalDAV form */}
-          {step === 2 && type === "caldav" && (
+          {/* CalDAV form — only reachable when editing a connection already persisted as CalDAV */}
+          {editing && type === "caldav" && (
             <div className="space-y-4">
               <Field
                 label="Name *"
@@ -469,20 +436,14 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                {editing
-                  ? (onDelete && <DeleteControl confirming={confirmingDelete} onConfirmingChange={setConfirmingDelete} onDelete={onDelete} />)
-                  : (
-                    <Button type="button" variant="ghost" onClick={() => setStep(1)} className="text-muted-foreground">
-                      ← Back
-                    </Button>
-                  )}
+                {onDelete && <DeleteControl confirming={confirmingDelete} onConfirmingChange={setConfirmingDelete} onDelete={onDelete} />}
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="outline" onClick={handleTest} disabled={testStatus === "testing"} className="gap-1.5">
                     <RefreshCw size={13} className={testStatus === "testing" ? "animate-spin" : ""} />
                     {testStatus === "testing" ? "Testing…" : "Test"}
                   </Button>
                   <Button type="button" onClick={handleAdd} disabled={!canAdd}>
-                    {editing ? "Save" : "Add Source"}
+                    Save
                   </Button>
                 </div>
               </div>
