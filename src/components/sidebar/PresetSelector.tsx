@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { Plus, Pencil, RefreshCw, Trash2, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { ActionButton } from "../ui/action-button";
 import { usePresetStore, useConnectionStore, useEventTypeStore } from "../../store";
 import { capturePresetState, presetMatchesState } from "../../lib/presets";
 import type { Preset } from "../../types";
@@ -34,7 +35,6 @@ function PresetRow({
 }) {
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(preset.name);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const trimmed = name.trim();
   const isDuplicate = presets.some(
@@ -53,14 +53,6 @@ function PresetRow({
   function cancelRename() {
     setName(preset.name);
     setRenaming(false);
-  }
-
-  function handleDelete() {
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
-    onDelete();
   }
 
   if (renaming) {
@@ -119,22 +111,17 @@ function PresetRow({
       >
         <RefreshCw size={12} />
       </button>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleDelete();
-        }}
-        aria-label={confirmingDelete ? `Confirmer la suppression de ${preset.name}` : `Supprimer ${preset.name}`}
-        title={confirmingDelete ? "Confirmer la suppression" : "Supprimer"}
-        className={cn(
-          "p-1 rounded-md shrink-0 transition-colors focus-visible:opacity-100",
-          confirmingDelete
-            ? "bg-destructive text-destructive-foreground opacity-100"
-            : "text-muted-foreground hover:text-destructive hover:bg-background opacity-0 group-hover:opacity-100"
-        )}
+      <ActionButton
+        variant="ghost"
+        onAction={onDelete}
+        aria-label={`Supprimer ${preset.name}`}
+        confirmLabel={`Confirmer la suppression de ${preset.name}`}
+        title="Supprimer"
+        confirmChildren={<Trash2 size={12} />}
+        className="h-auto w-auto p-1 rounded-md shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[status=armed]:opacity-100 text-muted-foreground hover:text-destructive hover:bg-background"
       >
         <Trash2 size={12} />
-      </button>
+      </ActionButton>
     </div>
   );
 }

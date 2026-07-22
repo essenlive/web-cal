@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { Check, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { ActionButton } from "../ui/action-button";
 import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 import { useThemeStore } from "../../store";
 import { getAllThemes, THEME_ACCENT_PRESETS } from "../../lib/theme";
@@ -33,7 +34,6 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
   const [name, setName] = useState(theme?.name ?? "");
   const [mode, setMode] = useState<ThemeMode>(theme?.mode ?? "light");
   const [accent, setAccent] = useState(theme?.accent ?? THEME_ACCENT_PRESETS[0]);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const trimmed = name.trim();
   const isDuplicate = getAllThemes(customThemes)
@@ -48,16 +48,6 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
     } else {
       addTheme({ name: trimmed, mode, accent });
     }
-    onClose();
-  }
-
-  function handleDelete() {
-    if (!theme) return;
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
-    removeTheme(theme.id);
     onClose();
   }
 
@@ -137,19 +127,23 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
             <div className="flex items-center justify-between pt-2">
               <div>
                 {theme && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors",
-                      confirmingDelete
-                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        : "text-destructive hover:bg-destructive/10"
-                    )}
+                  <ActionButton
+                    variant="ghost"
+                    onAction={() => {
+                      removeTheme(theme.id);
+                      onClose();
+                    }}
+                    confirmChildren={
+                      <>
+                        <Trash2 size={13} />
+                        Confirmer la suppression
+                      </>
+                    }
+                    className="gap-1.5 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 size={13} />
-                    {confirmingDelete ? "Confirmer la suppression" : "Supprimer"}
-                  </button>
+                    Supprimer
+                  </ActionButton>
                 )}
               </div>
               <button

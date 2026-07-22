@@ -11,5 +11,8 @@ Ideas not yet scheduled into a spec. Pull one into `specs/` (via `/speckit.speci
 - [ ] **Augment theming** — Augment the theming options with fonts from google fonts and few border radiuses
 - [ ] **Update dependencies** - Update as many dependencies as possible. Especially NEXTjs
 - [ ] **Move notifications system to toast** - Work on an homgenous notifications and feedback system through shadcn toasts.
+- [ ] **Rework event display system** - Fix the different event display issues. Block event higher than the day number, multi event popover not working, multi event styling decider.
+- [x] **Factorize button confimation system** Factorize the button system with destructive actions. The button should always stays and keep the same shape, only the content should change from the action verb to "confirm ?"
+- [ ] **Add a get started tutorial** Create a get started tutorial with steps by steps information in how to 1.add a source 2. create a display type 3. create a rule
 
 Shipped features (cloud connectors, custom display types, the rules engine, quick hide, global theming) are documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and their originating specs under `specs/`.

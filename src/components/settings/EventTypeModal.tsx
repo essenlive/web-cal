@@ -8,6 +8,7 @@ import * as Icons from "lucide-react";
 import { Check, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 import { useRuleStore, useEventsStore, useConnectionStore } from "../../store";
@@ -101,7 +102,6 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const [allDayStyle, setAllDayStyle] = useState<DisplayStyle>(type?.allDayStyle ?? "block");
   const [timedStyle,  setTimedStyle]  = useState<DisplayStyle>(type?.timedStyle  ?? "block");
   const [isDefault,   setIsDefault]   = useState(type?.isDefault ?? false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const { rules } = useRuleStore();
   const { events } = useEventsStore();
@@ -264,25 +264,18 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
 
           <div className="flex items-center justify-between gap-2">
             {onDelete ? (
-              confirmingDelete ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Supprimer ce type ?</span>
-                  <button onClick={() => setConfirmingDelete(false)} className="text-xs text-muted-foreground hover:text-foreground">Annuler</button>
-                  <button onClick={onDelete} className="text-xs font-medium text-destructive">Confirmer</button>
-                </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setConfirmingDelete(true)}
-                  disabled={!!deleteDisabledReason}
-                  title={deleteDisabledReason}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label="Supprimer le type"
-                >
-                  <Trash2 size={15} />
-                </Button>
-              )
+              <ActionButton
+                variant="ghost"
+                size="icon"
+                onAction={onDelete}
+                disabled={!!deleteDisabledReason}
+                title={deleteDisabledReason}
+                confirmLabel="Confirmer la suppression"
+                className="text-muted-foreground hover:text-destructive"
+                aria-label="Supprimer le type"
+              >
+                <Trash2 size={15} />
+              </ActionButton>
             ) : <span />}
 
             <div className="flex gap-2">

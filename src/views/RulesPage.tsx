@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2, ChevronUp, ChevronDown, AlertTriangle } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "../components/ui/button";
+import { ActionButton } from "../components/ui/action-button";
 import { Switch } from "../components/ui/switch";
 import { DrawerHeader, DrawerTitle } from "../components/ui/drawer";
 import { useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
@@ -38,18 +39,7 @@ function RuleRow({
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
   const isCatchAll = rule.matchType === "all";
-
-  if (confirming) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-destructive/5">
-        <span className="flex-1 text-xs text-muted-foreground truncate">Delete this rule?</span>
-        <button onClick={() => setConfirming(false)} className="text-xs text-muted-foreground hover:text-foreground shrink-0">Cancel</button>
-        <button onClick={onRemove} className="text-xs font-medium text-destructive shrink-0">Delete</button>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -109,9 +99,15 @@ function RuleRow({
       </button>
 
       {!isCatchAll && (
-        <button onClick={() => setConfirming(true)} className="shrink-0 text-muted-foreground hover:text-destructive" aria-label="Delete rule">
+        <ActionButton
+          variant="ghost"
+          onAction={onRemove}
+          confirmLabel="Confirm delete"
+          className="h-auto w-auto p-0.5 shrink-0 text-muted-foreground hover:text-destructive"
+          aria-label="Delete rule"
+        >
           <Trash2 size={13} />
-        </button>
+        </ActionButton>
       )}
     </div>
   );

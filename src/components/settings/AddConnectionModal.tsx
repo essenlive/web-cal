@@ -14,6 +14,7 @@ import { useState } from "react";
 import { RefreshCw, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { DrawerHeader, DrawerTitle } from "../ui/drawer";
@@ -43,10 +44,6 @@ function isValidWebCalUrl(url: string): boolean {
 function isValidHttpUrl(url: string): boolean {
   return /^https?:\/\/.+/i.test(url.trim());
 }
-
-// ── Test-button state ─────────────────────────────────────────────────────────
-
-type TestStatus = "idle" | "testing" | "ok" | "error";
 
 // ── Field helper ──────────────────────────────────────────────────────────────
 
@@ -137,44 +134,6 @@ function AdvancedSection({ proxyUrl, onProxyChange }: { proxyUrl: string; onProx
   );
 }
 
-// ── Delete control ────────────────────────────────────────────────────────────
-
-function DeleteControl({ confirming, onConfirmingChange, onDelete }: {
-  confirming: boolean; onConfirmingChange: (v: boolean) => void; onDelete: () => void;
-}) {
-  if (confirming) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Remove this source?</span>
-        <button type="button" onClick={() => onConfirmingChange(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
-        <button type="button" onClick={onDelete} className="text-xs font-medium text-destructive">Confirm</button>
-      </div>
-    );
-  }
-  return (
-    <Button type="button" variant="ghost" size="icon" onClick={() => onConfirmingChange(true)} className="text-muted-foreground hover:text-destructive" aria-label="Remove source">
-      <Trash2 size={15} />
-    </Button>
-  );
-}
-
-// ── Test feedback ─────────────────────────────────────────────────────────────
-
-function TestFeedback({ status, message }: { status: TestStatus; message: string }) {
-  if (status === "idle" || status === "testing") return null;
-  return (
-    <span
-      className={cn(
-        "flex items-center gap-1 text-xs",
-        status === "ok" ? "text-green-600 dark:text-green-400" : "text-destructive"
-      )}
-    >
-      {status === "ok" ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-      {message}
-    </span>
-  );
-}
-
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface AddConnectionModalProps {
@@ -220,12 +179,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Test state
-  const [testStatus, setTestStatus]   = useState<TestStatus>("idle");
-  const [testMessage, setTestMessage] = useState("");
-
   const [ruleFormOpen, setRuleFormOpen] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -250,31 +204,21 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
     return Object.keys(errs).length === 0;
   }
 
-  async function handleTest() {
-    if (!validate()) return;
-    setTestStatus("testing");
-    setTestMessage("");
-    try {
-      if (type === "webcal") {
-        const url = wcUrl.trim().replace(/^webcal:\/\//i, "https://");
-        // Same default as WebCalProvider.getEvents: route through the app's
-        // own same-origin proxy unless an external proxy is configured,
-        // since most .ics hosts don't send CORS headers.
-        const fetchUrl = proxyUrl.trim()
-          ? `${proxyUrl.trim()}${encodeURIComponent(url)}`
-          : `/api/proxy?url=${encodeURIComponent(url)}`;
-        const res = await fetch(fetchUrl);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      } else {
-        const p = new CalDAVProvider(cdUrl.trim(), cdUser.trim(), cdPass, proxyUrl.trim());
-        await p.getCalendars();
-      }
-      setTestStatus("ok");
-      setTestMessage("Connection OK");
-      setTimeout(() => setTestStatus("idle"), 3000);
-    } catch (err: unknown) {
-      setTestStatus("error");
-      setTestMessage(err instanceof Error ? err.message : "Could not reach server");
+  async function testConnection() {
+    if (!validate()) throw new Error("Fix the highlighted fields");
+    if (type === "webcal") {
+      const url = wcUrl.trim().replace(/^webcal:\/\//i, "https://");
+      // Same default as WebCalProvider.getEvents: route through the app's
+      // own same-origin proxy unless an external proxy is configured,
+      // since most .ics hosts don't send CORS headers.
+      const fetchUrl = proxyUrl.trim()
+        ? `${proxyUrl.trim()}${encodeURIComponent(url)}`
+        : `/api/proxy?url=${encodeURIComponent(url)}`;
+      const res = await fetch(fetchUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } else {
+      const p = new CalDAVProvider(cdUrl.trim(), cdUser.trim(), cdPass, proxyUrl.trim());
+      await p.getCalendars();
     }
   }
 
@@ -369,19 +313,43 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
                 {editing
-                  ? (onDelete && <DeleteControl confirming={confirmingDelete} onConfirmingChange={setConfirmingDelete} onDelete={onDelete} />)
+                  ? (onDelete && (
+                      <ActionButton
+                        variant="ghost"
+                        size="icon"
+                        onAction={onDelete}
+                        confirmLabel="Confirm removal"
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label="Remove source"
+                      >
+                        <Trash2 size={15} />
+                      </ActionButton>
+                    ))
                   : <div />}
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={handleTest} disabled={testStatus === "testing"} className="gap-1.5">
-                    <RefreshCw size={13} className={testStatus === "testing" ? "animate-spin" : ""} />
-                    {testStatus === "testing" ? "Testing…" : "Test"}
-                  </Button>
+                  <ActionButton
+                    type="button"
+                    variant="outline"
+                    confirm={false}
+                    onAction={testConnection}
+                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Testing…</>}
+                    successChildren={<><CheckCircle2 size={13} />Connection OK</>}
+                    errorChildren={(err) => (
+                      <>
+                        <AlertCircle size={13} />
+                        {err instanceof Error ? err.message : "Could not reach server"}
+                      </>
+                    )}
+                    className="gap-1.5"
+                  >
+                    <RefreshCw size={13} />
+                    Test
+                  </ActionButton>
                   <Button type="button" onClick={handleAdd} disabled={!canAdd}>
                     {editing ? "Save" : "Add Source"}
                   </Button>
                 </div>
               </div>
-              <TestFeedback status={testStatus} message={testMessage} />
             </div>
           )}
 
@@ -430,18 +398,42 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                {onDelete && <DeleteControl confirming={confirmingDelete} onConfirmingChange={setConfirmingDelete} onDelete={onDelete} />}
+                {onDelete && (
+                  <ActionButton
+                    variant="ghost"
+                    size="icon"
+                    onAction={onDelete}
+                    confirmLabel="Confirm removal"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Remove source"
+                  >
+                    <Trash2 size={15} />
+                  </ActionButton>
+                )}
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={handleTest} disabled={testStatus === "testing"} className="gap-1.5">
-                    <RefreshCw size={13} className={testStatus === "testing" ? "animate-spin" : ""} />
-                    {testStatus === "testing" ? "Testing…" : "Test"}
-                  </Button>
+                  <ActionButton
+                    type="button"
+                    variant="outline"
+                    confirm={false}
+                    onAction={testConnection}
+                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Testing…</>}
+                    successChildren={<><CheckCircle2 size={13} />Connection OK</>}
+                    errorChildren={(err) => (
+                      <>
+                        <AlertCircle size={13} />
+                        {err instanceof Error ? err.message : "Could not reach server"}
+                      </>
+                    )}
+                    className="gap-1.5"
+                  >
+                    <RefreshCw size={13} />
+                    Test
+                  </ActionButton>
                   <Button type="button" onClick={handleAdd} disabled={!canAdd}>
                     Save
                   </Button>
                 </div>
               </div>
-              <TestFeedback status={testStatus} message={testMessage} />
             </div>
           )}
     </>
