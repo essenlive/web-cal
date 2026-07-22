@@ -5,6 +5,8 @@ Auto-generated from all feature plans. Last updated: 2026-07-22
 ## Active Technologies
 - TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, lucide-react — no new dependency (no Radix needed; see research.md Decision 3) (006-view-presets)
 - localStorage via Zustand `persist` middleware — new key `webcal:presets`, alongside existing `proton-cal:ui`, `proton-cal:event-types`, `proton-cal:themes`, `webcal:connections`, `webcal:rules` (006-view-presets)
+- TypeScript ~5.9.3, React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, `@radix-ui/react-dialog` (existing dependency, reused to build a `Sheet` primitive), lucide-react — no new dependency (007-settings-side-drawer)
+- localStorage via Zustand `persist` middleware — no new persisted key; the drawer's "which panel is open" state is transient UI state added to the existing `useUIStore` and excluded from its `partialize`, same pattern already used there for other non-persisted fields (007-settings-side-drawer)
 
 - TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, Radix UI (`@radix-ui/react-popover`, `@radix-ui/react-dialog` — both already dependencies), lucide-react (005-global-theming)
 - localStorage via Zustand `persist` middleware — new key `proton-cal:themes`, alongside existing `proton-cal:ui`, `proton-cal:event-types`, `webcal:connections` (005-global-theming)
@@ -39,9 +41,9 @@ npm run dev && npm run build && npm run lint
 TypeScript ~5.9.3: Follow standard conventions
 
 ## Recent Changes
+- 007-settings-side-drawer: Added TypeScript ~5.9.3, React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, `@radix-ui/react-dialog` (existing dependency, reused to build a `Sheet` primitive), lucide-react — no new dependency
 - 006-view-presets: Added TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, lucide-react — no new dependency (no Radix needed; see research.md Decision 3)
 - 005-global-theming: Added TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, Radix UI (`@radix-ui/react-popover`, `@radix-ui/react-dialog` — both already dependencies), lucide-react
-- 004-quick-hide: Added TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, lucide-react, date-fns 4.1.0
 
 <!-- MANUAL ADDITIONS START -->
 

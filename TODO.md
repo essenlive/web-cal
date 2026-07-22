@@ -2,7 +2,7 @@
 
 Ideas not yet scheduled into a spec. Pull one into `specs/` (via `/speckit.specify`) when it's ready to build.
 
-- [ ] **Settings export/import** — export all app settings (connections, types, rules, preferences, themes) to a single `.json` file, and import it back.
+- [x] **Settings export/import** — export all app settings (connections, types, rules, preferences, themes) to a single `.json` file, and import it back.
 - [x] **Presets** — save/switch between named combinations of source & type visibility (e.g. "Work": only work calendar; "Personal": only personal events).
 - [x] **Keyboard shortcuts** — view switching (month/week/day), preset switching (1/2/3…), and navigation (arrow keys = next day, shift+arrow = next month, etc).
 - [x] **URL encoded views** — to easily reach a specific view, the URL should be able to encode presets, date, timeview (month, week, day, agenda).

@@ -1,7 +1,6 @@
 "use client";
 
-import * as Popover from "@radix-ui/react-popover";
-import { Keyboard } from "lucide-react";
+import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 import { usePresetStore } from "../../store";
 
 const VIEW_ROWS = [
@@ -31,48 +30,36 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function ShortcutsHelp() {
+/** Keyboard shortcuts reference — rendered as drawer content from the sidebar. */
+export function ShortcutsPanel() {
   const { presets } = usePresetStore();
 
   return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button
-          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
-          aria-label="Raccourcis clavier"
-        >
-          <Keyboard size={17} />
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          align="end"
-          sideOffset={6}
-          className="z-50 bg-card border border-border rounded-xl shadow-lg p-3 min-w-[240px]
-                     flex flex-col gap-3 animate-in fade-in-0 zoom-in-95"
-        >
-          <Section title="Vues">
-            {VIEW_ROWS.map((row) => <Row key={row.keys} {...row} />)}
-          </Section>
+    <>
+      <DrawerHeader>
+        <DrawerTitle>Raccourcis clavier</DrawerTitle>
+      </DrawerHeader>
 
-          <Section title="Navigation">
-            {NAV_ROWS.map((row) => <Row key={row.keys} {...row} />)}
-          </Section>
+      <div className="flex flex-col gap-3 px-4 pb-4">
+        <Section title="Vues">
+          {VIEW_ROWS.map((row) => <Row key={row.keys} {...row} />)}
+        </Section>
 
-          <Section title="Présélections">
-            <Row keys="0" label="Tout afficher" />
-            {presets.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucun preset enregistré.</p>
-            ) : (
-              presets.slice(0, 9).map((preset, i) => (
-                <Row key={preset.id} keys={String(i + 1)} label={preset.name} />
-              ))
-            )}
-          </Section>
+        <Section title="Navigation">
+          {NAV_ROWS.map((row) => <Row key={row.keys} {...row} />)}
+        </Section>
 
-          <Popover.Arrow className="fill-border" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+        <Section title="Présélections">
+          <Row keys="0" label="Tout afficher" />
+          {presets.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Aucun preset enregistré.</p>
+          ) : (
+            presets.slice(0, 9).map((preset, i) => (
+              <Row key={preset.id} keys={String(i + 1)} label={preset.name} />
+            ))
+          )}
+        </Section>
+      </div>
+    </>
   );
 }

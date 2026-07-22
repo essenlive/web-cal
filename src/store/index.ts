@@ -394,6 +394,16 @@ export const useEventsStore = create<EventsStore>()((set) => ({
 }));
 
 // ── UI Store ──────────────────────────────────────────────────────────────────
+
+/** Which settings drawer panel is currently open, if any. See specs/007-settings-side-drawer. */
+export type DrawerPanel = "connection" | "eventType" | "rules" | "theme" | "preferences" | "shortcuts";
+
+export interface ActiveDrawer {
+  panel: DrawerPanel;
+  /** id of the Connection/EventType being edited; absent means "create new". */
+  editId?: string;
+}
+
 interface UIStore {
   view: CalendarView;
   currentDate: Date;
@@ -401,12 +411,15 @@ interface UIStore {
   weekStartsOnMonday: boolean;
   use24h: boolean;
   dateFormatEU: boolean;
+  activeDrawer: ActiveDrawer | null;
   setView: (v: CalendarView) => void;
   setCurrentDate: (d: Date) => void;
   toggleSidebar: () => void;
   toggleWeekStart: () => void;
   setUse24h: (v: boolean) => void;
   setDateFormatEU: (v: boolean) => void;
+  openDrawer: (panel: DrawerPanel, editId?: string) => void;
+  closeDrawer: () => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -418,12 +431,15 @@ export const useUIStore = create<UIStore>()(
       weekStartsOnMonday: true,
       use24h: true,
       dateFormatEU: true,
+      activeDrawer: null,
       setView: (view) => set({ view }),
       setCurrentDate: (currentDate) => set({ currentDate }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       toggleWeekStart: () => set((s) => ({ weekStartsOnMonday: !s.weekStartsOnMonday })),
       setUse24h: (use24h) => set({ use24h }),
       setDateFormatEU: (dateFormatEU) => set({ dateFormatEU }),
+      openDrawer: (panel, editId) => set({ activeDrawer: { panel, editId } }),
+      closeDrawer: () => set({ activeDrawer: null }),
     }),
     {
       name: "proton-cal:ui",

@@ -9,7 +9,7 @@ import { Check, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 import { useRuleStore, useEventsStore, useConnectionStore } from "../../store";
 import { describeMatch } from "../../lib/rules";
 import type { DisplayStyle, EventType } from "../../types";
@@ -81,8 +81,6 @@ export function StylePreview({ style, color, icon }: { style: DisplayStyle; colo
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface EventTypeModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   type?: EventType;
   existingLabels?: string[];
   onSave: (t: Omit<EventType, "id"> & { id?: string }) => void;
@@ -90,11 +88,13 @@ export interface EventTypeModalProps {
   onDelete?: () => void;
   /** Disables delete (e.g. this type is the default-rule target) with an explanatory title. */
   deleteDisabledReason?: string;
+  /** Called to dismiss this panel (Cancel, or after a successful save). */
+  onClose: () => void;
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], onSave, onDelete, deleteDisabledReason }: EventTypeModalProps) {
+export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, deleteDisabledReason, onClose }: EventTypeModalProps) {
   const [label,       setLabel]       = useState(type?.label       ?? "");
   const [color,       setColor]       = useState(type?.color       ?? PRESET_COLORS[0]);
   const [icon,        setIcon]        = useState(type?.icon        ?? "Calendar");
@@ -110,20 +110,6 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
     ? rules.filter((r) => (r.matchType === "all" ? isDefault : r.displayTypeId === type.id))
     : [];
 
-  function reset() {
-    setLabel(type?.label ?? "");
-    setColor(type?.color ?? PRESET_COLORS[0]);
-    setIcon(type?.icon ?? "Calendar");
-    setAllDayStyle(type?.allDayStyle ?? "block");
-    setTimedStyle(type?.timedStyle ?? "block");
-    setIsDefault(type?.isDefault ?? false);
-  }
-
-  function handleOpenChange(v: boolean) {
-    if (!v) { reset(); setConfirmingDelete(false); }
-    onOpenChange(v);
-  }
-
   const trimmed = label.trim();
   const isDuplicate = existingLabels
     .filter((l) => !type || l !== type.label)
@@ -131,19 +117,18 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
 
   function handleSave() {
     onSave({ id: type?.id, label: trimmed, color, icon, allDayStyle, timedStyle, isDefault });
-    handleOpenChange(false);
+    onClose();
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">
-            {type ? "Modifier le type" : "Nouveau type"}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <DrawerHeader>
+        <DrawerTitle>
+          {type ? "Modifier le type" : "Nouveau type"}
+        </DrawerTitle>
+      </DrawerHeader>
 
-        <div className="space-y-4">
+      <div className="space-y-4 px-4 pb-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nom</label>
             <Input
@@ -301,7 +286,7 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
             ) : <span />}
 
             <div className="flex gap-2">
-              <Button variant="ghost" className="text-muted-foreground" onClick={() => handleOpenChange(false)}>Annuler</Button>
+              <Button variant="ghost" className="text-muted-foreground" onClick={onClose}>Annuler</Button>
               <Button onClick={handleSave} disabled={!trimmed || isDuplicate} className="gap-1.5">
                 <Check size={14} />
                 {type ? "Enregistrer" : "Créer"}
@@ -309,7 +294,6 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

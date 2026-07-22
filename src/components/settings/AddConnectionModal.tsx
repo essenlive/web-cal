@@ -16,7 +16,7 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 import type { CalDAVConnection, Connection, WebCalConnection } from "../../types";
 import { CalDAVProvider } from "../../lib/caldav-provider";
 import { RuleModal } from "./RuleModal";
@@ -178,8 +178,6 @@ function TestFeedback({ status, message }: { status: TestStatus; message: string
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface AddConnectionModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   onAdd: (conn: Omit<Connection, "id">) => void;
   /**
    * Colors already used by existing connections.
@@ -194,13 +192,17 @@ export interface AddConnectionModalProps {
   onUpdate?: (conn: Connection) => void;
   /** When set, editing this connection shows a delete button. Omitted when adding. */
   onDelete?: () => void;
+  /** Called to dismiss this panel (Cancel, or after a successful save). */
+  onClose: () => void;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, connection, onUpdate, onDelete }: AddConnectionModalProps) {
+export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate, onDelete, onClose }: AddConnectionModalProps) {
   const editing = !!connection;
-  const [type, setType] = useState<"webcal" | "caldav">(connection?.type ?? "webcal");
+  // Never changed after mount — new connections are always "webcal"; an existing
+  // "caldav" connection keeps its type (there's no UI to convert one to the other).
+  const type: "webcal" | "caldav" = connection?.type ?? "webcal";
 
   // Shared fields
   const [name, setName]       = useState(connection?.name ?? "");
@@ -222,26 +224,8 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
   const [testStatus, setTestStatus]   = useState<TestStatus>("idle");
   const [testMessage, setTestMessage] = useState("");
 
-  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [ruleFormOpen, setRuleFormOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  function reset() {
-    setType(connection?.type ?? "webcal");
-    setName(connection?.name ?? "");
-    setColor(connection?.color ?? pickInitialColor(existingColors));
-    setProxy(connection?.proxyUrl ?? "");
-    setWcUrl(connection?.type === "webcal" ? connection.url : "");
-    setCdUrl(connection?.type === "caldav" ? connection.url : "");
-    setCdUser(connection?.type === "caldav" ? connection.username : "");
-    setCdPass(connection?.type === "caldav" ? connection.password : "");
-    setErrors({}); setTestStatus("idle"); setTestMessage("");
-    setConfirmingDelete(false);
-  }
-
-  function handleOpenChange(v: boolean) {
-    if (!v) reset();
-    onOpenChange(v);
-  }
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -316,8 +300,7 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
       if (editing) onUpdate?.({ ...conn, id: connection!.id });
       else onAdd(conn);
     }
-    reset();
-    onOpenChange(false);
+    onClose();
   }
 
   const canAdd = type === "webcal"
@@ -328,16 +311,27 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
     ? `Edit ${type === "webcal" ? "WebCal" : "CalDAV"} Source`
     : "Add Calendar Source";
 
+  // Creating a rule for this source is a nested form within the same panel —
+  // it swaps the content instead of stacking a second drawer (FR-005).
+  if (connection && ruleFormOpen) {
+    return (
+      <RuleModal
+        initialMatchType="source"
+        initialMatchValue={connection.id}
+        onClose={() => setRuleFormOpen(false)}
+      />
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
-        </DialogHeader>
+    <>
+      <DrawerHeader>
+        <DrawerTitle>{title}</DrawerTitle>
+      </DrawerHeader>
 
           {/* WebCal form — the only option for new connections */}
           {type === "webcal" && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-4 pb-4">
               <Field
                 label="Name *"
                 placeholder="Work Holidays"
@@ -365,7 +359,7 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
               {editing && (
                 <button
                   type="button"
-                  onClick={() => setRuleModalOpen(true)}
+                  onClick={() => setRuleFormOpen(true)}
                   className="text-xs font-medium text-primary hover:underline"
                 >
                   Create a rule for this source
@@ -393,7 +387,7 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
 
           {/* CalDAV form — only reachable when editing a connection already persisted as CalDAV */}
           {editing && type === "caldav" && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-4 pb-4">
               <Field
                 label="Name *"
                 placeholder="Nextcloud – Personal"
@@ -427,7 +421,7 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
               {editing && (
                 <button
                   type="button"
-                  onClick={() => setRuleModalOpen(true)}
+                  onClick={() => setRuleFormOpen(true)}
                   className="text-xs font-medium text-primary hover:underline"
                 >
                   Create a rule for this source
@@ -450,16 +444,6 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, 
               <TestFeedback status={testStatus} message={testMessage} />
             </div>
           )}
-      </DialogContent>
-
-      {connection && (
-        <RuleModal
-          open={ruleModalOpen}
-          onOpenChange={setRuleModalOpen}
-          initialMatchType="source"
-          initialMatchValue={connection.id}
-        />
-      )}
-    </Dialog>
+    </>
   );
 }

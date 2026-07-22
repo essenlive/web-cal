@@ -10,34 +10,25 @@ import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Check, Edit2, Palette, Plus } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useThemeStore } from "../../store";
+import { useThemeStore, useUIStore } from "../../store";
 import { getAllThemes, isBuiltinTheme } from "../../lib/theme";
 import type { Theme } from "../../types";
-import { ThemeEditorDialog } from "./ThemeEditorDialog";
 
 export function ThemeSelector() {
   const { customThemes, selectedThemeId, selectTheme } = useThemeStore();
+  const { openDrawer } = useUIStore();
   const themes = getAllThemes(customThemes);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingTheme, setEditingTheme] = useState<Theme | undefined>(undefined);
-  // Bumped on every open so ThemeEditorDialog remounts with fresh form state
-  // instead of resetting itself via an effect.
-  const [editorSession, setEditorSession] = useState(0);
 
   function openCreate() {
     setPopoverOpen(false);
-    setEditingTheme(undefined);
-    setEditorSession((n) => n + 1);
-    setEditorOpen(true);
+    openDrawer("theme");
   }
 
   function openEdit(theme: Theme) {
     setPopoverOpen(false);
-    setEditingTheme(theme);
-    setEditorSession((n) => n + 1);
-    setEditorOpen(true);
+    openDrawer("theme", theme.id);
   }
 
   return (
@@ -108,13 +99,6 @@ export function ThemeSelector() {
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
-
-      <ThemeEditorDialog
-        key={editorSession}
-        open={editorOpen}
-        onOpenChange={setEditorOpen}
-        theme={editingTheme}
-      />
     </>
   );
 }

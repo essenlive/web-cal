@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Combobox } from "../ui/combobox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useRuleStore, useEventTypeStore, useEventsStore, useConnectionStore } from "../../store";
 import { isValidPattern } from "../../lib/rules";
 import { getIconEl } from "./EventTypeModal";
@@ -19,16 +18,16 @@ const MATCH_TYPE_LABELS: Record<CreatableMatchType, string> = {
 };
 
 export interface RuleModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   /** Editing an existing rule instead of creating a new one. */
   rule?: Rule;
   /** Pre-fill for a new rule created from an entry point (event/connection modal). Ignored when `rule` is set. */
   initialMatchType?: CreatableMatchType;
   initialMatchValue?: string;
+  /** Called to dismiss this form (Cancel, or after a successful save). Meaning depends on the caller — e.g. "back to the rules list" or "back to the connection form". */
+  onClose: () => void;
 }
 
-export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialMatchValue }: RuleModalProps) {
+export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }: RuleModalProps) {
   const { rules, addRule, updateRule } = useRuleStore();
   const { types, getDefaultType } = useEventTypeStore();
   const { events } = useEventsStore();
@@ -43,18 +42,9 @@ export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialM
   const [displayTypeId, setDisplayTypeId] = useState(rule?.displayTypeId ?? types[0]?.id ?? "");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    setMatchType((rule?.matchType !== "all" ? rule?.matchType : undefined) ?? initialMatchType ?? "name");
-    setMatchValue(rule?.matchValue ?? initialMatchValue ?? "");
-    setDisplayTypeId(rule?.displayTypeId ?? types[0]?.id ?? "");
-    setError("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, rule, initialMatchType, initialMatchValue]);
-
   function handleSave() {
     if (isCatchAll) {
-      onOpenChange(false);
+      onClose();
       return;
     }
 
@@ -83,19 +73,21 @@ export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialM
     } else {
       addRule({ matchType, matchValue, displayTypeId });
     }
-    onOpenChange(false);
+    onClose();
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">
-            {isCatchAll ? "Edit Default Rule" : editing ? "Edit Rule" : "New Rule"}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      {/* Plain markup, not Drawer/Dialog Header+Title — this form is embedded inside
+          both a Drawer (Rules panel, connection editor) and a Dialog (event detail),
+          and can't depend on either overlay primitive's compound components. */}
+      <div className="flex flex-col gap-0.5 p-4 pr-10">
+        <h2 className="font-semibold text-foreground">
+          {isCatchAll ? "Edit Default Rule" : editing ? "Edit Rule" : "New Rule"}
+        </h2>
+      </div>
 
-        <div className="space-y-4">
+      <div className="space-y-4 px-4 pb-4">
           {!isCatchAll && (
             <>
               <div>
@@ -187,7 +179,7 @@ export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialM
           {error && <p className="text-xs text-destructive">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">
+            <Button type="button" variant="ghost" onClick={onClose} className="text-muted-foreground">
               Cancel
             </Button>
             <Button type="button" onClick={handleSave}>
@@ -195,7 +187,6 @@ export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialM
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

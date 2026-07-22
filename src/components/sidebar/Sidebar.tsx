@@ -3,18 +3,15 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Settings, ListOrdered, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Settings, ListOrdered, Keyboard, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import Link from "next/link";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { useUIStore, useConnectionStore, useEventTypeStore } from "../../store";
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
-import { AddConnectionModal } from "../settings/AddConnectionModal";
-import { EventTypeModal, getIconEl } from "../settings/EventTypeModal";
-import { RulesModal } from "../../views/RulesPage";
+import { getIconEl } from "../settings/EventTypeModal";
+import { SettingsDrawer } from "../settings/SettingsDrawer";
 import { ThemeSelector } from "./ThemeSelector";
-import { ShortcutsHelp } from "./ShortcutsHelp";
 import { PresetSelector } from "./PresetSelector";
 import type { Connection, ConnectionStatus, EventType } from "../../types";
 
@@ -95,19 +92,13 @@ function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
 }
 
 export function Sidebar() {
-  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen } = useUIStore();
+  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen, openDrawer } = useUIStore();
   const [miniDate, setMiniDate] = useState(currentDate);
   const weekStart = weekStartsOnMonday ? 1 : 0;
 
-  const { connections, addConnection, updateConnection, removeConnection } = useConnectionStore();
+  const { connections, updateConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
-  const { types, addType, updateType, removeType, setDefaultType } = useEventTypeStore();
-
-  const [addConnOpen, setAddConnOpen] = useState(false);
-  const [editingConn, setEditingConn] = useState<Connection | null>(null);
-  const [typeModalOpen, setTypeModalOpen] = useState(false);
-  const [editingType, setEditingType] = useState<EventType | null>(null);
-  const [rulesModalOpen, setRulesModalOpen] = useState(false);
+  const { types, updateType } = useEventTypeStore();
 
   if (!sidebarOpen) return null;
 
@@ -174,7 +165,7 @@ export function Sidebar() {
 
       {/* Data sources preview */}
       <div className="px-3 py-3">
-        <SectionHeader label="Sources" onAdd={() => setAddConnOpen(true)} />
+        <SectionHeader label="Sources" onAdd={() => openDrawer("connection")} />
         <div className="space-y-0.5">
           {connections.length === 0 && (
             <p className="px-2 text-[11px] text-muted-foreground">Aucune source.</p>
@@ -184,7 +175,7 @@ export function Sidebar() {
               key={c.id}
               connection={c}
               status={statusMap[c.id] ?? "unchecked"}
-              onEdit={() => setEditingConn(c)}
+              onEdit={() => openDrawer("connection", c.id)}
               onToggleHidden={() => updateConnection({ ...c, hidden: !c.hidden })}
             />
           ))}
@@ -195,13 +186,13 @@ export function Sidebar() {
 
       {/* Event types preview */}
       <div className="px-3 py-3">
-        <SectionHeader label="Types" onAdd={() => setTypeModalOpen(true)} />
+        <SectionHeader label="Types" onAdd={() => openDrawer("eventType")} />
         <div className="space-y-0.5">
           {types.map((t) => (
             <TypeRow
               key={t.id}
               type={t}
-              onEdit={() => setEditingType(t)}
+              onEdit={() => openDrawer("eventType", t.id)}
               onToggleHidden={() => updateType({ ...t, hidden: !t.hidden })}
             />
           ))}
@@ -210,10 +201,10 @@ export function Sidebar() {
 
       <div className="border-t border-border" />
 
-      {/* Rules entry point — opens the rules manager in a modal */}
+      {/* Rules entry point — opens the rules manager in the settings drawer */}
       <div className="px-3 py-3">
         <button
-          onClick={() => setRulesModalOpen(true)}
+          onClick={() => openDrawer("rules")}
           className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-muted text-xs text-foreground"
         >
           <ListOrdered size={14} className="text-muted-foreground" />
@@ -224,47 +215,27 @@ export function Sidebar() {
       {/* Theme + settings — bottom of sidebar */}
       <div className="mt-auto border-t border-border px-3 py-2 flex items-center gap-1">
         <ThemeSelector />
-        <ShortcutsHelp />
-        <Button variant="ghost" size="icon" className="text-muted-foreground" asChild>
-          <Link href="/settings">
-            <Settings size={16} />
-          </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground"
+          onClick={() => openDrawer("shortcuts")}
+          aria-label="Raccourcis clavier"
+        >
+          <Keyboard size={16} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground"
+          onClick={() => openDrawer("preferences")}
+          aria-label="Préférences"
+        >
+          <Settings size={16} />
         </Button>
       </div>
 
-      {/* Add / edit connection modal */}
-      <AddConnectionModal
-        key={editingConn?.id ?? "new-conn"}
-        open={addConnOpen || !!editingConn}
-        onOpenChange={(v) => { if (!v) { setAddConnOpen(false); setEditingConn(null); } }}
-        onAdd={addConnection}
-        onUpdate={updateConnection}
-        connection={editingConn ?? undefined}
-        existingColors={connections.map((c) => c.color)}
-        onDelete={editingConn ? () => { removeConnection(editingConn.id); setEditingConn(null); } : undefined}
-      />
-
-      {/* Add / edit event type modal */}
-      <EventTypeModal
-        key={editingType?.id ?? "new-type"}
-        open={typeModalOpen || !!editingType}
-        onOpenChange={(v) => { if (!v) { setTypeModalOpen(false); setEditingType(null); } }}
-        type={editingType ?? undefined}
-        existingLabels={types.map((t) => t.label)}
-        onSave={(t) => {
-          if (t.id) {
-            updateType(t as EventType);
-            if (t.isDefault) setDefaultType(t.id);
-          } else {
-            addType(t);
-          }
-        }}
-        onDelete={editingType ? () => { removeType(editingType.id); setEditingType(null); } : undefined}
-        deleteDisabledReason={editingType?.isDefault ? "The default type cannot be deleted — make another type default first" : undefined}
-      />
-
-      {/* Display rules modal */}
-      <RulesModal open={rulesModalOpen} onOpenChange={setRulesModalOpen} />
+      <SettingsDrawer />
     </aside>
   );
 }

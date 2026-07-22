@@ -1,64 +1,88 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "../components/ui/button";
+import { useRef, useState } from "react";
 import { Switch } from "../components/ui/switch";
+import { Button } from "../components/ui/button";
+import { DrawerHeader, DrawerTitle } from "../components/ui/drawer";
 import { useUIStore } from "../store";
+import { downloadSettingsExport, importSettingsFile } from "../lib/settings-export";
 
-export function SettingsPage() {
+/** Preferences — rendered as drawer content from the sidebar's Settings icon. */
+export function PreferencesPanel() {
   const {
     weekStartsOnMonday, toggleWeekStart,
     use24h, setUse24h,
     dateFormatEU, setDateFormatEU,
   } = useUIStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState("");
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      setImportError("");
+      await importSettingsFile(file);
+    } catch {
+      setImportError("Fichier de paramètres invalide.");
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-3 h-14 px-4 border-b border-border bg-card">
-        <Button variant="ghost" size="icon" className="text-muted-foreground" asChild>
-          <Link href="/">
-            <ArrowLeft size={18} />
-          </Link>
-        </Button>
-        <h1 className="text-base font-semibold text-foreground">Paramètres</h1>
-      </header>
+    <>
+      <DrawerHeader>
+        <DrawerTitle>Préférences</DrawerTitle>
+      </DrawerHeader>
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <h2 className="text-sm font-semibold text-foreground mb-3">Préférences</h2>
-        <div className="rounded-xl border border-border bg-card p-4 space-y-5">
+      <div className="mx-4 mb-4 rounded-xl border border-border bg-card p-4 space-y-5">
 
-          {/* Week start */}
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-foreground">Semaine commence le lundi</div>
-              <div className="text-xs text-muted-foreground">Afficher lundi en premier dans la vue calendrier</div>
-            </div>
-            <Switch checked={weekStartsOnMonday} onCheckedChange={toggleWeekStart} />
+        {/* Week start */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-foreground">Semaine commence le lundi</div>
+            <div className="text-xs text-muted-foreground">Afficher lundi en premier dans la vue calendrier</div>
           </div>
-
-          <div className="border-t border-border" />
-
-          {/* 24h clock */}
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-foreground">Format 24h</div>
-              <div className="text-xs text-muted-foreground">Afficher les heures au format 24h (ex : 14:30)</div>
-            </div>
-            <Switch checked={use24h} onCheckedChange={setUse24h} />
-          </div>
-
-          <div className="border-t border-border" />
-
-          {/* Date format */}
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-foreground">Format de date européen</div>
-              <div className="text-xs text-muted-foreground">{dateFormatEU ? "JJ/MM/AAAA — ex : 15/03/2025" : "MM/JJ/AAAA — ex : 03/15/2025"}</div>
-            </div>
-            <Switch checked={dateFormatEU} onCheckedChange={setDateFormatEU} />
-          </div>
-
+          <Switch checked={weekStartsOnMonday} onCheckedChange={toggleWeekStart} />
         </div>
+
+        <div className="border-t border-border" />
+
+        {/* 24h clock */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-foreground">Format 24h</div>
+            <div className="text-xs text-muted-foreground">Afficher les heures au format 24h (ex : 14:30)</div>
+          </div>
+          <Switch checked={use24h} onCheckedChange={setUse24h} />
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Date format */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-foreground">Format de date européen</div>
+            <div className="text-xs text-muted-foreground">{dateFormatEU ? "JJ/MM/AAAA — ex : 15/03/2025" : "MM/JJ/AAAA — ex : 03/15/2025"}</div>
+          </div>
+          <Switch checked={dateFormatEU} onCheckedChange={setDateFormatEU} />
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Export / import */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-foreground">Paramètres</div>
+            <div className="text-xs text-muted-foreground">Exporter ou importer connexions, types, règles, préférences et thèmes</div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={downloadSettingsExport}>Exporter</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Importer</Button>
+            <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
+          </div>
+        </div>
+        {importError && <p className="text-xs text-destructive">{importError}</p>}
+
       </div>
-    </div>
+    </>
   );
 }

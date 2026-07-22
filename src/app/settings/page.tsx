@@ -1,12 +1,21 @@
 "use client";
 
-import { DataProviderContext } from "../../context/DataProviderContext";
-import { SettingsPage } from "../../views/SettingsPage";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUIStore } from "../../store";
 
+/**
+ * `/settings` is kept as a working bookmark/link (spec FR-007), but preferences
+ * now live in the calendar page's settings drawer rather than a standalone page.
+ */
 export default function Page() {
-  return (
-    <DataProviderContext>
-      <SettingsPage />
-    </DataProviderContext>
-  );
+  const router = useRouter();
+  const openDrawer = useUIStore((s) => s.openDrawer);
+
+  useEffect(() => {
+    openDrawer("preferences");
+    router.replace("/");
+  }, [openDrawer, router]);
+
+  return null;
 }
