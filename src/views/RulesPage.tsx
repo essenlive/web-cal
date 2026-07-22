@@ -125,7 +125,7 @@ export interface RulesModalProps {
 /** Rules manager — opened as a modal from the sidebar, beneath the display types list. */
 export function RulesModal({ open, onOpenChange }: RulesModalProps) {
   const { rules, toggleRule, removeRule, reorderRule } = useRuleStore();
-  const { getType } = useEventTypeStore();
+  const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
 
@@ -160,8 +160,8 @@ export function RulesModal({ open, onOpenChange }: RulesModalProps) {
               key={rule.id}
               rule={rule}
               description={describeMatch(rule, getEventTitle, getConnectionName)}
-              displayType={getType(rule.displayTypeId)}
-              broken={!getType(rule.displayTypeId)}
+              displayType={rule.matchType === "all" ? getDefaultType() : getType(rule.displayTypeId)}
+              broken={rule.matchType !== "all" && !getType(rule.displayTypeId)}
               isFirst={index === 0}
               isLast={index === rules.length - 1}
               onToggle={() => toggleRule(rule.id)}

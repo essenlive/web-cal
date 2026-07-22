@@ -1,6 +1,7 @@
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import { findMatchingRule } from "../../lib/rules";
+import { useEventTypeStore } from "../../store";
 import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Rule } from "../../types";
 
 interface EventChipProps {
@@ -20,17 +21,18 @@ function getIcon(name: string | undefined, size: number, color?: string) {
 
 /**
  * Returns the effective EventType for an event by resolving the rules engine only —
- * the first enabled rule matching this event, in priority order, whose target display
- * type still exists. The catch-all rule always matches and its target can never be
- * deleted, so this always returns a real EventType.
+ * the first enabled rule matching this event, in priority order. The catch-all rule
+ * always resolves to the default type; any other rule whose target type has since
+ * been deleted (a "broken" rule) also falls back to the default type.
  */
 export function resolveEventType(
   event: CalendarEvent,
   getType: (id: string) => EventType | undefined,
   rules: Rule[],
 ): EventType {
-  const matched = findMatchingRule(event, rules, getType);
-  return getType(matched.displayTypeId)!;
+  const matched = findMatchingRule(event, rules);
+  if (matched.matchType === "all") return useEventTypeStore.getState().getDefaultType();
+  return getType(matched.displayTypeId) ?? useEventTypeStore.getState().getDefaultType();
 }
 
 /**

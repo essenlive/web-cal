@@ -22,6 +22,8 @@ export interface EventType {
   timedStyle: DisplayStyle;
   /** When true, events resolving to this type are excluded from all calendar views. Config is preserved. */
   hidden?: boolean;
+  /** Exactly one type has this set. Undeletable; the catch-all rule always resolves to it, and broken rules fall back to it. */
+  isDefault?: boolean;
 }
 
 export interface CalendarEvent {

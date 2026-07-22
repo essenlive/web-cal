@@ -1,4 +1,4 @@
-import type { CalendarEvent, EventType, Rule } from "../types";
+import type { CalendarEvent, Rule } from "../types";
 
 /** True if `pattern` is a syntactically valid RegExp. */
 export function isValidPattern(pattern: string): boolean {
@@ -29,23 +29,18 @@ export function matchesRule(event: CalendarEvent, rule: Rule): boolean {
 }
 
 /**
- * First enabled, non-broken rule matching `event`, in priority order (array order).
- * A matched rule whose target display type no longer exists (per `getType`) is skipped
- * so evaluation falls through to the next matching rule. Always returns a `Rule` — the
- * catch-all rule always matches and its target can never be deleted (see
- * `useEventTypeStore.removeType`'s guard), so there is always a valid rule to fall back to.
+ * First enabled rule matching `event`, in priority order (array order). If its target
+ * display type has since been deleted, the caller (see `resolveEventType`) falls back
+ * to the default type rather than skipping to the next rule. Always returns a `Rule` —
+ * the catch-all rule always matches and is always enabled, so there is always one to fall
+ * back to.
  */
-export function findMatchingRule(
-  event: CalendarEvent,
-  rules: Rule[],
-  getType: (id: string) => EventType | undefined,
-): Rule {
+export function findMatchingRule(event: CalendarEvent, rules: Rule[]): Rule {
   for (const rule of rules) {
     if (!rule.enabled) continue;
-    if (!getType(rule.displayTypeId)) continue;
     if (matchesRule(event, rule)) return rule;
   }
-  // Unreachable in practice — the catch-all rule always matches and is enabled/non-broken.
+  // Unreachable in practice — the catch-all rule always matches and is always enabled.
   return rules[rules.length - 1];
 }
 

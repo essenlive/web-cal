@@ -99,7 +99,7 @@ export function Sidebar() {
 
   const { connections, addConnection, updateConnection, removeConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
-  const { types, addType, updateType, removeType, isCatchAllTarget } = useEventTypeStore();
+  const { types, addType, updateType, removeType, setDefaultType } = useEventTypeStore();
 
   const [addConnOpen, setAddConnOpen] = useState(false);
   const [editingConn, setEditingConn] = useState<Connection | null>(null);
@@ -243,9 +243,16 @@ export function Sidebar() {
         onOpenChange={(v) => { if (!v) { setTypeModalOpen(false); setEditingType(null); } }}
         type={editingType ?? undefined}
         existingLabels={types.map((t) => t.label)}
-        onSave={(t) => { if (t.id) updateType(t as EventType); else addType(t); }}
+        onSave={(t) => {
+          if (t.id) {
+            updateType(t as EventType);
+            if (t.isDefault) setDefaultType(t.id);
+          } else {
+            addType(t);
+          }
+        }}
         onDelete={editingType ? () => { removeType(editingType.id); setEditingType(null); } : undefined}
-        deleteDisabledReason={editingType && isCatchAllTarget(editingType.id) ? "Reassign the default rule before deleting this type" : undefined}
+        deleteDisabledReason={editingType?.isDefault ? "The default type cannot be deleted — make another type default first" : undefined}
       />
 
       {/* Display rules modal */}

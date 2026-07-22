@@ -29,7 +29,7 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
   const [ruleModal, setRuleModal] = useState<{ matchType: Exclude<RuleMatchType, "all">; matchValue: string } | null>(null);
 
   const type = resolveEventType(event, getType, rules);
-  const matchedRule = findMatchingRule(event, rules, getType);
+  const matchedRule = findMatchingRule(event, rules);
   const priority = rules.indexOf(matchedRule) + 1;
   const isDefault = matchedRule.matchType === "all";
   const ruleDescription = describeMatch(

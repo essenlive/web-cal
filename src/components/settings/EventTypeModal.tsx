@@ -10,6 +10,8 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { useRuleStore, useEventsStore, useConnectionStore } from "../../store";
+import { describeMatch } from "../../lib/rules";
 import type { DisplayStyle, EventType } from "../../types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -98,7 +100,15 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
   const [icon,        setIcon]        = useState(type?.icon        ?? "Calendar");
   const [allDayStyle, setAllDayStyle] = useState<DisplayStyle>(type?.allDayStyle ?? "block");
   const [timedStyle,  setTimedStyle]  = useState<DisplayStyle>(type?.timedStyle  ?? "block");
+  const [isDefault,   setIsDefault]   = useState(type?.isDefault ?? false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const { rules } = useRuleStore();
+  const { events } = useEventsStore();
+  const { connections } = useConnectionStore();
+  const linkedRules = type
+    ? rules.filter((r) => (r.matchType === "all" ? isDefault : r.displayTypeId === type.id))
+    : [];
 
   function reset() {
     setLabel(type?.label ?? "");
@@ -106,6 +116,7 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
     setIcon(type?.icon ?? "Calendar");
     setAllDayStyle(type?.allDayStyle ?? "block");
     setTimedStyle(type?.timedStyle ?? "block");
+    setIsDefault(type?.isDefault ?? false);
   }
 
   function handleOpenChange(v: boolean) {
@@ -119,7 +130,7 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
     .some((l) => l.toLowerCase() === trimmed.toLowerCase());
 
   function handleSave() {
-    onSave({ id: type?.id, label: trimmed, color, icon, allDayStyle, timedStyle });
+    onSave({ id: type?.id, label: trimmed, color, icon, allDayStyle, timedStyle, isDefault });
     handleOpenChange(false);
   }
 
@@ -227,6 +238,44 @@ export function EventTypeModal({ open, onOpenChange, type, existingLabels = [], 
               </div>
             </div>
           </div>
+
+          {type && (
+            <div>
+              <label className={cn("flex items-center gap-2 text-xs select-none", isDefault ? "text-muted-foreground" : "text-foreground cursor-pointer")}>
+                <input
+                  type="checkbox"
+                  checked={isDefault}
+                  disabled={isDefault}
+                  onChange={() => setIsDefault(true)}
+                  className="size-3.5 rounded border-border accent-primary disabled:cursor-not-allowed"
+                />
+                Type par défaut (utilisé quand aucune règle ne s'applique)
+              </label>
+            </div>
+          )}
+
+          {type && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Règles liées</label>
+              {linkedRules.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucune règle n'utilise ce type.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {linkedRules.map((r) => (
+                    <li key={r.id} className="text-xs text-foreground truncate">
+                      {r.matchType === "all"
+                        ? "Règle par défaut (aucune correspondance)"
+                        : describeMatch(
+                            r,
+                            (id) => events.find((e) => e.id === id)?.title,
+                            (id) => connections.find((c) => c.id === id)?.name,
+                          )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-2">
             {onDelete ? (

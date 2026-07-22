@@ -30,7 +30,7 @@ export interface RuleModalProps {
 
 export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialMatchValue }: RuleModalProps) {
   const { rules, addRule, updateRule } = useRuleStore();
-  const { types } = useEventTypeStore();
+  const { types, getDefaultType } = useEventTypeStore();
   const { events } = useEventsStore();
   const { connections } = useConnectionStore();
   const editing = !!rule;
@@ -54,11 +54,6 @@ export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialM
 
   function handleSave() {
     if (isCatchAll) {
-      if (!displayTypeId) {
-        setError("Choose a display type.");
-        return;
-      }
-      updateRule({ ...rule, displayTypeId });
       onOpenChange(false);
       return;
     }
@@ -154,26 +149,40 @@ export function RuleModal({ open, onOpenChange, rule, initialMatchType, initialM
             </>
           )}
 
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Display type</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {types.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setDisplayTypeId(t.id)}
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-all",
-                    displayTypeId === t.id ? "border-transparent" : "border-border text-muted-foreground hover:text-foreground"
-                  )}
-                  style={displayTypeId === t.id ? { backgroundColor: t.color + "20", borderColor: t.color, color: t.color } : {}}
-                >
-                  {getIconEl(t.icon, 12)}
-                  {t.label}
-                </button>
-              ))}
+          {isCatchAll ? (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Display type</Label>
+              <p className="text-xs text-muted-foreground">
+                Always resolves to the default type — currently{" "}
+                <span className="font-medium text-foreground inline-flex items-center gap-1">
+                  {getIconEl(getDefaultType().icon, 12)}
+                  {getDefaultType().label}
+                </span>
+                . Change the default type from its edit screen.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Display type</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {types.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setDisplayTypeId(t.id)}
+                    className={cn(
+                      "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-all",
+                      displayTypeId === t.id ? "border-transparent" : "border-border text-muted-foreground hover:text-foreground"
+                    )}
+                    style={displayTypeId === t.id ? { backgroundColor: t.color + "20", borderColor: t.color, color: t.color } : {}}
+                  >
+                    {getIconEl(t.icon, 12)}
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 

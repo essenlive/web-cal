@@ -139,7 +139,7 @@ export const useConnectionStore = create<ConnectionStore>()(
 // ── Event Types Store ─────────────────────────────────────────────────────────
 
 const DEFAULT_EVENT_TYPES: EventType[] = [
-  { id: "meeting",    label: "Meeting",    color: "#3b82f6", icon: "Users",       allDayStyle: "day",       timedStyle: "block" },
+  { id: "meeting",    label: "Meeting",    color: "#3b82f6", icon: "Users",       allDayStyle: "day",       timedStyle: "block", isDefault: true },
   { id: "deadline",   label: "Deadline",   color: "#ef4444", icon: "AlertCircle", allDayStyle: "day",       timedStyle: "block" },
   { id: "workshop",   label: "Workshop",   color: "#8b5cf6", icon: "Layers",      allDayStyle: "day",       timedStyle: "block" },
   { id: "focus-time", label: "Focus time", color: "#10b981", icon: "Brain",       allDayStyle: "avatar-tl", timedStyle: "block" },
@@ -172,11 +172,13 @@ interface EventTypeStore {
   types: EventType[];
   addType: (t: Omit<EventType, "id">) => void;
   updateType: (t: EventType) => void;
-  /** No-op if `id` is the catch-all rule's current target — reassign it first (FR-021). */
+  /** No-op if `id` is the default type — make another type default first. */
   removeType: (id: string) => void;
   getType: (id: string) => EventType | undefined;
-  /** True if deleting `id` is blocked because the catch-all rule currently targets it. */
-  isCatchAllTarget: (id: string) => boolean;
+  /** The one type with isDefault:true. Always resolvable — a default type always exists. */
+  getDefaultType: () => EventType;
+  /** Makes `id` the default type, clearing the flag from every other type. */
+  setDefaultType: (id: string) => void;
 }
 
 export const useEventTypeStore = create<EventTypeStore>()(
@@ -186,17 +188,23 @@ export const useEventTypeStore = create<EventTypeStore>()(
       addType: (t) => set((s) => ({ types: [...s.types, { ...t, id: crypto.randomUUID() }] })),
       updateType: (t) => set((s) => ({ types: s.types.map((x) => (x.id === t.id ? t : x)) })),
       removeType: (id) => {
-        if (get().isCatchAllTarget(id)) return;
+        if (get().getType(id)?.isDefault) return;
         set((s) => ({ types: s.types.filter((x) => x.id !== id) }));
       },
       getType: (id) => get().types.find((t) => t.id === id),
-      isCatchAllTarget: (id) => useRuleStore.getState().rules.some((r) => r.matchType === "all" && r.displayTypeId === id),
+      getDefaultType: () => get().types.find((t) => t.isDefault) ?? get().types[0],
+      setDefaultType: (id) => set((s) => ({ types: s.types.map((t) => ({ ...t, isDefault: t.id === id })) })),
     }),
     {
       name: "proton-cal:event-types",
       storage,
       onRehydrateStorage: () => (state) => {
-        if (state) state.types = state.types.map(migrateType);
+        if (!state) return;
+        state.types = state.types.map(migrateType);
+        if (!state.types.some((t) => t.isDefault)) {
+          const id = legacyDefaultTypeId(state.types);
+          state.types = state.types.map((t) => ({ ...t, isDefault: t.id === id }));
+        }
       },
     }
   )
@@ -212,15 +220,20 @@ function tierOf(matchType: RuleMatchType): number {
   return 3; // "all" — catch-all
 }
 
-/** Read a still-persisted store's raw state without importing it (avoids a cross-store cycle). */
-function readPersistedDefaultTypeId(): string {
+/**
+ * Migrating pre-isDefault data: prefer whatever the catch-all rule already pointed to
+ * (read raw from its still-persisted store to avoid a cross-store cycle), else the first type.
+ */
+function legacyDefaultTypeId(types: EventType[]): string {
   try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem("proton-cal:ui") : null;
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed?.state?.defaultEventTypeId ?? DEFAULT_EVENT_TYPES[0].id;
+    const raw = typeof window !== "undefined" ? localStorage.getItem("webcal:rules") : null;
+    const persistedRules: Rule[] | undefined = (raw ? JSON.parse(raw) : null)?.state?.rules;
+    const catchAll = persistedRules?.find((r) => r.matchType === "all");
+    if (catchAll && types.some((t) => t.id === catchAll.displayTypeId)) return catchAll.displayTypeId;
   } catch {
-    return DEFAULT_EVENT_TYPES[0].id;
+    // fall through to first type
   }
+  return types[0]?.id;
 }
 
 /** Ensures exactly one matchType:"all" (catch-all) rule exists, appending one if missing. */
@@ -230,7 +243,7 @@ function seedCatchAllRule(rules: Rule[]): Rule[] {
     id: crypto.randomUUID(),
     matchType: "all",
     matchValue: "",
-    displayTypeId: readPersistedDefaultTypeId(),
+    displayTypeId: DEFAULT_EVENT_TYPES.find((t) => t.isDefault)?.id ?? DEFAULT_EVENT_TYPES[0].id,
     enabled: true,
     createdAt: 0,
   };
@@ -265,14 +278,11 @@ export const useRuleStore = create<RuleStore>()(
           const rules = insertAt === -1 ? [...s.rules, rule] : [...s.rules.slice(0, insertAt), rule, ...s.rules.slice(insertAt)];
           return { rules };
         }),
+      // The catch-all rule's displayTypeId is vestigial — it always resolves to the
+      // default EventType (see resolveEventType), which is set via setDefaultType instead.
       updateRule: (r) =>
         set((s) => ({
-          rules: s.rules.map((x) => {
-            if (x.id !== r.id) return x;
-            // Catch-all: only its displayTypeId can change (FR-020).
-            if (x.matchType === "all") return { ...x, displayTypeId: r.displayTypeId };
-            return r;
-          }),
+          rules: s.rules.map((x) => (x.id === r.id && x.matchType !== "all" ? r : x)),
         })),
       removeRule: (id) =>
         set((s) => {
