@@ -9,15 +9,16 @@
  */
 
 import { useState } from "react";
-import { Plus, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { Plus, Pencil, RefreshCw, Trash2, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { usePresetStore, useConnectionStore, useEventTypeStore } from "../../store";
-import { capturePresetState } from "../../lib/presets";
+import { capturePresetState, presetMatchesState } from "../../lib/presets";
 import type { Preset } from "../../types";
 
 function PresetRow({
   preset,
   presets,
+  active,
   onApply,
   onRename,
   onUpdate,
@@ -25,6 +26,7 @@ function PresetRow({
 }: {
   preset: Preset;
   presets: Preset[];
+  active: boolean;
   onApply: () => void;
   onRename: (name: string) => void;
   onUpdate: () => void;
@@ -88,8 +90,12 @@ function PresetRow({
   return (
     <div
       onClick={onApply}
-      className="group flex items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer"
+      className={cn(
+        "group flex items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer",
+        active && "bg-muted"
+      )}
     >
+      <Check size={12} className={cn("shrink-0 text-primary", !active && "invisible")} />
       <span className="flex-1 min-w-0 truncate text-xs text-foreground">{preset.name}</span>
       <button
         onClick={(e) => {
@@ -134,7 +140,7 @@ function PresetRow({
 }
 
 export function PresetSelector() {
-  const { presets, addPreset, updatePreset, removePreset, applyPreset } = usePresetStore();
+  const { presets, addPreset, updatePreset, removePreset, applyPreset, clearPreset } = usePresetStore();
   const { connections } = useConnectionStore();
   const { types } = useEventTypeStore();
 
@@ -218,17 +224,21 @@ export function PresetSelector() {
           </div>
         )}
 
-        {presets.map((preset) => (
-          <PresetRow
-            key={preset.id}
-            preset={preset}
-            presets={presets}
-            onApply={() => applyPreset(preset.id)}
-            onRename={(name) => updatePreset({ ...preset, name })}
-            onUpdate={() => updatePreset({ ...preset, ...capturePresetState(connections, types) })}
-            onDelete={() => removePreset(preset.id)}
-          />
-        ))}
+        {presets.map((preset) => {
+          const active = presetMatchesState(preset, connections, types);
+          return (
+            <PresetRow
+              key={preset.id}
+              preset={preset}
+              presets={presets}
+              active={active}
+              onApply={() => (active ? clearPreset() : applyPreset(preset.id))}
+              onRename={(name) => updatePreset({ ...preset, name })}
+              onUpdate={() => updatePreset({ ...preset, ...capturePresetState(connections, types) })}
+              onDelete={() => removePreset(preset.id)}
+            />
+          );
+        })}
       </div>
     </div>
   );

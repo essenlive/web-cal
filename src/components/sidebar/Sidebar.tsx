@@ -14,6 +14,7 @@ import { AddConnectionModal } from "../settings/AddConnectionModal";
 import { EventTypeModal, getIconEl } from "../settings/EventTypeModal";
 import { RulesModal } from "../../views/RulesPage";
 import { ThemeSelector } from "./ThemeSelector";
+import { ShortcutsHelp } from "./ShortcutsHelp";
 import { PresetSelector } from "./PresetSelector";
 import type { Connection, ConnectionStatus, EventType } from "../../types";
 
@@ -223,6 +224,7 @@ export function Sidebar() {
       {/* Theme + settings — bottom of sidebar */}
       <div className="mt-auto border-t border-border px-3 py-2 flex items-center gap-1">
         <ThemeSelector />
+        <ShortcutsHelp />
         <Button variant="ghost" size="icon" className="text-muted-foreground" asChild>
           <Link href="/settings">
             <Settings size={16} />

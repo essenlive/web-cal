@@ -329,6 +329,8 @@ interface PresetStore {
   updatePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
   applyPreset: (id: string) => void;
+  /** Unhides every connection and event type — the "no preset" state (shortcut: 0). */
+  clearPreset: () => void;
 }
 
 export const usePresetStore = create<PresetStore>()(
@@ -360,6 +362,12 @@ export const usePresetStore = create<PresetStore>()(
         for (const t of types) {
           if (t.id in preset.eventTypes) updateType({ ...t, hidden: preset.eventTypes[t.id] });
         }
+      },
+      clearPreset: () => {
+        const { connections, updateConnection } = useConnectionStore.getState();
+        for (const c of connections) if (c.hidden) updateConnection({ ...c, hidden: false });
+        const { types, updateType } = useEventTypeStore.getState();
+        for (const t of types) if (t.hidden) updateType({ ...t, hidden: false });
       },
     }),
     { name: "webcal:presets", storage }
