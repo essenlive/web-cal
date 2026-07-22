@@ -3,7 +3,7 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Settings, Sun, Moon, ListOrdered } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Settings, Sun, Moon, ListOrdered, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "../../lib/utils";
@@ -26,24 +26,42 @@ function statusColor(status: ConnectionStatus) {
   }
 }
 
-function ConnectionRow({ connection, status, onEdit }: {
-  connection: Connection; status: ConnectionStatus; onEdit: () => void;
+function HideToggle({ hidden, label, onToggle }: { hidden?: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      aria-label={hidden ? `Afficher ${label}` : `Masquer ${label}`}
+      title={hidden ? "Afficher" : "Masquer"}
+      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+    >
+      {hidden ? <EyeOff size={12} /> : <Eye size={12} />}
+    </button>
+  );
+}
+
+function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
+  connection: Connection; status: ConnectionStatus; onEdit: () => void; onToggleHidden: () => void;
 }) {
+  const hidden = !!connection.hidden;
   return (
     <div
       onClick={onEdit}
       className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer"
     >
       <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: connection.color }} />
-      <span className="flex-1 min-w-0 truncate text-xs text-foreground">{connection.name}</span>
+      <span className={cn("flex-1 min-w-0 truncate text-xs text-foreground", hidden && "text-muted-foreground line-through")}>
+        {connection.name}
+      </span>
       <span className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} title={status} />
+      <HideToggle hidden={hidden} label={connection.name} onToggle={onToggleHidden} />
     </div>
   );
 }
 
 // ── Compact event type row ────────────────────────────────────────────────────
 
-function TypeRow({ type, onEdit }: { type: EventType; onEdit: () => void }) {
+function TypeRow({ type, onEdit, onToggleHidden }: { type: EventType; onEdit: () => void; onToggleHidden: () => void }) {
+  const hidden = !!type.hidden;
   return (
     <div
       onClick={onEdit}
@@ -52,7 +70,10 @@ function TypeRow({ type, onEdit }: { type: EventType; onEdit: () => void }) {
       <div className="flex size-4 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: type.color + "20", color: type.color }}>
         {getIconEl(type.icon, 10)}
       </div>
-      <span className="flex-1 min-w-0 truncate text-xs text-foreground">{type.label}</span>
+      <span className={cn("flex-1 min-w-0 truncate text-xs text-foreground", hidden && "text-muted-foreground line-through")}>
+        {type.label}
+      </span>
+      <HideToggle hidden={hidden} label={type.label} onToggle={onToggleHidden} />
     </div>
   );
 }
@@ -156,6 +177,7 @@ export function Sidebar() {
               connection={c}
               status={statusMap[c.id] ?? "unchecked"}
               onEdit={() => setEditingConn(c)}
+              onToggleHidden={() => updateConnection({ ...c, hidden: !c.hidden })}
             />
           ))}
         </div>
@@ -168,7 +190,12 @@ export function Sidebar() {
         <SectionHeader label="Types" onAdd={() => setTypeModalOpen(true)} />
         <div className="space-y-0.5">
           {types.map((t) => (
-            <TypeRow key={t.id} type={t} onEdit={() => setEditingType(t)} />
+            <TypeRow
+              key={t.id}
+              type={t}
+              onEdit={() => setEditingType(t)}
+              onToggleHidden={() => updateType({ ...t, hidden: !t.hidden })}
+            />
           ))}
         </div>
       </div>

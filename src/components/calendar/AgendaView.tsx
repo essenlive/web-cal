@@ -3,8 +3,8 @@ import { format, isToday, isTomorrow, parseISO, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore } from "../../store";
-import { EventChip, resolveStyle, resolveEventType } from "../events/EventChip";
+import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore, useConnectionStore } from "../../store";
+import { EventChip, resolveStyle, resolveEventType, isEventHidden } from "../events/EventChip";
 import { EventDetail } from "../events/EventDetail";
 import type { CalendarEvent } from "../../types";
 
@@ -16,10 +16,13 @@ function dayLabel(day: Date): string {
 }
 
 export function AgendaView() {
-  const { events } = useEventsStore();
+  const { events: allEvents } = useEventsStore();
   const { getType } = useEventTypeStore();
   const { currentDate, use24h, dateFormatEU } = useUIStore();
   const { rules } = useRuleStore();
+  const { connections } = useConnectionStore();
+  const getConnection = (calendarId: string) => connections.find((c) => c.id === calendarId);
+  const events = allEvents.filter((e) => !isEventHidden(e, getType, getConnection, rules));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   // Expand all-day events across every day they span; group by day

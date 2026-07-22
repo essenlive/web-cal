@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore } from "../../store";
-import { resolveEventType, resolveStyle } from "../events/EventChip";
+import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore, useConnectionStore } from "../../store";
+import { resolveEventType, resolveStyle, isEventHidden } from "../events/EventChip";
 import { EventChip } from "../events/EventChip";
 import type { CalendarEvent, EventType } from "../../types";
 
@@ -129,10 +129,23 @@ interface Props {
 }
 
 export function TimeGridView({ days, onEventClick }: Props) {
-  const { events } = useEventsStore();
-  const { getType } = useEventTypeStore();
+  const { events: allEvents } = useEventsStore();
+  const { getType, types } = useEventTypeStore();
   const { use24h } = useUIStore();
   const { rules } = useRuleStore();
+  const { connections } = useConnectionStore();
+  const getConnection = useCallback(
+    (calendarId: string) => connections.find((c) => c.id === calendarId),
+    [connections],
+  );
+  // `types`/`connections` are listed explicitly because `getType`/`getConnection`
+  // are stable function references whose *output* changes without their identity
+  // changing — omitting them would leave this memo stale after a hide/show toggle.
+  const events = useMemo(
+    () => allEvents.filter((e) => !isEventHidden(e, getType, getConnection, rules)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allEvents, getType, getConnection, rules, types, connections],
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
 

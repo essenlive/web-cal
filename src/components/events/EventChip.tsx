@@ -1,7 +1,7 @@
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import { findMatchingRule } from "../../lib/rules";
-import type { CalendarEvent, CalendarView, DisplayStyle, EventType, Rule } from "../../types";
+import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Rule } from "../../types";
 
 interface EventChipProps {
   event: CalendarEvent;
@@ -31,6 +31,23 @@ export function resolveEventType(
 ): EventType {
   const matched = findMatchingRule(event, rules, getType);
   return getType(matched.displayTypeId)!;
+}
+
+/**
+ * True if `event` must be excluded from every calendar view because its source
+ * connection is hidden, or because its resolved effective display type is hidden.
+ * Hiding never deletes or alters the underlying connection/type configuration —
+ * it is a pure display-time filter (see specs/004-quick-hide).
+ */
+export function isEventHidden(
+  event: CalendarEvent,
+  getType: (id: string) => EventType | undefined,
+  getConnection: (calendarId: string) => Connection | undefined,
+  rules: Rule[],
+): boolean {
+  if (getConnection(event.calendarId)?.hidden) return true;
+  const type = resolveEventType(event, getType, rules);
+  return !!type?.hidden;
 }
 
 /** Timed events use the type's timedStyle. All-day events use the type's allDayStyle. */
