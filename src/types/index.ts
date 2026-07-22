@@ -140,3 +140,21 @@ export interface CalDAVConnection {
  * TypeScript provides exhaustive narrowing via switch/case.
  */
 export type Connection = WebCalConnection | CalDAVConnection;
+
+// ── Preset types ───────────────────────────────────────────────────────────────
+
+/**
+ * A named, saved combination of connection/event-type visibility. Only the
+ * `hidden` boolean is captured per id — nothing else about the connection or
+ * event type is duplicated here.
+ */
+export interface Preset {
+  /** Stable UUID generated at creation time. */
+  id: string;
+  /** Display name, shown in the preset list. Unique case-insensitively across all presets. */
+  name: string;
+  /** Connection.id → hidden state at save/update time. Absent id = not covered by this preset. */
+  connections: Record<string, boolean>;
+  /** EventType.id → hidden state at save/update time. Absent id = not covered by this preset. */
+  eventTypes: Record<string, boolean>;
+}
