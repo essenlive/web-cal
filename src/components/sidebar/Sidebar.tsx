@@ -3,7 +3,7 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Settings, Sun, Moon, ListOrdered, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Settings, ListOrdered, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "../../lib/utils";
@@ -13,6 +13,7 @@ import { useConnectionStatusMap } from "../../context/DataProviderContext";
 import { AddConnectionModal } from "../settings/AddConnectionModal";
 import { EventTypeModal, getIconEl } from "../settings/EventTypeModal";
 import { RulesModal } from "../../views/RulesPage";
+import { ThemeSelector } from "./ThemeSelector";
 import type { Connection, ConnectionStatus, EventType } from "../../types";
 
 // ── Compact data source row ───────────────────────────────────────────────────
@@ -92,7 +93,7 @@ function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
 }
 
 export function Sidebar() {
-  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen, darkMode, toggleDark } = useUIStore();
+  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen } = useUIStore();
   const [miniDate, setMiniDate] = useState(currentDate);
   const weekStart = weekStartsOnMonday ? 1 : 0;
 
@@ -215,9 +216,7 @@ export function Sidebar() {
 
       {/* Theme + settings — bottom of sidebar */}
       <div className="mt-auto border-t border-border px-3 py-2 flex items-center gap-1">
-        <Button variant="ghost" size="icon" onClick={toggleDark} className="text-muted-foreground" aria-label="Basculer le thème">
-          {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-        </Button>
+        <ThemeSelector />
         <Button variant="ghost" size="icon" className="text-muted-foreground" asChild>
           <Link href="/settings">
             <Settings size={16} />
