@@ -20,6 +20,8 @@ export interface EventType {
   allDayStyle: DisplayStyle;
   /** How timed (scheduled) events are displayed. Defaults to "block". */
   timedStyle: DisplayStyle;
+  /** When true, events resolving to this type are excluded from all calendar views. Config is preserved. */
+  hidden?: boolean;
 }
 
 export interface CalendarEvent {
@@ -69,6 +71,8 @@ export interface WebCalConnection {
   proxyUrl?: string;
   /** Optional display type applied to all events from this calendar. References EventType.id. */
   displayTypeId?: string;
+  /** When true, this connection's events are excluded from all calendar views. Config/credentials are preserved. */
+  hidden?: boolean;
 }
 
 /** CalDAV server connection (RFC 4791). Read-only in v1. */
@@ -90,6 +94,8 @@ export interface CalDAVConnection {
   proxyUrl?: string;
   /** Optional display type applied to all events from this calendar. References EventType.id. */
   displayTypeId?: string;
+  /** When true, this connection's events are excluded from all calendar views. Config/credentials are preserved. */
+  hidden?: boolean;
 }
 
 /**

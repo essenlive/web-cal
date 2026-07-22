@@ -27,11 +27,11 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T001 Add `hidden?: boolean` to `EventType`, `WebCalConnection`, and `CalDAVConnection` in `src/types/index.ts` per `data-model.md` (optional field, no migration needed — absent/undefined behaves as visible)
-- [ ] T002 Add `isEventHidden(event, getType, getConnection, defaultTypeId): boolean` to `src/components/events/EventChip.tsx`, exported next to the existing `resolveEventType`/`resolveStyle`: returns `true` if `getConnection(event.calendarId)?.hidden` is true, else `true` if `resolveEventType(event, getType, getConnection, defaultTypeId)?.hidden` is true, else `false`, per `contracts/ui-contracts.md` (depends on T001)
-- [ ] T003 [P] In `src/components/calendar/MonthView.tsx`: filter the raw `events` array through `isEventHidden` (negated) immediately after `getConnection`/`getType`/`defaultEventTypeId` are available in the component body, before any day/week/lane computation reads `events`, per `contracts/ui-contracts.md` call-site example (depends on T002)
-- [ ] T004 [P] In `src/components/calendar/TimeGridView.tsx`: same filtering, applied right after `getConnection`/`getType`/`defaultEventTypeId` are available, before `layoutDayEvents`/`getAllDayEventsForDay` consume `events` (depends on T002)
-- [ ] T005 [P] In `src/components/calendar/AgendaView.tsx`: same filtering, applied right after `getConnection` is defined, before the day-grouping loop consumes `events` (depends on T002)
+- [x] T001 Add `hidden?: boolean` to `EventType`, `WebCalConnection`, and `CalDAVConnection` in `src/types/index.ts` per `data-model.md` (optional field, no migration needed — absent/undefined behaves as visible)
+- [x] T002 Add `isEventHidden(event, getType, getConnection, defaultTypeId): boolean` to `src/components/events/EventChip.tsx`, exported next to the existing `resolveEventType`/`resolveStyle`: returns `true` if `getConnection(event.calendarId)?.hidden` is true, else `true` if `resolveEventType(event, getType, getConnection, defaultTypeId)?.hidden` is true, else `false`, per `contracts/ui-contracts.md` (depends on T001)
+- [x] T003 [P] In `src/components/calendar/MonthView.tsx`: filter the raw `events` array through `isEventHidden` (negated) immediately after `getConnection`/`getType`/`defaultEventTypeId` are available in the component body, before any day/week/lane computation reads `events`, per `contracts/ui-contracts.md` call-site example (depends on T002)
+- [x] T004 [P] In `src/components/calendar/TimeGridView.tsx`: same filtering, applied right after `getConnection`/`getType`/`defaultEventTypeId` are available, before `layoutDayEvents`/`getAllDayEventsForDay` consume `events` (depends on T002)
+- [x] T005 [P] In `src/components/calendar/AgendaView.tsx`: same filtering, applied right after `getConnection` is defined, before the day-grouping loop consumes `events` (depends on T002)
 
 **Checkpoint**: `npx tsc -b` compiles with zero errors. With no UI yet to set `hidden`, every event renders exactly as before this feature (regression check from `quickstart.md` §4, first bullet). No user-visible behavior change yet — that starts with User Story 1.
 

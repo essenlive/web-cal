@@ -9,7 +9,7 @@ import * as Popover from "@radix-ui/react-popover";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "../../lib/utils";
 import { useEventsStore, useEventTypeStore, useUIStore, useConnectionStore } from "../../store";
-import { EventChip, resolveEventType, resolveStyle } from "../events/EventChip";
+import { EventChip, resolveEventType, resolveStyle, isEventHidden } from "../events/EventChip";
 import type { CalendarEvent, Connection, EventType } from "../../types";
 
 type GetConnection = (calendarId: string) => Connection | undefined;
@@ -518,13 +518,17 @@ interface Props {
 // ── MonthView ─────────────────────────────────────────────────────────────────
 
 export function MonthView({ onEventClick, onSlotClick }: Props) {
-  const { events } = useEventsStore();
+  const { events: allEvents } = useEventsStore();
   const { getType } = useEventTypeStore();
   const { currentDate, weekStartsOnMonday, defaultEventTypeId } = useUIStore();
   const { connections } = useConnectionStore();
   const getConnection = useCallback(
     (calendarId: string) => connections.find((c) => c.id === calendarId),
     [connections],
+  );
+  const events = useMemo(
+    () => allEvents.filter((e) => !isEventHidden(e, getType, getConnection, defaultEventTypeId)),
+    [allEvents, getType, getConnection, defaultEventTypeId],
   );
 
   const weekStartsOn = weekStartsOnMonday ? 1 : 0;

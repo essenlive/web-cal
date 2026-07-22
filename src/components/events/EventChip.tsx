@@ -61,6 +61,23 @@ export function resolveEventType(
   return undefined;
 }
 
+/**
+ * True if `event` must be excluded from every calendar view because its source
+ * connection is hidden, or because its resolved effective display type is hidden.
+ * Hiding never deletes or alters the underlying connection/type configuration —
+ * it is a pure display-time filter (see specs/004-quick-hide).
+ */
+export function isEventHidden(
+  event: CalendarEvent,
+  getType: (id: string) => EventType | undefined,
+  getConnection: (calendarId: string) => Connection | undefined,
+  defaultTypeId?: string,
+): boolean {
+  if (getConnection(event.calendarId)?.hidden) return true;
+  const type = resolveEventType(event, getType, getConnection, defaultTypeId);
+  return !!type?.hidden;
+}
+
 /** Timed events use the type's timedStyle. All-day events use the type's allDayStyle. */
 export function resolveStyle(
   type: EventType | undefined,

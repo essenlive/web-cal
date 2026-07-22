@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useEventsStore, useEventTypeStore, useUIStore, useConnectionStore } from "../../store";
-import { resolveEventType, resolveStyle } from "../events/EventChip";
+import { resolveEventType, resolveStyle, isEventHidden } from "../events/EventChip";
 import { EventChip } from "../events/EventChip";
 import type { CalendarEvent, EventType } from "../../types";
 
@@ -130,13 +130,17 @@ interface Props {
 }
 
 export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
-  const { events } = useEventsStore();
+  const { events: allEvents } = useEventsStore();
   const { getType } = useEventTypeStore();
   const { use24h, defaultEventTypeId } = useUIStore();
   const { connections } = useConnectionStore();
   const getConnection = useCallback(
     (calendarId: string) => connections.find((c) => c.id === calendarId),
     [connections],
+  );
+  const events = useMemo(
+    () => allEvents.filter((e) => !isEventHidden(e, getType, getConnection, defaultEventTypeId)),
+    [allEvents, getType, getConnection, defaultEventTypeId],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();

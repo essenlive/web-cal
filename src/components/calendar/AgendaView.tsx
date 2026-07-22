@@ -4,7 +4,7 @@ import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useEventsStore, useEventTypeStore, useUIStore, useConnectionStore } from "../../store";
-import { EventChip, resolveStyle, resolveEventType } from "../events/EventChip";
+import { EventChip, resolveStyle, resolveEventType, isEventHidden } from "../events/EventChip";
 import { EventModal } from "../events/EventModal";
 import type { CalendarEvent } from "../../types";
 
@@ -16,11 +16,12 @@ function dayLabel(day: Date): string {
 }
 
 export function AgendaView() {
-  const { events } = useEventsStore();
+  const { events: allEvents } = useEventsStore();
   const { getType } = useEventTypeStore();
   const { currentDate, use24h, dateFormatEU, defaultEventTypeId } = useUIStore();
   const { connections } = useConnectionStore();
   const getConnection = (calendarId: string) => connections.find((c) => c.id === calendarId);
+  const events = allEvents.filter((e) => !isEventHidden(e, getType, getConnection, defaultEventTypeId));
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
