@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType } from "../types";
+import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Rule, RuleMatchType } from "../types";
 
 // Next.js server-renders "use client" components once for the initial HTML,
 // where `localStorage` doesn't exist — fall back to a no-op store there.
@@ -76,8 +76,10 @@ export const useConnectionStore = create<ConnectionStore>()(
         set((s) => ({
           connections: [...s.connections, { ...conn, id: crypto.randomUUID() } as Connection],
         })),
-      removeConnection: (id) =>
-        set((s) => ({ connections: s.connections.filter((c) => c.id !== id) })),
+      removeConnection: (id) => {
+        set((s) => ({ connections: s.connections.filter((c) => c.id !== id) }));
+        useRuleStore.getState().removeRulesForConnection(id);
+      },
       updateConnection: (conn) =>
         set((s) => ({ connections: s.connections.map((c) => (c.id === conn.id ? conn : c)) })),
     }),
@@ -169,8 +171,11 @@ interface EventTypeStore {
   types: EventType[];
   addType: (t: Omit<EventType, "id">) => void;
   updateType: (t: EventType) => void;
+  /** No-op if `id` is the catch-all rule's current target — reassign it first (FR-021). */
   removeType: (id: string) => void;
   getType: (id: string) => EventType | undefined;
+  /** True if deleting `id` is blocked because the catch-all rule currently targets it. */
+  isCatchAllTarget: (id: string) => boolean;
 }
 
 export const useEventTypeStore = create<EventTypeStore>()(
@@ -179,14 +184,126 @@ export const useEventTypeStore = create<EventTypeStore>()(
       types: DEFAULT_EVENT_TYPES,
       addType: (t) => set((s) => ({ types: [...s.types, { ...t, id: crypto.randomUUID() }] })),
       updateType: (t) => set((s) => ({ types: s.types.map((x) => (x.id === t.id ? t : x)) })),
-      removeType: (id) => set((s) => ({ types: s.types.filter((x) => x.id !== id) })),
+      removeType: (id) => {
+        if (get().isCatchAllTarget(id)) return;
+        set((s) => ({ types: s.types.filter((x) => x.id !== id) }));
+      },
       getType: (id) => get().types.find((t) => t.id === id),
+      isCatchAllTarget: (id) => useRuleStore.getState().rules.some((r) => r.matchType === "all" && r.displayTypeId === id),
     }),
     {
       name: "proton-cal:event-types",
       storage,
       onRehydrateStorage: () => (state) => {
         if (state) state.types = state.types.map(migrateType);
+      },
+    }
+  )
+);
+
+// ── Rule Store ─────────────────────────────────────────────────────────────────
+
+/** Lower = matched/prioritized first. "all" (catch-all) always sorts last. Used only to place new rules at their default position. */
+function tierOf(matchType: RuleMatchType): number {
+  if (matchType === "event") return 0;
+  if (matchType === "name") return 1;
+  if (matchType === "source") return 2;
+  return 3; // "all" — catch-all
+}
+
+/** Read a still-persisted store's raw state without importing it (avoids a cross-store cycle). */
+function readPersistedDefaultTypeId(): string {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("proton-cal:ui") : null;
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed?.state?.defaultEventTypeId ?? DEFAULT_EVENT_TYPES[0].id;
+  } catch {
+    return DEFAULT_EVENT_TYPES[0].id;
+  }
+}
+
+/** Ensures exactly one matchType:"all" (catch-all) rule exists, appending one if missing. */
+function seedCatchAllRule(rules: Rule[]): Rule[] {
+  if (rules.some((r) => r.matchType === "all")) return rules;
+  const catchAll: Rule = {
+    id: crypto.randomUUID(),
+    matchType: "all",
+    matchValue: "",
+    displayTypeId: readPersistedDefaultTypeId(),
+    enabled: true,
+    createdAt: 0,
+  };
+  return [...rules, catchAll];
+}
+
+interface RuleStore {
+  /** Array order IS priority — index 0 matches first. The catch-all (matchType:"all") rule is always last. */
+  rules: Rule[];
+  addRule: (r: Omit<Rule, "id" | "createdAt" | "enabled"> & { enabled?: boolean }) => void;
+  updateRule: (r: Rule) => void;
+  /** No-op for the catch-all rule — it cannot be deleted. */
+  removeRule: (id: string) => void;
+  /** No-op for the catch-all rule; otherwise clamps so it can never be reordered above the catch-all. */
+  reorderRule: (id: string, toIndex: number) => void;
+  /** No-op for the catch-all rule — it is always enabled. */
+  toggleRule: (id: string) => void;
+  removeRulesForConnection: (connectionId: string) => void;
+}
+
+export const useRuleStore = create<RuleStore>()(
+  persist(
+    (set) => ({
+      rules: seedCatchAllRule([]),
+      addRule: (r) =>
+        set((s) => {
+          const rule: Rule = { ...r, id: crypto.randomUUID(), createdAt: Date.now(), enabled: r.enabled ?? true };
+          const tier = tierOf(rule.matchType);
+          // Insert at the top of its tier's block (default: newest-first within a tier,
+          // event-id rules above name-pattern rules above source rules above the catch-all).
+          const insertAt = s.rules.findIndex((x) => tierOf(x.matchType) >= tier);
+          const rules = insertAt === -1 ? [...s.rules, rule] : [...s.rules.slice(0, insertAt), rule, ...s.rules.slice(insertAt)];
+          return { rules };
+        }),
+      updateRule: (r) =>
+        set((s) => ({
+          rules: s.rules.map((x) => {
+            if (x.id !== r.id) return x;
+            // Catch-all: only its displayTypeId can change (FR-020).
+            if (x.matchType === "all") return { ...x, displayTypeId: r.displayTypeId };
+            return r;
+          }),
+        })),
+      removeRule: (id) =>
+        set((s) => {
+          const rule = s.rules.find((x) => x.id === id);
+          if (!rule || rule.matchType === "all") return s;
+          return { rules: s.rules.filter((x) => x.id !== id) };
+        }),
+      reorderRule: (id, toIndex) =>
+        set((s) => {
+          const idx = s.rules.findIndex((x) => x.id === id);
+          if (idx === -1 || s.rules[idx].matchType === "all") return s;
+          const rules = [...s.rules];
+          const [item] = rules.splice(idx, 1);
+          const catchAllIdx = rules.findIndex((x) => x.matchType === "all");
+          const maxIndex = catchAllIdx === -1 ? rules.length : catchAllIdx;
+          rules.splice(Math.min(toIndex, maxIndex), 0, item);
+          return { rules };
+        }),
+      toggleRule: (id) =>
+        set((s) => ({
+          rules: s.rules.map((x) => (x.id === id && x.matchType !== "all" ? { ...x, enabled: !x.enabled } : x)),
+        })),
+      removeRulesForConnection: (connectionId) =>
+        set((s) => ({
+          rules: s.rules.filter((x) => !(x.matchType === "source" && x.matchValue === connectionId)),
+        })),
+    }),
+    {
+      name: "webcal:rules",
+      storage,
+      onRehydrateStorage: () => (state) => {
+        if (state) state.rules = seedCatchAllRule(state.rules);
       },
     }
   )
@@ -218,7 +335,6 @@ interface UIStore {
   darkMode: boolean;
   sidebarOpen: boolean;
   weekStartsOnMonday: boolean;
-  defaultEventTypeId: string;
   use24h: boolean;
   dateFormatEU: boolean;
   setView: (v: CalendarView) => void;
@@ -226,7 +342,6 @@ interface UIStore {
   toggleDark: () => void;
   toggleSidebar: () => void;
   toggleWeekStart: () => void;
-  setDefaultEventTypeId: (id: string) => void;
   setUse24h: (v: boolean) => void;
   setDateFormatEU: (v: boolean) => void;
 }
@@ -239,7 +354,6 @@ export const useUIStore = create<UIStore>()(
       darkMode: false,
       sidebarOpen: true,
       weekStartsOnMonday: true,
-      defaultEventTypeId: "meeting",
       use24h: true,
       dateFormatEU: true,
       setView: (view) => set({ view }),
@@ -247,7 +361,6 @@ export const useUIStore = create<UIStore>()(
       toggleDark: () => set((s) => ({ darkMode: !s.darkMode })),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       toggleWeekStart: () => set((s) => ({ weekStartsOnMonday: !s.weekStartsOnMonday })),
-      setDefaultEventTypeId: (defaultEventTypeId) => set({ defaultEventTypeId }),
       setUse24h: (use24h) => set({ use24h }),
       setDateFormatEU: (dateFormatEU) => set({ dateFormatEU }),
     }),
@@ -258,7 +371,6 @@ export const useUIStore = create<UIStore>()(
         view: s.view,
         darkMode: s.darkMode,
         weekStartsOnMonday: s.weekStartsOnMonday,
-        defaultEventTypeId: s.defaultEventTypeId,
         use24h: s.use24h,
         dateFormatEU: s.dateFormatEU,
       }),

@@ -3,9 +3,9 @@ import { format, isToday, isTomorrow, parseISO, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore, useConnectionStore } from "../../store";
+import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore } from "../../store";
 import { EventChip, resolveStyle, resolveEventType } from "../events/EventChip";
-import { EventModal } from "../events/EventModal";
+import { EventDetail } from "../events/EventDetail";
 import type { CalendarEvent } from "../../types";
 
 
@@ -18,10 +18,8 @@ function dayLabel(day: Date): string {
 export function AgendaView() {
   const { events } = useEventsStore();
   const { getType } = useEventTypeStore();
-  const { currentDate, use24h, dateFormatEU, defaultEventTypeId } = useUIStore();
-  const { connections } = useConnectionStore();
-  const getConnection = (calendarId: string) => connections.find((c) => c.id === calendarId);
-  const [modalOpen, setModalOpen] = useState(false);
+  const { currentDate, use24h, dateFormatEU } = useUIStore();
+  const { rules } = useRuleStore();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   // Expand all-day events across every day they span; group by day
@@ -87,7 +85,7 @@ export function AgendaView() {
             </div>
             <div className="space-y-2">
               {dayEvents.map((e) => {
-                const type = resolveEventType(e, getType, getConnection, defaultEventTypeId);
+                const type = resolveEventType(e, getType, rules);
                 const agendaStyle = resolveStyle(type, "agenda", e.allDay);
                 // For 'day' style in agenda: color the left border of the row
                 const isDayStyle  = agendaStyle === "day";
@@ -95,7 +93,7 @@ export function AgendaView() {
                 return (
                   <div
                     key={e.id}
-                    onClick={() => { setSelectedEvent(e); setModalOpen(true); }}
+                    onClick={() => setSelectedEvent(e)}
                     className={cn(
                       "flex items-start gap-3 rounded-xl border bg-card px-4 py-3 cursor-pointer transition-colors group",
                       isDayStyle ? "hover:brightness-95" : "border-border hover:bg-muted/40"
@@ -146,11 +144,9 @@ export function AgendaView() {
         );
       })}
 
-      <EventModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        event={selectedEvent}
-      />
+      {selectedEvent && (
+        <EventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
     </div>
   );
 }

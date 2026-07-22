@@ -20,12 +20,11 @@ function mkEv(
   start: Date,
   end: Date,
   allDay = false,
-  extra?: Partial<CalendarEvent>,
 ): CalendarEvent {
   return {
     id, title, calendarId: "dev", eventTypeId: typeId,
     start: start.toISOString(), end: end.toISOString(),
-    allDay, ...extra,
+    allDay,
   };
 }
 
@@ -62,18 +61,19 @@ function generateOverflowEvents(): CalendarEvent[] {
   events.push(mkEv(id(), "Sprint meeting", "meeting", tue, addDays(tue, 1), true));
   events.push(mkEv(id(), "All hands", "deadline", tue, addDays(tue, 1), true));
 
-  // 5 spanning custom block events — 3 fit in lanes, 2 overflow
-  const bars: { title: string; s: number; e: number; color: string }[] = [
-    { title: "Toute la semaine",  s: 0, e: 7, color: "#3b82f6" }, // Mon→Sun  (lane 0)
-    { title: "Début de semaine", s: 0, e: 4, color: "#8b5cf6" }, // Mon→Thu  (lane 1)
-    { title: "Milieu semaine",   s: 1, e: 5, color: "#10b981" }, // Tue→Fri  (lane 2)
-    { title: "Mar → Jeu",        s: 1, e: 4, color: "#ef4444" }, // Tue→Thu  (overflow)
-    { title: "Mer → Ven",        s: 2, e: 5, color: "#f59e0b" }, // Wed→Fri  (overflow)
+  // 5 spanning block events — 3 fit in lanes, 2 overflow.
+  // ponytail: all render in the catch-all rule's style now (per-event custom
+  // styling was removed, and no rule matches these dev-only events) — the lane
+  // overflow layout is still exercised, just without per-bar color variety.
+  const bars: { title: string; s: number; e: number }[] = [
+    { title: "Toute la semaine",  s: 0, e: 7 }, // Mon→Sun  (lane 0)
+    { title: "Début de semaine", s: 0, e: 4 }, // Mon→Thu  (lane 1)
+    { title: "Milieu semaine",   s: 1, e: 5 }, // Tue→Fri  (lane 2)
+    { title: "Mar → Jeu",        s: 1, e: 4 }, // Tue→Thu  (overflow)
+    { title: "Mer → Ven",        s: 2, e: 5 }, // Wed→Fri  (overflow)
   ];
   for (const b of bars) {
-    events.push(mkEv(id(), b.title, "custom",
-      addDays(monday, b.s), addDays(monday, b.e), true,
-      { customColor: b.color, customIcon: "Calendar", customAllDayStyle: "block" }));
+    events.push(mkEv(id(), b.title, "meeting", addDays(monday, b.s), addDays(monday, b.e), true));
   }
 
   return events;
@@ -81,31 +81,28 @@ function generateOverflowEvents(): CalendarEvent[] {
 
 function generateAllDayEvents(): CalendarEvent[] {
   const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#ef4444", "#f59e0b", "#ec4899", "#0ea5e9", "#6366f1"];
   const events: CalendarEvent[] = [];
   let n = 0;
 
-  const bar = (title: string, s: number, e: number, ci: number): CalendarEvent =>
-    mkEv(`ad-${n++}`, title, "custom",
-      addDays(monday, s), addDays(monday, e), true,
-      { customColor: COLORS[ci % COLORS.length], customIcon: "Calendar", customAllDayStyle: "block" });
+  const bar = (title: string, s: number, e: number): CalendarEvent =>
+    mkEv(`ad-${n++}`, title, "meeting", addDays(monday, s), addDays(monday, e), true);
 
   // Week 1 — various span lengths and stacking
-  events.push(bar("Lun → Jeu",        0, 4, 0));
-  events.push(bar("Mar → Ven",         1, 5, 1));
-  events.push(bar("Mer seul",          2, 3, 2));
-  events.push(bar("Toute la semaine",  0, 7, 3));
-  events.push(bar("Débord A (sem 1)",  1, 6, 4)); // overflow
+  events.push(bar("Lun → Jeu",        0, 4));
+  events.push(bar("Mar → Ven",         1, 5));
+  events.push(bar("Mer seul",          2, 3));
+  events.push(bar("Toute la semaine",  0, 7));
+  events.push(bar("Débord A (sem 1)",  1, 6)); // overflow
 
   // Spanning week boundary (Sun → Tue next week)
-  events.push(bar("Sem 1 → Sem 2",     6, 9, 5));
+  events.push(bar("Sem 1 → Sem 2",     6, 9));
 
   // Week 2
   const w2 = 7;
-  events.push(bar("Sprint",           w2 + 0, w2 + 5, 7));
-  events.push(bar("Conf 3j",          w2 + 1, w2 + 4, 6));
-  events.push(bar("Mer → Sam",        w2 + 2, w2 + 6, 0));
-  events.push(bar("Débord B (sem 2)", w2 + 0, w2 + 7, 1)); // overflow
+  events.push(bar("Sprint",           w2 + 0, w2 + 5));
+  events.push(bar("Conf 3j",          w2 + 1, w2 + 4));
+  events.push(bar("Mer → Sam",        w2 + 2, w2 + 6));
+  events.push(bar("Débord B (sem 2)", w2 + 0, w2 + 7)); // overflow
 
   return events;
 }

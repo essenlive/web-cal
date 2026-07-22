@@ -35,26 +35,6 @@ export class MockDataProvider implements DataProvider {
       return isWithinInterval(s, { start, end }) || s < end && parseISO(e.end) > start;
     });
   }
-
-  async createEvent(event: Omit<CalendarEvent, "id">): Promise<CalendarEvent> {
-    const newEvent: CalendarEvent = { ...event, id: crypto.randomUUID() };
-    this.events.push(newEvent);
-    save(STORAGE_KEY, this.events);
-    return newEvent;
-  }
-
-  async updateEvent(event: CalendarEvent): Promise<CalendarEvent> {
-    const idx = this.events.findIndex((e) => e.id === event.id);
-    if (idx === -1) throw new Error("Event not found");
-    this.events[idx] = event;
-    save(STORAGE_KEY, this.events);
-    return event;
-  }
-
-  async deleteEvent(id: string): Promise<void> {
-    this.events = this.events.filter((e) => e.id !== id);
-    save(STORAGE_KEY, this.events);
-  }
 }
 
 // kept for backwards compat in case old localStorage key exists

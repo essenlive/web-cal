@@ -1,5 +1,5 @@
 /**
- * CalDAVProvider — generic read/write DataProvider using CalDAV (RFC 4791).
+ * CalDAVProvider — generic read-only DataProvider using CalDAV (RFC 4791).
  *
  * Works with any CalDAV server: Proton Calendar, Nextcloud, Fastmail,
  * Apple Calendar Server, Google Calendar (via CalDAV), Baikal, etc.
@@ -65,36 +65,6 @@ async function davRequest(
 
   const res = await fetch(proxyUrl(url, proxy), { method, headers, body });
   return res;
-}
-
-// ── ICS generation ────────────────────────────────────────────────────────────
-
-function toICSDate(iso: string, allDay: boolean): string {
-  if (allDay) return iso.slice(0, 10).replace(/-/g, "");
-  return iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "") + "Z";
-}
-
-function escapeICS(s: string): string {
-  return (s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
-}
-
-function buildICS(event: CalendarEvent): string {
-  const dtType = event.allDay ? "VALUE=DATE:" : "";
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//web-cal//EN",
-    "BEGIN:VEVENT",
-    `UID:${event.id}`,
-    `SUMMARY:${escapeICS(event.title)}`,
-    `DTSTART;${dtType}${toICSDate(event.start, event.allDay)}`,
-    `DTEND;${dtType}${toICSDate(event.end, event.allDay)}`,
-    event.location ? `LOCATION:${escapeICS(event.location)}` : null,
-    event.notes ? `DESCRIPTION:${escapeICS(event.notes)}` : null,
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].filter(Boolean).join("\r\n");
-  return lines;
 }
 
 // ── XML helpers ───────────────────────────────────────────────────────────────
@@ -252,41 +222,5 @@ export class CalDAVProvider implements DataProvider {
     );
 
     return all;
-  }
-
-  async createEvent(event: Omit<CalendarEvent, "id">): Promise<CalendarEvent> {
-    const id = crypto.randomUUID();
-    const newEvent: CalendarEvent = { ...event, id };
-    const calUrl = event.calendarId.startsWith("http") ? event.calendarId : `${this.serverUrl}${event.calendarId}`;
-    const eventUrl = `${calUrl.replace(/\/$/, "")}/${id}.ics`;
-
-    const res = await davRequest("PUT", eventUrl, this.auth, this.proxy, buildICS(newEvent));
-    if (!res.ok && res.status !== 201 && res.status !== 204) {
-      throw new Error(`CalDAV PUT failed: ${res.status}`);
-    }
-    return newEvent;
-  }
-
-  async updateEvent(event: CalendarEvent): Promise<CalendarEvent> {
-    const calUrl = event.calendarId.startsWith("http") ? event.calendarId : `${this.serverUrl}${event.calendarId}`;
-    const eventUrl = `${calUrl.replace(/\/$/, "")}/${event.id}.ics`;
-
-    const res = await davRequest("PUT", eventUrl, this.auth, this.proxy, buildICS(event));
-    if (!res.ok && res.status !== 201 && res.status !== 204) {
-      throw new Error(`CalDAV PUT failed: ${res.status}`);
-    }
-    return event;
-  }
-
-  async deleteEvent(id: string, calendarId?: string): Promise<void> {
-    const base = calendarId
-      ? (calendarId.startsWith("http") ? calendarId : `${this.serverUrl}${calendarId}`)
-      : this.serverUrl;
-    const eventUrl = `${base.replace(/\/$/, "")}/${id}.ics`;
-
-    const res = await davRequest("DELETE", eventUrl, this.auth, this.proxy);
-    if (!res.ok && res.status !== 204 && res.status !== 404) {
-      throw new Error(`CalDAV DELETE failed: ${res.status}`);
-    }
   }
 }

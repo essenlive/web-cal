@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore, useConnectionStore } from "../../store";
+import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore } from "../../store";
 import { resolveEventType, resolveStyle } from "../events/EventChip";
 import { EventChip } from "../events/EventChip";
 import type { CalendarEvent, EventType } from "../../types";
@@ -126,18 +126,13 @@ function TimeEventBlock({
 interface Props {
   days: Date[];
   onEventClick: (e: CalendarEvent) => void;
-  onSlotClick: (start: Date) => void;
 }
 
-export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
+export function TimeGridView({ days, onEventClick }: Props) {
   const { events } = useEventsStore();
   const { getType } = useEventTypeStore();
-  const { use24h, defaultEventTypeId } = useUIStore();
-  const { connections } = useConnectionStore();
-  const getConnection = useCallback(
-    (calendarId: string) => connections.find((c) => c.id === calendarId),
-    [connections],
-  );
+  const { use24h } = useUIStore();
+  const { rules } = useRuleStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
 
@@ -164,21 +159,6 @@ export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
   const showCurrentTime = days.some((d) => isSameDay(d, today));
   const currentTimeTop = (currentMinutes / 60) * HOUR_HEIGHT;
   const timeFormat = use24h ? "HH:mm" : "h a";
-
-  const handleColumnClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const minutesRaw = (y / HOUR_HEIGHT) * 60;
-      const minutes = Math.round(minutesRaw / 15) * 15; // snap to 15 min
-      const hours = Math.min(23, Math.floor(minutes / 60));
-      const mins = minutes % 60;
-      const start = new Date(day);
-      start.setHours(hours, mins, 0, 0);
-      onSlotClick(start);
-    },
-    [onSlotClick],
-  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -219,14 +199,14 @@ export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
 
               // Find first day-style event to color the strip background
               const dayStyleEvent = dayAllDay.find(
-                (e) => resolveStyle(resolveEventType(e, getType, getConnection, defaultEventTypeId), "week", e.allDay) === "day",
+                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) === "day",
               );
               const stripBg = dayStyleEvent
-                ? (resolveEventType(dayStyleEvent, getType, getConnection, defaultEventTypeId)?.color ?? "#6366f1") + "18"
+                ? (resolveEventType(dayStyleEvent, getType, rules)?.color ?? "#6366f1") + "18"
                 : undefined;
 
               const chipEvents = dayAllDay.filter(
-                (e) => resolveStyle(resolveEventType(e, getType, getConnection, defaultEventTypeId), "week", e.allDay) !== "day",
+                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) !== "day",
               );
 
               return (
@@ -239,7 +219,7 @@ export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
                     <EventChip
                       key={e.id}
                       event={e}
-                      eventType={resolveEventType(e, getType, getConnection, defaultEventTypeId)}
+                      eventType={resolveEventType(e, getType, rules)}
                       onClick={() => onEventClick(e)}
                       view="week"
                       compact
@@ -308,10 +288,9 @@ export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
                     <div
                       key={day.toISOString()}
                       className={cn(
-                        "flex-1 relative border-l border-border cursor-pointer",
+                        "flex-1 relative border-l border-border",
                         isToday && "bg-primary/[0.015]",
                       )}
-                      onClick={(e) => handleColumnClick(e, day)}
                     >
                       {layoutEvents.map(({ event, top, height, colIndex, colCount }) => (
                         <div
@@ -327,7 +306,7 @@ export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
                         >
                           <TimeEventBlock
                             event={event}
-                            type={resolveEventType(event, getType, getConnection, defaultEventTypeId)}
+                            type={resolveEventType(event, getType, rules)}
                             height={Math.max(height, HOUR_HEIGHT / 2)}
                             use24h={use24h}
                           />

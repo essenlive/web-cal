@@ -10,11 +10,15 @@
  */
 
 import { useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { X, RefreshCw, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { RefreshCw, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import type { CalDAVConnection, Connection, WebCalConnection } from "../../types";
 import { CalDAVProvider } from "../../lib/caldav-provider";
+import { RuleModal } from "./RuleModal";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -58,18 +62,15 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
-      <input
+      <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</Label>
+      <Input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={type === "password" ? "current-password" : undefined}
         aria-describedby={error ? `err-${label}` : undefined}
-        className={cn(
-          "w-full rounded-lg border bg-background px-2.5 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30",
-          error ? "border-destructive" : "border-border"
-        )}
+        className={cn("rounded-lg px-2.5 py-2 h-auto text-sm", error && "border-destructive")}
       />
       {error && (
         <p id={`err-${label}`} className="text-xs text-destructive mt-1">{error}</p>
@@ -135,6 +136,27 @@ function AdvancedSection({ proxyUrl, onProxyChange }: { proxyUrl: string; onProx
   );
 }
 
+// ── Delete control ────────────────────────────────────────────────────────────
+
+function DeleteControl({ confirming, onConfirmingChange, onDelete }: {
+  confirming: boolean; onConfirmingChange: (v: boolean) => void; onDelete: () => void;
+}) {
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Remove this source?</span>
+        <button type="button" onClick={() => onConfirmingChange(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+        <button type="button" onClick={onDelete} className="text-xs font-medium text-destructive">Confirm</button>
+      </div>
+    );
+  }
+  return (
+    <Button type="button" variant="ghost" size="icon" onClick={() => onConfirmingChange(true)} className="text-muted-foreground hover:text-destructive" aria-label="Remove source">
+      <Trash2 size={15} />
+    </Button>
+  );
+}
+
 // ── Test feedback ─────────────────────────────────────────────────────────────
 
 function TestFeedback({ status, message }: { status: TestStatus; message: string }) {
@@ -165,26 +187,33 @@ export interface AddConnectionModalProps {
    * Wraps to PALETTE[0] when all 8 palette colours are already in use.
    */
   existingColors: string[];
+  /** When set, the modal opens in edit mode for this connection instead of add mode. */
+  connection?: Connection;
+  /** Called instead of onAdd when editing an existing connection. */
+  onUpdate?: (conn: Connection) => void;
+  /** When set, editing this connection shows a delete button. Omitted when adding. */
+  onDelete?: () => void;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }: AddConnectionModalProps) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [type, setType] = useState<"webcal" | "caldav">("webcal");
+export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors, connection, onUpdate, onDelete }: AddConnectionModalProps) {
+  const editing = !!connection;
+  const [step, setStep] = useState<1 | 2>(editing ? 2 : 1);
+  const [type, setType] = useState<"webcal" | "caldav">(connection?.type ?? "webcal");
 
   // Shared fields
-  const [name, setName]       = useState("");
-  const [color, setColor]     = useState(() => pickInitialColor(existingColors));
-  const [proxyUrl, setProxy]  = useState("");
+  const [name, setName]       = useState(connection?.name ?? "");
+  const [color, setColor]     = useState(() => connection?.color ?? pickInitialColor(existingColors));
+  const [proxyUrl, setProxy]  = useState(connection?.proxyUrl ?? "");
 
   // WebCal-specific
-  const [wcUrl, setWcUrl] = useState("");
+  const [wcUrl, setWcUrl] = useState(connection?.type === "webcal" ? connection.url : "");
 
   // CalDAV-specific
-  const [cdUrl, setCdUrl]   = useState("");
-  const [cdUser, setCdUser] = useState("");
-  const [cdPass, setCdPass] = useState("");
+  const [cdUrl, setCdUrl]   = useState(connection?.type === "caldav" ? connection.url : "");
+  const [cdUser, setCdUser] = useState(connection?.type === "caldav" ? connection.username : "");
+  const [cdPass, setCdPass] = useState(connection?.type === "caldav" ? connection.password : "");
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -193,12 +222,21 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }
   const [testStatus, setTestStatus]   = useState<TestStatus>("idle");
   const [testMessage, setTestMessage] = useState("");
 
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
   function reset() {
-    setStep(1);
-    setType("webcal");
-    setName(""); setColor(pickInitialColor(existingColors)); setProxy("");
-    setWcUrl(""); setCdUrl(""); setCdUser(""); setCdPass("");
+    setStep(editing ? 2 : 1);
+    setType(connection?.type ?? "webcal");
+    setName(connection?.name ?? "");
+    setColor(connection?.color ?? pickInitialColor(existingColors));
+    setProxy(connection?.proxyUrl ?? "");
+    setWcUrl(connection?.type === "webcal" ? connection.url : "");
+    setCdUrl(connection?.type === "caldav" ? connection.url : "");
+    setCdUser(connection?.type === "caldav" ? connection.username : "");
+    setCdPass(connection?.type === "caldav" ? connection.password : "");
     setErrors({}); setTestStatus("idle"); setTestMessage("");
+    setConfirmingDelete(false);
   }
 
   function handleOpenChange(v: boolean) {
@@ -259,7 +297,8 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }
       const conn: Omit<WebCalConnection, "id"> = {
         type: "webcal", name: name.trim(), url: wcUrl.trim(), color, proxyUrl: proxy,
       };
-      onAdd(conn);
+      if (editing) onUpdate?.({ ...conn, id: connection!.id });
+      else onAdd(conn);
     } else {
       const conn: Omit<CalDAVConnection, "id"> = {
         type: "caldav",
@@ -270,7 +309,8 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }
         color,
         proxyUrl: proxy,
       };
-      onAdd(conn);
+      if (editing) onUpdate?.({ ...conn, id: connection!.id });
+      else onAdd(conn);
     }
     reset();
     onOpenChange(false);
@@ -280,22 +320,16 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }
     ? name.trim() && isValidWebCalUrl(wcUrl)
     : name.trim() && isValidHttpUrl(cdUrl) && cdUser.trim() && cdPass.trim();
 
-  const title = step === 1 ? "Add Calendar Source" : type === "webcal" ? "Add WebCal Source" : "Add CalDAV Source";
+  const title = editing
+    ? `Edit ${type === "webcal" ? "WebCal" : "CalDAV"} Source`
+    : step === 1 ? "Add Calendar Source" : type === "webcal" ? "Add WebCal Source" : "Add CalDAV Source";
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-in fade-in-0" />
-        <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl animate-in fade-in-0 zoom-in-95"
-          aria-describedby={undefined}
-        >
-          <div className="flex items-center justify-between mb-5">
-            <Dialog.Title className="text-base font-semibold text-foreground">{title}</Dialog.Title>
-            <Dialog.Close className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
-              <X size={16} />
-            </Dialog.Close>
-          </div>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md rounded-2xl" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+        </DialogHeader>
 
           {/* Step 1 — type selection */}
           {step === 1 && (
@@ -331,13 +365,9 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }
                 ))}
               </div>
               <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="px-4 py-2 rounded-lg text-sm bg-primary text-primary-foreground hover:bg-primary/90"
-                >
+                <Button type="button" onClick={() => setStep(2)}>
                   Next →
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -361,34 +391,33 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }
                 hint="Link to an .ics file or WebCal subscription URL"
               />
               <ColorPicker value={color} onChange={setColor} />
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => setRuleModalOpen(true)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Create a rule for this source
+                </button>
+              )}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted"
-                >
-                  ← Back
-                </button>
+                {editing
+                  ? (onDelete && <DeleteControl confirming={confirmingDelete} onConfirmingChange={setConfirmingDelete} onDelete={onDelete} />)
+                  : (
+                    <Button type="button" variant="ghost" onClick={() => setStep(1)} className="text-muted-foreground">
+                      ← Back
+                    </Button>
+                  )}
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleTest}
-                    disabled={testStatus === "testing"}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border border-border hover:bg-muted disabled:opacity-40"
-                  >
+                  <Button type="button" variant="outline" onClick={handleTest} disabled={testStatus === "testing"} className="gap-1.5">
                     <RefreshCw size={13} className={testStatus === "testing" ? "animate-spin" : ""} />
                     {testStatus === "testing" ? "Testing…" : "Test"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAdd}
-                    disabled={!canAdd}
-                    className="px-3 py-2 rounded-lg text-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
-                  >
-                    Add Source
-                  </button>
+                  </Button>
+                  <Button type="button" onClick={handleAdd} disabled={!canAdd}>
+                    {editing ? "Save" : "Add Source"}
+                  </Button>
                 </div>
               </div>
               <TestFeedback status={testStatus} message={testMessage} />
@@ -428,41 +457,48 @@ export function AddConnectionModal({ open, onOpenChange, onAdd, existingColors }
                 error={errors.cdPass}
               />
               <ColorPicker value={color} onChange={setColor} />
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => setRuleModalOpen(true)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Create a rule for this source
+                </button>
+              )}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted"
-                >
-                  ← Back
-                </button>
+                {editing
+                  ? (onDelete && <DeleteControl confirming={confirmingDelete} onConfirmingChange={setConfirmingDelete} onDelete={onDelete} />)
+                  : (
+                    <Button type="button" variant="ghost" onClick={() => setStep(1)} className="text-muted-foreground">
+                      ← Back
+                    </Button>
+                  )}
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleTest}
-                    disabled={testStatus === "testing"}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border border-border hover:bg-muted disabled:opacity-40"
-                  >
+                  <Button type="button" variant="outline" onClick={handleTest} disabled={testStatus === "testing"} className="gap-1.5">
                     <RefreshCw size={13} className={testStatus === "testing" ? "animate-spin" : ""} />
                     {testStatus === "testing" ? "Testing…" : "Test"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAdd}
-                    disabled={!canAdd}
-                    className="px-3 py-2 rounded-lg text-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
-                  >
-                    Add Source
-                  </button>
+                  </Button>
+                  <Button type="button" onClick={handleAdd} disabled={!canAdd}>
+                    {editing ? "Save" : "Add Source"}
+                  </Button>
                 </div>
               </div>
               <TestFeedback status={testStatus} message={testMessage} />
             </div>
           )}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+      </DialogContent>
+
+      {connection && (
+        <RuleModal
+          open={ruleModalOpen}
+          onOpenChange={setRuleModalOpen}
+          initialMatchType="source"
+          initialMatchValue={connection.id}
+        />
+      )}
+    </Dialog>
   );
 }

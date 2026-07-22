@@ -27,21 +27,38 @@ export interface CalendarEvent {
   title: string;
   /** Provider-internal collection identifier (CalDAV href, WebCal source id, etc.) */
   calendarId: string;
-  /** Use "custom" for per-event styling via customColor / customIcon / customAllDayStyle */
+  /** Ingestion metadata only — display style is resolved exclusively via the rules engine. */
   eventTypeId: string;
   start: string; // ISO
   end: string;   // ISO
   allDay: boolean;
   location?: string;
   notes?: string;
-  // Only used when eventTypeId === "custom"
-  customColor?: string;
-  customIcon?: string;
-  customAllDayStyle?: DisplayStyle;
-  customTimedStyle?: DisplayStyle;
 }
 
 export type CalendarView = "month" | "week" | "day" | "agenda";
+
+// ── Rule types ─────────────────────────────────────────────────────────────────
+
+/**
+ * How a Rule matches events:
+ *  "event"  — matchValue is a CalendarEvent.id
+ *  "name"   — matchValue is a regex/text pattern tested against the event title
+ *  "source" — matchValue is a Connection.id
+ *  "all"    — the catch-all rule; matches every event, matchValue unused
+ */
+export type RuleMatchType = "event" | "name" | "source" | "all";
+
+export interface Rule {
+  id: string;
+  matchType: RuleMatchType;
+  matchValue: string;
+  /** References EventType.id. */
+  displayTypeId: string;
+  enabled: boolean;
+  /** Epoch ms; used only to compute the default insertion position among same-tier rules. */
+  createdAt: number;
+}
 
 // ── Connection types ──────────────────────────────────────────────────────────
 
@@ -67,8 +84,6 @@ export interface WebCalConnection {
   color: string;
   /** Optional CORS proxy prefix URL. */
   proxyUrl?: string;
-  /** Optional display type applied to all events from this calendar. References EventType.id. */
-  displayTypeId?: string;
 }
 
 /** CalDAV server connection (RFC 4791). Read-only in v1. */
@@ -88,8 +103,6 @@ export interface CalDAVConnection {
   color: string;
   /** Optional CORS proxy prefix URL. */
   proxyUrl?: string;
-  /** Optional display type applied to all events from this calendar. References EventType.id. */
-  displayTypeId?: string;
 }
 
 /**

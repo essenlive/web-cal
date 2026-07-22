@@ -5,12 +5,11 @@
  *
  * Design decisions (see specs/001-cloud-calendar-connector/research.md):
  * - Uses Promise.allSettled so a single failing connection never blocks others.
- * - Sets customColor + eventTypeId:"custom" on every returned event so the
- *   existing EventChip renderer colour-codes events by source connection.
  * - CalDAV event IDs are namespaced as "${conn.id}::${uid}" to prevent collisions.
  * - WebCal event IDs are already namespaced by WebCalProvider (source.id === conn.id),
  *   so no additional prefixing is applied.
- * - Write operations throw immediately — all connections are read-only in v1.
+ * - There is no write path — `DataProvider` has no create/update/delete methods;
+ *   all connections are read-only (specs/003-display-type-rules-engine amendment, FR-016).
  */
 
 import type { DataProvider } from "./data-provider";
@@ -37,18 +36,21 @@ function makeProvider(conn: Connection): DataProvider {
 }
 
 /**
- * Apply connection colour to every event and namespace CalDAV IDs.
+ * Namespace CalDAV IDs so they can't collide across connections.
  *
  * WebCal IDs are already "${conn.id}::${uid}" (WebCalProvider sets source.id
  * as the prefix), so we leave them as-is.
  * CalDAV IDs are raw UIDs — we prefix them with conn.id.
+ *
+ * Connection color is no longer stamped here as eventTypeId:"custom" — that
+ * unconditionally beat any rule, named type, or connection displayTypeId
+ * (see specs/003-display-type-rules-engine/research.md Decision 2).
+ * resolveEventType() now applies it as a lower-priority fallback instead.
  */
 function applyConnectionMeta(events: CalendarEvent[], conn: Connection): CalendarEvent[] {
   return events.map((e) => ({
     ...e,
     id: conn.type === "caldav" ? `${conn.id}::${e.id}` : e.id,
-    eventTypeId: "custom",
-    customColor: conn.color,
   }));
 }
 
@@ -98,19 +100,5 @@ export class MultiSourceProvider implements DataProvider {
     }
 
     return merged;
-  }
-
-  // Read-only in v1 — write operations are not supported.
-
-  async createEvent(): Promise<CalendarEvent> {
-    throw new Error("read-only: write operations not supported in v1");
-  }
-
-  async updateEvent(): Promise<CalendarEvent> {
-    throw new Error("read-only: write operations not supported in v1");
-  }
-
-  async deleteEvent(): Promise<void> {
-    throw new Error("read-only: write operations not supported in v1");
   }
 }

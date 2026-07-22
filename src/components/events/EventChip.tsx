@@ -1,6 +1,7 @@
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType } from "../../types";
+import { findMatchingRule } from "../../lib/rules";
+import type { CalendarEvent, CalendarView, DisplayStyle, EventType, Rule } from "../../types";
 
 interface EventChipProps {
   event: CalendarEvent;
@@ -18,47 +19,18 @@ function getIcon(name: string | undefined, size: number, color?: string) {
 }
 
 /**
- * Returns the effective EventType for an event using a 4-level precedence chain:
- *  1. Per-event "custom" fields (highest priority)
- *  2. Named EventType from the store matching event.eventTypeId
- *  3. Calendar-level display type (connection.displayTypeId)
- *  4. Application default type (defaultTypeId)
+ * Returns the effective EventType for an event by resolving the rules engine only —
+ * the first enabled rule matching this event, in priority order, whose target display
+ * type still exists. The catch-all rule always matches and its target can never be
+ * deleted, so this always returns a real EventType.
  */
 export function resolveEventType(
   event: CalendarEvent,
   getType: (id: string) => EventType | undefined,
-  getConnection?: (calendarId: string) => Connection | undefined,
-  defaultTypeId?: string,
-): EventType | undefined {
-  // Level 1: per-event custom configuration
-  if (event.eventTypeId === "custom") {
-    return {
-      id: "custom",
-      label: "Personnalisé",
-      color: event.customColor ?? "#6366f1",
-      icon: event.customIcon ?? "Calendar",
-      allDayStyle: event.customAllDayStyle ?? "block",
-      timedStyle: event.customTimedStyle ?? "block",
-    };
-  }
-
-  // Level 2: named display type on the event itself
-  const namedType = getType(event.eventTypeId);
-  if (namedType) return namedType;
-
-  // Level 3: calendar-level display type from the connection
-  if (getConnection) {
-    const conn = getConnection(event.calendarId);
-    if (conn?.displayTypeId) {
-      const calType = getType(conn.displayTypeId);
-      if (calType) return calType;
-    }
-  }
-
-  // Level 4: application default type
-  if (defaultTypeId) return getType(defaultTypeId);
-
-  return undefined;
+  rules: Rule[],
+): EventType {
+  const matched = findMatchingRule(event, rules, getType);
+  return getType(matched.displayTypeId)!;
 }
 
 /** Timed events use the type's timedStyle. All-day events use the type's allDayStyle. */
