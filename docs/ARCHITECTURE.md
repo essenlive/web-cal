@@ -75,6 +75,8 @@ An `EventType` ([types/index.ts](../src/types/index.ts)) defines a **color**, **
 | `avatar-tl` / `avatar-bl` / `avatar-br` | Small circular icon badge, pinned to a corner of the day cell |
 | `day` | Tints the whole day cell's background/border; `EventChip` itself renders nothing — the parent view (`MonthView`/`TimeGridView`) reads the resolved style separately to paint the cell |
 
+`EventChip`'s `listMode` prop overrides this: aggregation surfaces (the overflow popovers/modals in `MonthView`) always need a titled row per event, so they pass `listMode` to force the `block` rendering regardless of the event's resolved `avatar-*`/`day` style — otherwise a cell with only `day`-style events would list as empty rows.
+
 Exactly one type has `isDefault: true` at all times — it's the fallback used when no rule matches (see below) and can't be deleted until another type is made default first ([store/index.ts](../src/store/index.ts) `useEventTypeStore`).
 
 Types are managed from the sidebar's **Types** section (`EventTypeModal`), not the Settings page. Editing an existing type shows which rules currently resolve to it ("Règles liées") and a delete (click-to-confirm) button, disabled while it's the default type.

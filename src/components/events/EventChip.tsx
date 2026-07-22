@@ -11,6 +11,9 @@ interface EventChipProps {
   /** Hides the icon in block style (used in compact month-view cells). */
   compact?: boolean;
   view?: CalendarView;
+  /** Aggregation lists (overflow popovers/modals) always need a titled row, even for
+   *  avatar/day styles that render as nothing (or an icon-only bubble) in the grid. */
+  listMode?: boolean;
 }
 
 function getIcon(name: string | undefined, size: number, color?: string) {
@@ -62,10 +65,10 @@ export function resolveStyle(
   return type?.allDayStyle ?? "day";
 }
 
-export function EventChip({ event, eventType, onClick, compact = false, view = "month" }: EventChipProps) {
+export function EventChip({ event, eventType, onClick, compact = false, view = "month", listMode = false }: EventChipProps) {
   const color = eventType?.color ?? "#6366f1";
   const icon  = eventType?.icon;
-  const style = resolveStyle(eventType, view, event.allDay);
+  const style = listMode ? "block" : resolveStyle(eventType, view, event.allDay);
 
   const stopProp = (fn?: (e?: React.MouseEvent) => void) =>
     (e: React.MouseEvent) => { e.stopPropagation(); fn?.(e); };
