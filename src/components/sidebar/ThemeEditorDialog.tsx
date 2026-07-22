@@ -69,7 +69,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
                 placeholder="Nom du thème"
                 autoFocus
                 className={cn(
-                  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2",
+                  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:ring-2",
                   isDuplicate ? "border-destructive focus:ring-destructive/30" : "border-border focus:ring-primary/30"
                 )}
               />

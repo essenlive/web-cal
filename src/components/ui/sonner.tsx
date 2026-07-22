@@ -10,8 +10,8 @@ function Toaster(props: ToasterProps) {
       toastOptions={{
         classNames: {
           toast:
-            "!bg-popover !text-popover-foreground !border-border !shadow-lg !rounded-xl",
-          description: "!text-muted-foreground",
+            "bg-popover! text-popover-foreground! border-border! shadow-lg! rounded-xl!",
+          description: "text-muted-foreground!",
         },
       }}
       {...props}

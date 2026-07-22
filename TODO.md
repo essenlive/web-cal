@@ -9,7 +9,7 @@ Ideas not yet scheduled into a spec. Pull one into `specs/` (via `/speckit.speci
 - [x] **Settings side drawer** — move all modals (settings/events/display types/theming...) to a side drawer to allow for live preview of the modifications.
 - [x] **Remove calDav** — remove options for CalDAV for now and only allow for ICS feeds. (add a small description in how to get them from popular providers. google, Apple, Microsoft...)
 - [ ] **Augment theming** — Augment the theming options with fonts from google fonts and few border radiuses
-- [ ] **Update dependencies** - Update as many dependencies as possible. Especially NEXTjs
+- [x] **Update dependencies** - Update as many dependencies as possible. Especially NEXTjs. (Next.js 15→16, Tailwind CSS 3→4 (via official `@tailwindcss/upgrade` codemod — `tailwind.config.js` removed, config moved into `globals.css` as `@theme`), TypeScript 5.9→6.0 (6.0, not 7 — 7.x is unsupported by `typescript-eslint`'s peer range `<6.1.0`), lucide-react 0→1, eslint 9→10, globals 16→17, plus all in-range patch/minor bumps.)
 - [x] **Move notifications system to toast** - Work on an homgenous notifications and feedback system through shadcn toasts.
 - [x] **Rework event display system** - Fix the different event display issues. Block event higher than the day number, multi event popover not working, multi event styling decider.
 - [x] **Factorize button confimation system** Factorize the button system with destructive actions. The button should always stays and keep the same shape, only the content should change from the action verb to "confirm ?"

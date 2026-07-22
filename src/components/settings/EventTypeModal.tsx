@@ -44,7 +44,7 @@ export function getIconEl(name: string, size = 16, color?: string) {
 }
 
 const avatarDot = (color: string, icon: string) => (
-  <div className="size-5 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: color }}>
+  <div className="size-5 rounded-full flex items-center justify-center shadow-xs" style={{ backgroundColor: color }}>
     {getIconEl(icon, 9, "#fff")}
   </div>
 );

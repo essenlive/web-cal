@@ -73,7 +73,7 @@ function AvatarBadge({
       onClick={(ev) => { ev.stopPropagation(); onEdit(event); }}
       style={{ backgroundColor: color, pointerEvents: "auto" }}
       className="size-5 sm:size-6 rounded-full flex items-center justify-center cursor-pointer shrink-0
-                 shadow-sm transition-all hover:scale-110 active:scale-95"
+                 shadow-xs transition-all hover:scale-110 active:scale-95"
     >
       {Icon && <Icon size={9} color="#fff" />}
     </div>
@@ -169,7 +169,7 @@ function DayCell({
     <div
       className={cn(
         "relative border-b border-r border-border overflow-hidden",
-        !isCurrentMonth && "bg-muted/[0.15]",
+        !isCurrentMonth && "bg-muted/15",
         bgClass,
       )}
       style={bgColor ? { backgroundColor: bgColor } : undefined}
@@ -283,7 +283,7 @@ function DayCell({
               style={{ pointerEvents: "auto" }}
               className="size-5 sm:size-6 rounded-full bg-muted flex items-center justify-center
                          text-[9px] font-semibold text-muted-foreground shrink-0 cursor-pointer
-                         hover:bg-muted/80 transition-colors shadow-sm"
+                         hover:bg-muted/80 transition-colors shadow-xs"
             >
               +{tlAvatars.length - MAX_VISIBLE_AVATARS}
             </button>
@@ -302,7 +302,7 @@ function DayCell({
               onClick={(ev) => { ev.stopPropagation(); setAvatarModal({ events: blAvatars, corner: "bl" }); }}
               className="size-5 sm:size-6 rounded-full bg-muted flex items-center justify-center
                          text-[9px] font-semibold text-muted-foreground shrink-0 cursor-pointer
-                         hover:bg-muted/80 transition-colors shadow-sm"
+                         hover:bg-muted/80 transition-colors shadow-xs"
             >
               +{blAvatars.length - MAX_VISIBLE_AVATARS}
             </button>
@@ -321,7 +321,7 @@ function DayCell({
               onClick={(ev) => { ev.stopPropagation(); setAvatarModal({ events: brAvatars, corner: "br" }); }}
               className="size-5 sm:size-6 rounded-full bg-muted flex items-center justify-center
                          text-[9px] font-semibold text-muted-foreground shrink-0 cursor-pointer
-                         hover:bg-muted/80 transition-colors shadow-sm"
+                         hover:bg-muted/80 transition-colors shadow-xs"
             >
               +{brAvatars.length - MAX_VISIBLE_AVATARS}
             </button>

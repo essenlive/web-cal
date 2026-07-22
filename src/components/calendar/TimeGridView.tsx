@@ -302,13 +302,13 @@ export function TimeGridView({ days, onEventClick }: Props) {
                       key={day.toISOString()}
                       className={cn(
                         "flex-1 relative border-l border-border",
-                        isToday && "bg-primary/[0.015]",
+                        isToday && "bg-primary/1.5",
                       )}
                     >
                       {layoutEvents.map(({ event, top, height, colIndex, colCount }) => (
                         <div
                           key={event.id}
-                          className="absolute p-0.5 z-[1]"
+                          className="absolute p-0.5 z-1"
                           style={{
                             top,
                             height: Math.max(height, HOUR_HEIGHT / 2),

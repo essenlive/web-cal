@@ -38,9 +38,10 @@ npm run dev && npm run build && npm run lint
 
 ## Code Style
 
-TypeScript ~5.9.3: Follow standard conventions
+TypeScript ~6.0.3: Follow standard conventions
 
 ## Recent Changes
+- Dependency update: Next.js 15→16, Tailwind CSS 3→4 (config moved from `tailwind.config.js` into `src/app/globals.css` as `@theme`), TypeScript 5.9→6.0, lucide-react 0→1, eslint 9→10, plus in-range patch/minor bumps across the rest. See [TODO.md](TODO.md) for what was deliberately skipped and why.
 - 007-settings-side-drawer: Added TypeScript ~5.9.3, React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, `@radix-ui/react-dialog` (existing dependency, reused to build a `Sheet` primitive), lucide-react — no new dependency
 - 006-view-presets: Added TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, lucide-react — no new dependency (no Radix needed; see research.md Decision 3)
 - 005-global-theming: Added TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, Radix UI (`@radix-ui/react-popover`, `@radix-ui/react-dialog` — both already dependencies), lucide-react

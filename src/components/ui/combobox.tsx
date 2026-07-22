@@ -36,8 +36,8 @@ export function Combobox({ options, value, onChange, placeholder = "Search…", 
         <button
           type="button"
           className={cn(
-            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm",
-            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs",
+            "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
             !selected && "text-muted-foreground",
             className
           )}

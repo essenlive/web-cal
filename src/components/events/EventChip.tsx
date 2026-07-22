@@ -80,7 +80,7 @@ export function EventChip({ event, eventType, onClick, compact = false, view = "
         onClick={stopProp(onClick)}
         title={event.title}
         className="inline-flex size-6 rounded-full items-center justify-center cursor-pointer shrink-0
-                   transition-all hover:scale-110 active:scale-95 hover:brightness-90 shadow-sm"
+                   transition-all hover:scale-110 active:scale-95 hover:brightness-90 shadow-xs"
         style={{ backgroundColor: color }}
       >
         {getIcon(icon, 11, "#fff")}

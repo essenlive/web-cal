@@ -223,7 +223,7 @@ function ShowcasePanel() {
             return (
               <div key={t.id} title={t.label}
                 style={{ backgroundColor: t.color }}
-                className="size-6 rounded-full flex items-center justify-center shadow-sm shrink-0"
+                className="size-6 rounded-full flex items-center justify-center shadow-xs shrink-0"
               >
                 {Icon && <Icon size={9} color="#fff" />}
               </div>
@@ -284,7 +284,7 @@ function ShowcasePanel() {
                 <span className="text-[9px] text-muted-foreground w-8 shrink-0">{corner}</span>
                 {[0, 1, 2].map((i) => (
                   <div key={i} style={{ backgroundColor: t.color }}
-                    className="size-5 rounded-full flex items-center justify-center shadow-sm shrink-0"
+                    className="size-5 rounded-full flex items-center justify-center shadow-xs shrink-0"
                   >
                     {Icon && <Icon size={8} color="#fff" />}
                   </div>

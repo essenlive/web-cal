@@ -68,7 +68,7 @@ function PresetRow({
           }}
           onBlur={cancelRename}
           className={cn(
-            "w-full rounded-md border bg-background px-1.5 py-0.5 text-xs outline-none focus:ring-2",
+            "w-full rounded-md border bg-background px-1.5 py-0.5 text-xs outline-hidden focus:ring-2",
             isDuplicate ? "border-destructive focus:ring-destructive/30" : "border-border focus:ring-primary/30"
           )}
         />
@@ -201,7 +201,7 @@ export function PresetSelector() {
               }}
               onBlur={cancelAdd}
               placeholder="Nom du preset"
-              className="w-full rounded-md border border-border bg-background px-1.5 py-0.5 text-xs outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-md border border-border bg-background px-1.5 py-0.5 text-xs outline-hidden focus:ring-2 focus:ring-primary/30"
             />
             {overwriteTarget && (
               <p className="text-[11px] text-destructive mt-1">

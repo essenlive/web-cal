@@ -93,7 +93,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
             aria-checked={value === c}
             aria-pressed={value === c}
             onClick={() => onChange(c)}
-            className="size-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="size-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-primary/50"
             style={{
               backgroundColor: c,
               borderColor: value === c ? "var(--foreground)" : "transparent",
