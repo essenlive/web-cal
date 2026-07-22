@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { format, parse } from "date-fns";
 import { Header } from "../components/sidebar/Header";
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
@@ -8,6 +9,8 @@ import { presetMatchesState } from "../lib/presets";
 import type { CalendarView } from "../types";
 
 const VIEW_KEYS: Record<string, CalendarView> = { m: "month", w: "week", d: "day", a: "agenda" };
+const VALID_VIEWS: CalendarView[] = Object.values(VIEW_KEYS);
+const DATE_FORMAT = "yyyy-MM-dd";
 
 export function CalendarPage() {
   const { sidebarOpen, toggleSidebar } = useUIStore();
@@ -49,6 +52,50 @@ export function CalendarPage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Keeps the URL's ?view=&date=&preset= in sync with the store, in both
+  // directions: hydrate store from URL once on mount, then push store
+  // changes back to the URL (via replaceState, so navigation doesn't spam
+  // history) for every store this page's shortcuts/UI can mutate.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    const viewParam = params.get("view") as CalendarView | null;
+    if (viewParam && VALID_VIEWS.includes(viewParam)) {
+      useUIStore.getState().setView(viewParam);
+    }
+
+    const dateParam = params.get("date");
+    if (dateParam) {
+      const parsed = parse(dateParam, DATE_FORMAT, new Date());
+      if (!isNaN(parsed.getTime())) useUIStore.getState().setCurrentDate(parsed);
+    }
+
+    const presetParam = params.get("preset");
+    if (presetParam) {
+      const preset = usePresetStore.getState().presets.find((p) => p.id === presetParam);
+      if (preset) usePresetStore.getState().applyPreset(preset.id);
+    }
+
+    function syncUrl() {
+      const { view, currentDate } = useUIStore.getState();
+      const { presets } = usePresetStore.getState();
+      const { connections } = useConnectionStore.getState();
+      const { types } = useEventTypeStore.getState();
+      const active = presets.find((p) => presetMatchesState(p, connections, types));
+
+      const next = new URLSearchParams();
+      next.set("view", view);
+      next.set("date", format(currentDate, DATE_FORMAT));
+      if (active) next.set("preset", active.id);
+      window.history.replaceState(null, "", `${window.location.pathname}?${next}`);
+    }
+    syncUrl();
+    const unsubs = [useUIStore, usePresetStore, useConnectionStore, useEventTypeStore].map((s) =>
+      s.subscribe(syncUrl)
+    );
+    return () => unsubs.forEach((unsub) => unsub());
   }, []);
 
   return (
