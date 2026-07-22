@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { Trash2, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Connection, ConnectionStatus, ConnectionStatusMap, EventType } from "../../types";
@@ -131,9 +131,13 @@ interface ConnectionRowProps {
 
 function ConnectionRow({ connection, status, eventTypes, onRemove, onUpdate }: ConnectionRowProps) {
   const [confirming, setConfirming] = useState(false);
+  const hidden = !!connection.hidden;
 
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
+    <li className={cn(
+      "flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5",
+      hidden && "opacity-50"
+    )}>
       {/* Colour swatch */}
       <span
         className="size-4 rounded-full shrink-0"
@@ -149,6 +153,11 @@ function ConnectionRow({ connection, status, eventTypes, onRemove, onUpdate }: C
         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           {connection.type === "webcal" ? "WebCal" : "CalDAV"}
         </span>
+        {hidden && (
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            Hidden
+          </span>
+        )}
       </div>
 
       {/* Status */}
@@ -156,6 +165,16 @@ function ConnectionRow({ connection, status, eventTypes, onRemove, onUpdate }: C
 
       {/* Display type selector */}
       <DisplayTypeSelector connection={connection} eventTypes={eventTypes} onUpdate={onUpdate} />
+
+      {/* Hide / show */}
+      <button
+        onClick={() => onUpdate({ ...connection, hidden: !hidden })}
+        aria-label={hidden ? `Show ${connection.name}` : `Hide ${connection.name}`}
+        title={hidden ? "Show in calendar" : "Hide from calendar"}
+        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+      >
+        {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+      </button>
 
       {/* Remove / confirm */}
       {confirming ? (

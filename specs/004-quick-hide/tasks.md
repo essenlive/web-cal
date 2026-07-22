@@ -45,7 +45,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Add a hide/show icon-button (lucide `Eye`/`EyeOff`, matching the existing `Trash2` button's styling) to `ConnectionRow` in `src/components/settings/ConnectionList.tsx`, calling the row's existing `onUpdate({ ...connection, hidden: !connection.hidden })`; dim the row (e.g. `opacity-50`) and set the button's `aria-label`/`title` to reflect current state when `connection.hidden` is true (depends on T001, T003, T004, T005 for the toggle to have any visible effect)
+- [x] T006 [US1] Add a hide/show icon-button (lucide `Eye`/`EyeOff`, matching the existing `Trash2` button's styling) to `ConnectionRow` in `src/components/settings/ConnectionList.tsx`, calling the row's existing `onUpdate({ ...connection, hidden: !connection.hidden })`; dim the row (e.g. `opacity-50`) and set the button's `aria-label`/`title` to reflect current state when `connection.hidden` is true (depends on T001, T003, T004, T005 for the toggle to have any visible effect)
 
 **Checkpoint**: Hiding a connection from Settings → Data Sources immediately removes its events from every calendar view; the connection stays listed with full config, visibly marked hidden; unhiding restores it. This is a fully demoable MVP on its own.
 
@@ -59,7 +59,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] Add an `onToggleHidden: (t: EventType) => void` prop and a hide/show icon-button to `EventTypeRow` in `src/views/SettingsPage.tsx`, matching `T006`'s button styling; wire `SettingsPage`'s render call to pass `(t) => updateType({ ...t, hidden: !t.hidden })`; dim the row when `type.hidden` is true, per `contracts/ui-contracts.md` (depends on T001, T003, T004, T005)
+- [x] T007 [US2] Add an `onToggleHidden: (t: EventType) => void` prop and a hide/show icon-button to `EventTypeRow` in `src/views/SettingsPage.tsx`, matching `T006`'s button styling; wire `SettingsPage`'s render call to pass `(t) => updateType({ ...t, hidden: !t.hidden })`; dim the row when `type.hidden` is true, per `contracts/ui-contracts.md` (depends on T001, T003, T004, T005)
 
 **Checkpoint**: Hiding a type from Settings → Types immediately removes every event resolving to it (through any part of the existing precedence chain) from every calendar view; the type stays listed with full config, visibly marked hidden; unhiding restores it.
 
@@ -73,7 +73,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T008 [US3] Add a "Sources & Types" quick-toggle section to `src/components/sidebar/Sidebar.tsx`, below the existing mini calendar: read `connections` from `useConnectionStore()` and `types` from `useEventTypeStore()`; render two labeled row-groups ("Sources", "Types"), each row showing a color swatch (connections) or icon (types), the label (dimmed when hidden), and an `Eye`/`EyeOff` button calling `updateConnection({ ...c, hidden: !c.hidden })` / `updateType({ ...t, hidden: !t.hidden })` respectively, per `contracts/ui-contracts.md`'s `VisibilityItem` shape (depends on T001, T003, T004, T005; reuses the same store actions as T006/T007 so both surfaces stay in sync automatically)
+- [x] T008 [US3] Add a "Sources & Types" quick-toggle section to `src/components/sidebar/Sidebar.tsx`, below the existing mini calendar: read `connections` from `useConnectionStore()` and `types` from `useEventTypeStore()`; render two labeled row-groups ("Sources", "Types"), each row showing a color swatch (connections) or icon (types), the label (dimmed when hidden), and an `Eye`/`EyeOff` button calling `updateConnection({ ...c, hidden: !c.hidden })` / `updateType({ ...t, hidden: !t.hidden })` respectively, per `contracts/ui-contracts.md`'s `VisibilityItem` shape (depends on T001, T003, T004, T005; reuses the same store actions as T006/T007 so both surfaces stay in sync automatically)
 
 **Checkpoint**: All three user stories are demoable end-to-end. Toggling from the sidebar and toggling from Settings both immediately affect the calendar and stay in sync with each other (same underlying store record).
 
@@ -83,8 +83,8 @@
 
 **Purpose**: Final quality gates across the whole feature.
 
-- [ ] T009 Run the manual verification steps in `quickstart.md` end-to-end, including the regression checks in §4 (hide-everything, hidden-type-still-selectable-in-pickers, delete-while-hidden)
-- [ ] T010 Run `npx tsc -b`, `npm run lint`, and `npm run build`; fix any resulting errors or warnings
+- [x] T009 Run the manual verification steps in `quickstart.md` end-to-end, including the regression checks in §4 (hide-everything, hidden-type-still-selectable-in-pickers, delete-while-hidden)
+- [x] T010 Run `npx tsc -b`, `npm run lint`, and `npm run build`; fix any resulting errors or warnings
 
 ---
 

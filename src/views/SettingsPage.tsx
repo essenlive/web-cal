@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Edit2, Check } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Check, Eye, EyeOff } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
 import { useEventTypeStore, useUIStore, useConnectionStore, useEventsStore } from "../store";
@@ -75,17 +75,34 @@ function StylePreview({ style, color, icon }: { style: DisplayStyle; color: stri
 
 // ── EventTypeRow ──────────────────────────────────────────────────────────────
 
-function EventTypeRow({ type, onEdit, onDelete }: {
-  type: EventType; onEdit: (t: EventType) => void; onDelete: (id: string) => void;
+function EventTypeRow({ type, onEdit, onDelete, onToggleHidden }: {
+  type: EventType;
+  onEdit: (t: EventType) => void;
+  onDelete: (id: string) => void;
+  onToggleHidden: (t: EventType) => void;
 }) {
+  const hidden = !!type.hidden;
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+    <div className={cn("flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3", hidden && "opacity-50")}>
       <div className="flex size-8 items-center justify-center rounded-lg shrink-0" style={{ backgroundColor: type.color + "20", color: type.color }}>
         {getIconEl(type.icon)}
       </div>
       <span className="flex-1 text-sm font-medium text-foreground truncate">{type.label}</span>
+      {hidden && (
+        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          Hidden
+        </span>
+      )}
       <StylePreview style={type.allDayStyle} color={type.color} icon={type.icon} />
       <div className="flex gap-1 shrink-0">
+        <button
+          onClick={() => onToggleHidden(type)}
+          aria-label={hidden ? `Show ${type.label}` : `Hide ${type.label}`}
+          title={hidden ? "Show in calendar" : "Hide from calendar"}
+          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+        >
+          {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
         <button onClick={() => onEdit(type)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
           <Edit2 size={14} />
         </button>
@@ -333,7 +350,7 @@ export function SettingsPage() {
             {types.map((t) =>
               editingType?.id === t.id
                 ? <EventTypeForm key={t.id} type={t} existingLabels={existingLabels} onSave={handleSave} onCancel={() => setEditingType(null)} />
-                : <EventTypeRow  key={t.id} type={t} onEdit={setEditingType} onDelete={handleDeleteRequest} />
+                : <EventTypeRow  key={t.id} type={t} onEdit={setEditingType} onDelete={handleDeleteRequest} onToggleHidden={(t) => updateType({ ...t, hidden: !t.hidden })} />
             )}
             {creating && <EventTypeForm existingLabels={existingLabels} onSave={handleSave} onCancel={() => setCreating(false)} />}
             {!creating && !editingType && (

@@ -3,17 +3,79 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Eye, EyeOff } from "lucide-react";
+import * as Icons from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
-import { useUIStore } from "../../store";
+import { useUIStore, useConnectionStore, useEventTypeStore } from "../../store";
+import type { Connection, EventType } from "../../types";
 
 interface SidebarProps {
   onNewEvent: () => void;
 }
 
+// ── Quick-hide visibility rows ───────────────────────────────────────────────
+
+interface VisibilityItem {
+  id: string;
+  label: string;
+  color: string;
+  /** lucide-react icon name; omitted for connections (color swatch used instead) */
+  icon?: string;
+  hidden?: boolean;
+  onToggle: () => void;
+}
+
+function getIconEl(name: string | undefined, size: number, color?: string) {
+  if (!name) return null;
+  const Icon = (Icons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; className?: string }> | undefined>)[name];
+  return Icon ? <Icon size={size} color={color} /> : null;
+}
+
+function VisibilityRow({ item }: { item: VisibilityItem }) {
+  const hidden = !!item.hidden;
+  return (
+    <div className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-muted">
+      {item.icon ? (
+        <span className="shrink-0">{getIconEl(item.icon, 12, item.color)}</span>
+      ) : (
+        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+      )}
+      <span className={cn("flex-1 text-xs text-foreground truncate", hidden && "text-muted-foreground line-through")}>
+        {item.label}
+      </span>
+      <button
+        onClick={item.onToggle}
+        aria-label={hidden ? `Afficher ${item.label}` : `Masquer ${item.label}`}
+        title={hidden ? "Afficher" : "Masquer"}
+        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors shrink-0"
+      >
+        {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+      </button>
+    </div>
+  );
+}
+
+function VisibilitySection({ title, items }: { title: string; items: VisibilityItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="px-2 pb-2">
+      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 px-2">
+        {title}
+      </div>
+      <div className="space-y-0.5">
+        {items.map((item) => (
+          <VisibilityRow key={item.id} item={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar({ onNewEvent }: SidebarProps) {
   const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen } = useUIStore();
+  const { connections, updateConnection } = useConnectionStore();
+  const { types, updateType } = useEventTypeStore();
   const [miniDate, setMiniDate] = useState(currentDate);
   const weekStart = weekStartsOnMonday ? 1 : 0;
 
@@ -82,6 +144,31 @@ export function Sidebar({ onNewEvent }: SidebarProps) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Quick hide — sources & types */}
+      <div className="border-t border-border pt-2 flex-1 overflow-y-auto">
+        <VisibilitySection
+          title="Sources"
+          items={connections.map((c: Connection) => ({
+            id: c.id,
+            label: c.name,
+            color: c.color,
+            hidden: c.hidden,
+            onToggle: () => updateConnection({ ...c, hidden: !c.hidden }),
+          }))}
+        />
+        <VisibilitySection
+          title="Types"
+          items={types.map((t: EventType) => ({
+            id: t.id,
+            label: t.label,
+            color: t.color,
+            icon: t.icon,
+            hidden: t.hidden,
+            onToggle: () => updateType({ ...t, hidden: !t.hidden }),
+          }))}
+        />
       </div>
     </aside>
   );

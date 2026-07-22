@@ -131,16 +131,20 @@ interface Props {
 
 export function TimeGridView({ days, onEventClick, onSlotClick }: Props) {
   const { events: allEvents } = useEventsStore();
-  const { getType } = useEventTypeStore();
+  const { getType, types } = useEventTypeStore();
   const { use24h, defaultEventTypeId } = useUIStore();
   const { connections } = useConnectionStore();
   const getConnection = useCallback(
     (calendarId: string) => connections.find((c) => c.id === calendarId),
     [connections],
   );
+  // `types`/`connections` are listed explicitly because `getType`/`getConnection`
+  // are stable function references whose *output* changes without their identity
+  // changing — omitting them would leave this memo stale after a hide/show toggle.
   const events = useMemo(
     () => allEvents.filter((e) => !isEventHidden(e, getType, getConnection, defaultEventTypeId)),
-    [allEvents, getType, getConnection, defaultEventTypeId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allEvents, getType, getConnection, defaultEventTypeId, types, connections],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
