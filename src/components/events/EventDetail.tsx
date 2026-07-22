@@ -45,6 +45,14 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md rounded-2xl p-0 gap-0">
+        {ruleModal ? (
+          <RuleModal
+            initialMatchType={ruleModal.matchType}
+            initialMatchValue={ruleModal.matchValue}
+            onClose={() => setRuleModal(null)}
+          />
+        ) : (
+          <>
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle className="text-base font-semibold flex items-center gap-2">
             <span
@@ -109,14 +117,9 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
             </button>
           </div>
         </div>
+          </>
+        )}
       </DialogContent>
-
-      <RuleModal
-        open={!!ruleModal}
-        onOpenChange={(v) => !v && setRuleModal(null)}
-        initialMatchType={ruleModal?.matchType}
-        initialMatchValue={ruleModal?.matchValue}
-      />
     </Dialog>
   );
 }

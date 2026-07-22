@@ -5,7 +5,7 @@ import { Plus, Trash2, ChevronUp, ChevronDown, AlertTriangle } from "lucide-reac
 import { cn } from "../lib/utils";
 import { Button } from "../components/ui/button";
 import { Switch } from "../components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { DrawerHeader, DrawerTitle } from "../components/ui/drawer";
 import { useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
 import { getIconEl } from "../components/settings/EventTypeModal";
 import { RuleModal } from "../components/settings/RuleModal";
@@ -117,19 +117,14 @@ function RuleRow({
   );
 }
 
-export interface RulesModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-/** Rules manager — opened as a modal from the sidebar, beneath the display types list. */
-export function RulesModal({ open, onOpenChange }: RulesModalProps) {
+/** Rules manager — rendered as drawer content from the sidebar, beneath the display types list. */
+export function RulesPanel() {
   const { rules, toggleRule, removeRule, reorderRule } = useRuleStore();
   const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -143,49 +138,50 @@ export function RulesModal({ open, onOpenChange }: RulesModalProps) {
     reorderRule(id, toIndex);
   }
 
+  if (formOpen) {
+    return (
+      <RuleModal
+        key={editingRule?.id ?? "new-rule"}
+        rule={editingRule ?? undefined}
+        onClose={() => { setFormOpen(false); setEditingRule(null); }}
+      />
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto" aria-describedby={undefined}>
-        <DialogHeader className="flex-row items-center justify-between space-y-0">
-          <DialogTitle className="text-base font-semibold">Display Rules</DialogTitle>
-          <Button onClick={() => { setEditingRule(null); setModalOpen(true); }} className="gap-1.5 rounded-lg text-sm mr-6">
-            <Plus size={14} />
-            New Rule
-          </Button>
-        </DialogHeader>
+    <>
+      <DrawerHeader className="flex-row items-center justify-between space-y-0">
+        <DrawerTitle>Display Rules</DrawerTitle>
+        <Button onClick={() => { setEditingRule(null); setFormOpen(true); }} className="gap-1.5 rounded-lg text-sm">
+          <Plus size={14} />
+          New Rule
+        </Button>
+      </DrawerHeader>
 
-        <div className="space-y-1.5">
-          {rules.map((rule, index) => (
-            <RuleRow
-              key={rule.id}
-              rule={rule}
-              description={describeMatch(rule, getEventTitle, getConnectionName)}
-              displayType={rule.matchType === "all" ? getDefaultType() : getType(rule.displayTypeId)}
-              broken={rule.matchType !== "all" && !getType(rule.displayTypeId)}
-              isFirst={index === 0}
-              isLast={index === rules.length - 1}
-              onToggle={() => toggleRule(rule.id)}
-              onEdit={() => { setEditingRule(rule); setModalOpen(true); }}
-              onRemove={() => removeRule(rule.id)}
-              onMoveUp={() => move(rule.id, -1)}
-              onMoveDown={() => move(rule.id, 1)}
-              onDragStart={() => setDragIndex(index)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (dragIndex !== null && dragIndex !== index) reorderRule(rules[dragIndex].id, index);
-                setDragIndex(null);
-              }}
-            />
-          ))}
-        </div>
-
-        <RuleModal
-          key={editingRule?.id ?? "new-rule"}
-          open={modalOpen}
-          onOpenChange={(v) => { setModalOpen(v); if (!v) setEditingRule(null); }}
-          rule={editingRule ?? undefined}
-        />
-      </DialogContent>
-    </Dialog>
+      <div className="space-y-1.5 px-4 pb-4">
+        {rules.map((rule, index) => (
+          <RuleRow
+            key={rule.id}
+            rule={rule}
+            description={describeMatch(rule, getEventTitle, getConnectionName)}
+            displayType={rule.matchType === "all" ? getDefaultType() : getType(rule.displayTypeId)}
+            broken={rule.matchType !== "all" && !getType(rule.displayTypeId)}
+            isFirst={index === 0}
+            isLast={index === rules.length - 1}
+            onToggle={() => toggleRule(rule.id)}
+            onEdit={() => { setEditingRule(rule); setFormOpen(true); }}
+            onRemove={() => removeRule(rule.id)}
+            onMoveUp={() => move(rule.id, -1)}
+            onMoveDown={() => move(rule.id, 1)}
+            onDragStart={() => setDragIndex(index)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => {
+              if (dragIndex !== null && dragIndex !== index) reorderRule(rules[dragIndex].id, index);
+              setDragIndex(null);
+            }}
+          />
+        ))}
+      </div>
+    </>
   );
 }

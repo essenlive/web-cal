@@ -8,26 +8,26 @@
  */
 
 import { useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { Check, Trash2, X } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 import { useThemeStore } from "../../store";
 import { getAllThemes, THEME_ACCENT_PRESETS } from "../../lib/theme";
 import type { Theme, ThemeMode } from "../../types";
 
 export interface ThemeEditorDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   /** Present when editing an existing custom theme; absent when creating. */
   theme?: Theme;
+  /** Called to dismiss this panel (Cancel/X, or after a successful save/delete). */
+  onClose: () => void;
 }
 
 /**
  * Form state is initialized lazily from `theme` and never reset via an effect —
- * ThemeSelector remounts this component (via `key`) each time it's opened for a
+ * SettingsDrawer remounts this component (via `key`) each time it's opened for a
  * new create/edit session, so fresh initial state is simply what mounting gives us.
  */
-export function ThemeEditorDialog({ open, onOpenChange, theme }: ThemeEditorDialogProps) {
+export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
   const { customThemes, addTheme, updateTheme, removeTheme } = useThemeStore();
 
   const [name, setName] = useState(theme?.name ?? "");
@@ -48,7 +48,7 @@ export function ThemeEditorDialog({ open, onOpenChange, theme }: ThemeEditorDial
     } else {
       addTheme({ name: trimmed, mode, accent });
     }
-    onOpenChange(false);
+    onClose();
   }
 
   function handleDelete() {
@@ -58,27 +58,18 @@ export function ThemeEditorDialog({ open, onOpenChange, theme }: ThemeEditorDial
       return;
     }
     removeTheme(theme.id);
-    onOpenChange(false);
+    onClose();
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-in fade-in-0" />
-        <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl animate-in fade-in-0 zoom-in-95"
-          aria-describedby={undefined}
-        >
-          <div className="flex items-center justify-between mb-5">
-            <Dialog.Title className="text-base font-semibold text-foreground">
-              {theme ? "Modifier le thème" : "Nouveau thème"}
-            </Dialog.Title>
-            <Dialog.Close className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
-              <X size={16} />
-            </Dialog.Close>
-          </div>
+    <>
+      <DrawerHeader>
+        <DrawerTitle>
+          {theme ? "Modifier le thème" : "Nouveau thème"}
+        </DrawerTitle>
+      </DrawerHeader>
 
-          <div className="space-y-4">
+      <div className="space-y-4 px-4 pb-4">
             {/* Name */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nom</label>
@@ -172,8 +163,6 @@ export function ThemeEditorDialog({ open, onOpenChange, theme }: ThemeEditorDial
               </button>
             </div>
           </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    </>
   );
 }
