@@ -6,6 +6,8 @@
 //   wait-for text=<substring>          (or any CSS selector)
 //   hover text=<substring>              (or any CSS selector; first match)
 //   click text=<substring>              (or any CSS selector; first match)
+//   fill <selector>|||<value>           (locator.fill; use a real selector, not text=, for inputs with a placeholder)
+//   dragto <fromSelector>|||<toSelector> (native HTML5 drag-and-drop; use `[data-slot="drawer-content"] >> text=X` to disambiguate from the dimmed sidebar behind an open drawer)
 //   screenshot <name>                   (PNG written to shots/, full page)
 //   console                             (print collected page/console errors)
 //
@@ -55,6 +57,12 @@ for await (const raw of rl) {
       await toLocator(page, arg).hover();
     } else if (cmd === "click") {
       await toLocator(page, arg).click();
+    } else if (cmd === "fill") {
+      const [selector, ...value] = arg.split("|||");
+      await toLocator(page, selector).fill(value.join("|||"));
+    } else if (cmd === "dragto") {
+      const [from, to] = arg.split("|||");
+      await toLocator(page, from).dragTo(toLocator(page, to));
     } else if (cmd === "screenshot") {
       const path = join(shotsDir, `${arg || "screenshot"}.png`);
       await page.screenshot({ path, fullPage: true });

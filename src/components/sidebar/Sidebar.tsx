@@ -3,17 +3,26 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Settings, ListOrdered, Keyboard, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Eye, EyeOff, Check, Pencil } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import { useUIStore, useConnectionStore, useEventTypeStore } from "../../store";
+import { useUIStore, useConnectionStore, useEventTypeStore, useRuleStore, useEventsStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
 import { getIconEl } from "../settings/EventTypeModal";
-import { SettingsDrawer } from "../settings/SettingsDrawer";
-import { ThemeSelector } from "./ThemeSelector";
+import { Section } from "./Section";
 import { PresetSelector } from "./PresetSelector";
-import type { Connection, ConnectionStatus, EventType } from "../../types";
+import { describeMatch } from "../../lib/rules";
+import { getAllThemes, isBuiltinTheme } from "../../lib/theme";
+import type { Connection, ConnectionStatus, EventType, Rule, Theme } from "../../types";
+
+/** Native HTML5 drag handlers for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
+export interface DragProps {
+  draggable?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: () => void;
+}
 
 // ── Compact data source row ───────────────────────────────────────────────────
 
@@ -39,7 +48,7 @@ function HideToggle({ hidden, label, onToggle }: { hidden?: boolean; label: stri
   );
 }
 
-function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
+export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
   connection: Connection; status: ConnectionStatus; onEdit: () => void; onToggleHidden: () => void;
 }) {
   const hidden = !!connection.hidden;
@@ -60,11 +69,14 @@ function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
 
 // ── Compact event type row ────────────────────────────────────────────────────
 
-function TypeRow({ type, onEdit, onToggleHidden }: { type: EventType; onEdit: () => void; onToggleHidden: () => void }) {
+export function TypeRow({ type, onEdit, onToggleHidden, dragProps }: {
+  type: EventType; onEdit: () => void; onToggleHidden: () => void; dragProps?: DragProps;
+}) {
   const hidden = !!type.hidden;
   return (
     <div
       onClick={onEdit}
+      {...dragProps}
       className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer"
     >
       <div className="flex size-4 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: type.color + "20", color: type.color }}>
@@ -78,15 +90,48 @@ function TypeRow({ type, onEdit, onToggleHidden }: { type: EventType; onEdit: ()
   );
 }
 
-// ── Section header ────────────────────────────────────────────────────────────
+// ── Compact rule row ──────────────────────────────────────────────────────────
 
-function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
+export function RuleRow({ rule, description, displayType, onEdit }: {
+  rule: Rule; description: string; displayType: EventType | undefined; onEdit: () => void;
+}) {
   return (
-    <div className="flex items-center justify-between px-2 mb-1">
-      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
-      <button onClick={onAdd} className="text-muted-foreground hover:text-foreground" aria-label={`Ajouter : ${label}`}>
-        <Plus size={12} />
-      </button>
+    <div
+      onClick={onEdit}
+      className={cn("group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer", !rule.enabled && "opacity-50")}
+    >
+      <div className="flex size-4 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: (displayType?.color ?? "#6366f1") + "20", color: displayType?.color ?? "#6366f1" }}>
+        {displayType && getIconEl(displayType.icon, 10)}
+      </div>
+      <span className="flex-1 min-w-0 truncate text-xs text-foreground">{description}</span>
+    </div>
+  );
+}
+
+// ── Compact theme row ─────────────────────────────────────────────────────────
+
+export function ThemeRow({ theme, active, onSelect, onEdit, dragProps }: {
+  theme: Theme; active: boolean; onSelect: () => void; onEdit?: () => void; dragProps?: DragProps;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      {...dragProps}
+      className={cn("group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer", active && "bg-muted")}
+    >
+      <Check size={12} className={cn("shrink-0 text-primary", !active && "invisible")} />
+      <span className="size-3 rounded-full border border-border shrink-0" style={{ backgroundColor: theme.accent }} />
+      <span className="flex-1 min-w-0 truncate text-xs text-foreground">{theme.name}</span>
+      {onEdit && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          aria-label={`Modifier ${theme.name}`}
+          title="Modifier"
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+        >
+          <Pencil size={12} />
+        </button>
+      )}
     </div>
   );
 }
@@ -98,7 +143,10 @@ export function Sidebar() {
 
   const { connections, updateConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
-  const { types, updateType } = useEventTypeStore();
+  const { types, updateType, getType, getDefaultType } = useEventTypeStore();
+  const { rules } = useRuleStore();
+  const { events } = useEventsStore();
+  const { customThemes, selectedThemeId, selectTheme } = useThemeStore();
 
   if (!sidebarOpen) return null;
 
@@ -110,6 +158,7 @@ export function Sidebar() {
   const dayHeaders = Array.from({ length: 7 }, (_, i) =>
     format(addDays(gridStart, i), "EEEEE", { locale: fr })
   );
+  const themes = getAllThemes(customThemes);
 
   return (
     <aside className="
@@ -164,78 +213,75 @@ export function Sidebar() {
       <div className="border-t border-border" />
 
       {/* Data sources preview */}
-      <div className="px-3 py-3">
-        <SectionHeader label="Sources" onAdd={() => openDrawer("connection")} />
-        <div className="space-y-0.5">
-          {connections.length === 0 && (
-            <p className="px-2 text-xs text-muted-foreground">Aucune source.</p>
-          )}
-          {connections.map((c) => (
-            <ConnectionRow
-              key={c.id}
-              connection={c}
-              status={statusMap[c.id] ?? "unchecked"}
-              onEdit={() => openDrawer("connection", c.id)}
-              onToggleHidden={() => updateConnection({ ...c, hidden: !c.hidden })}
-            />
-          ))}
-        </div>
-      </div>
+      <Section id="connections" label="Sources" onOpen={() => openDrawer("connection")}>
+        {connections.length === 0 && (
+          <p className="px-2 text-xs text-muted-foreground">Aucune source.</p>
+        )}
+        {connections.map((c) => (
+          <ConnectionRow
+            key={c.id}
+            connection={c}
+            status={statusMap[c.id] ?? "unchecked"}
+            onEdit={() => openDrawer("connection", c.id)}
+            onToggleHidden={() => updateConnection({ ...c, hidden: !c.hidden })}
+          />
+        ))}
+      </Section>
 
       <div className="border-t border-border" />
 
       {/* Event types preview */}
-      <div className="px-3 py-3">
-        <SectionHeader label="Types" onAdd={() => openDrawer("eventType")} />
-        <div className="space-y-0.5">
-          {types.map((t) => (
-            <TypeRow
-              key={t.id}
-              type={t}
-              onEdit={() => openDrawer("eventType", t.id)}
-              onToggleHidden={() => updateType({ ...t, hidden: !t.hidden })}
-            />
-          ))}
-        </div>
-      </div>
+      <Section id="eventType" label="Types" onOpen={() => openDrawer("eventType")}>
+        {types.map((t) => (
+          <TypeRow
+            key={t.id}
+            type={t}
+            onEdit={() => openDrawer("eventType", t.id)}
+            onToggleHidden={() => updateType({ ...t, hidden: !t.hidden })}
+          />
+        ))}
+      </Section>
 
       <div className="border-t border-border" />
 
-      {/* Rules entry point — opens the rules manager in the settings drawer */}
-      <div className="px-3 py-3">
+      {/* Rules preview */}
+      <Section id="rules" label="Règles" onOpen={() => openDrawer("rules")}>
+        {rules.map((r) => (
+          <RuleRow
+            key={r.id}
+            rule={r}
+            description={describeMatch(r, (id) => events.find((e) => e.id === id)?.title, (id) => connections.find((c) => c.id === id)?.name)}
+            displayType={r.matchType === "all" ? getDefaultType() : getType(r.displayTypeId)}
+            onEdit={() => openDrawer("rules", r.id)}
+          />
+        ))}
+      </Section>
+
+      <div className="border-t border-border" />
+
+      {/* Theme preview */}
+      <Section id="theme" label="Thème" onOpen={() => openDrawer("theme")}>
+        {themes.map((t) => (
+          <ThemeRow
+            key={t.id}
+            theme={t}
+            active={t.id === selectedThemeId}
+            onSelect={() => selectTheme(t.id)}
+            onEdit={isBuiltinTheme(t.id) ? undefined : () => openDrawer("theme", t.id)}
+          />
+        ))}
+      </Section>
+
+      {/* Preferences — flat, no sub-items to collapse or reorder */}
+      <div className="mt-auto border-t border-border px-3 py-3">
         <button
-          onClick={() => openDrawer("rules")}
+          onClick={() => openDrawer("preferences")}
           className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-muted text-xs text-foreground"
         >
-          <ListOrdered size={14} className="text-muted-foreground" />
-          Règles d&apos;affichage
+          <Settings size={14} className="text-muted-foreground" />
+          Réglages
         </button>
       </div>
-
-      {/* Theme + settings — bottom of sidebar */}
-      <div className="mt-auto border-t border-border px-3 py-2 flex items-center gap-1">
-        <ThemeSelector />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground"
-          onClick={() => openDrawer("shortcuts")}
-          aria-label="Raccourcis clavier"
-        >
-          <Keyboard size={16} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground"
-          onClick={() => openDrawer("preferences")}
-          aria-label="Préférences"
-        >
-          <Settings size={16} />
-        </Button>
-      </div>
-
-      <SettingsDrawer />
     </aside>
   );
 }

@@ -2,16 +2,16 @@
 
 /**
  * ThemeEditorDialog — create or edit a custom theme (name, base mode, accent
- * color), and delete it. Opened from ThemeSelector. Modeled after
- * AddConnectionModal (dialog chrome, step layout) and EventTypeForm's
- * color-picker + duplicate-name validation.
+ * color), and delete it. Opened from the sidebar's "Thème" section / ThemesPanel.
+ * Modeled after AddConnectionModal (dialog chrome, step layout) and
+ * EventTypeForm's color-picker + duplicate-name validation.
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { ActionButton } from "../ui/action-button";
-import { DrawerHeader, DrawerTitle } from "../ui/drawer";
+import { PanelHeader } from "../settings/PanelHeader";
 import { useThemeStore } from "../../store";
 import {
   getAllThemes,
@@ -58,6 +58,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
   const [card, setCard] = useState(theme?.card ?? defaultBase.card);
   const [border, setBorder] = useState(theme?.border ?? defaultBase.border);
   const [muted, setMuted] = useState(theme?.muted ?? defaultBase.muted);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     loadGoogleFont(fontFamily);
@@ -103,11 +104,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
 
   return (
     <>
-      <DrawerHeader>
-        <DrawerTitle>
-          {theme ? "Modifier le thème" : "Nouveau thème"}
-        </DrawerTitle>
-      </DrawerHeader>
+      <PanelHeader title={theme ? "Modifier le thème" : "Nouveau thème"} onBack={onClose} />
 
       <div className="space-y-4 px-4 pb-4">
             {/* Name */}
@@ -217,27 +214,36 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
               )}
             </div>
 
-            {/* Base colors */}
+            {/* Base colors — behind an accordion, same "Avancé" pattern as the connection form's proxy field */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Couleurs de base</label>
-              <div className="grid grid-cols-4 gap-2">
-                {BASE_COLOR_FIELDS.map(({ key, label }) => {
-                  const value = { background, card, border, muted }[key];
-                  const setValue = { background: setBackground, card: setCard, border: setBorder, muted: setMuted }[key];
-                  return (
-                    <div key={key} className="flex flex-col items-center gap-1">
-                      <input
-                        type="color"
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        className="size-8 rounded cursor-pointer border border-border"
-                        aria-label={label}
-                      />
-                      <span className="text-[10px] text-muted-foreground">{label}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen((v) => !v)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {advancedOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                Avancé — couleurs personnalisées
+              </button>
+              {advancedOpen && (
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  {BASE_COLOR_FIELDS.map(({ key, label }) => {
+                    const value = { background, card, border, muted }[key];
+                    const setValue = { background: setBackground, card: setCard, border: setBorder, muted: setMuted }[key];
+                    return (
+                      <div key={key} className="flex flex-col items-center gap-1">
+                        <input
+                          type="color"
+                          value={value}
+                          onChange={(e) => setValue(e.target.value)}
+                          className="size-8 rounded cursor-pointer border border-border"
+                          aria-label={label}
+                        />
+                        <span className="text-[10px] text-muted-foreground">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Radius */}

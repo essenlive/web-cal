@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -25,9 +26,11 @@ export interface RuleModalProps {
   initialMatchValue?: string;
   /** Called to dismiss this form (Cancel, or after a successful save). Meaning depends on the caller — e.g. "back to the rules list" or "back to the connection form". */
   onClose: () => void;
+  /** Renders a back-chevron next to the title, wired to `onClose` — set when the caller is a list view (e.g. RulesPanel) rather than a nested "nothing to go back to" flow. */
+  showBackButton?: boolean;
 }
 
-export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }: RuleModalProps) {
+export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose, showBackButton }: RuleModalProps) {
   const { rules, addRule, updateRule } = useRuleStore();
   const { types, getDefaultType } = useEventTypeStore();
   const { events } = useEventsStore();
@@ -81,8 +84,17 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
       {/* Plain markup, not Drawer/Dialog Header+Title — this form is embedded inside
           both a Drawer (Rules panel, connection editor) and a Dialog (event detail),
           and can't depend on either overlay primitive's compound components. */}
-      <div className="flex flex-col gap-0.5 p-4 pr-10">
-        <h2 className="font-semibold text-foreground">
+      <div className="flex items-center gap-1 p-4 pr-10">
+        {showBackButton && (
+          <button
+            onClick={onClose}
+            aria-label="Retour"
+            className="shrink-0 -ml-1.5 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
+        <h2 className="font-semibold text-foreground truncate">
           {isCatchAll ? "Modifier la règle par défaut" : editing ? "Modifier la règle" : "Nouvelle règle"}
         </h2>
       </div>

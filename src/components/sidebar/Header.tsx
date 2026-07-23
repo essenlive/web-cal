@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, Keyboard } from "lucide-react";
 import { cn, stepDate } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { useUIStore } from "../../store";
@@ -14,7 +14,7 @@ const VIEWS: { id: CalendarView; label: string }[] = [
 ];
 
 export function Header() {
-  const { view, setView, currentDate, setCurrentDate, toggleSidebar } = useUIStore();
+  const { view, setView, currentDate, setCurrentDate, toggleSidebar, openDrawer } = useUIStore();
 
   const navigate = (dir: 1 | -1) => setCurrentDate(stepDate(view, currentDate, dir));
 
@@ -68,6 +68,16 @@ export function Header() {
           </Button>
         ))}
       </div>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => openDrawer("shortcuts")}
+        className="text-muted-foreground shrink-0"
+        aria-label="Raccourcis clavier"
+      >
+        <Keyboard size={16} />
+      </Button>
     </header>
   );
 }

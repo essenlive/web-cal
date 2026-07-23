@@ -10,7 +10,7 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
-import { DrawerHeader, DrawerTitle } from "../ui/drawer";
+import { PanelHeader } from "./PanelHeader";
 import { useRuleStore, useEventsStore, useConnectionStore } from "../../store";
 import { describeMatch } from "../../lib/rules";
 import type { DisplayStyle, EventType } from "../../types";
@@ -122,11 +122,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
 
   return (
     <>
-      <DrawerHeader>
-        <DrawerTitle>
-          {type ? "Modifier le type" : "Nouveau type"}
-        </DrawerTitle>
-      </DrawerHeader>
+      <PanelHeader title={type ? "Modifier le type" : "Nouveau type"} onBack={onClose} />
 
       <div className="space-y-4 px-4 pb-4">
           <div>
@@ -266,15 +262,14 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
             {onDelete ? (
               <ActionButton
                 variant="ghost"
-                size="icon"
                 onAction={onDelete}
                 disabled={!!deleteDisabledReason}
                 title={deleteDisabledReason}
-                confirmLabel="Confirmer la suppression"
-                className="text-muted-foreground hover:text-destructive"
-                aria-label="Supprimer le type"
+                confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
+                className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               >
-                <Trash2 size={15} />
+                <Trash2 size={13} />
+                Supprimer
               </ActionButton>
             ) : <span />}
 

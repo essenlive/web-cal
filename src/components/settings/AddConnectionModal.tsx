@@ -17,7 +17,7 @@ import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { DrawerHeader, DrawerTitle } from "../ui/drawer";
+import { PanelHeader } from "./PanelHeader";
 import type { CalDAVConnection, Connection, DemoConnection, WebCalConnection } from "../../types";
 import { CalDAVProvider } from "../../lib/caldav-provider";
 import { RuleModal } from "./RuleModal";
@@ -276,9 +276,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
 
   return (
     <>
-      <DrawerHeader>
-        <DrawerTitle>{title}</DrawerTitle>
-      </DrawerHeader>
+      <PanelHeader title={title} onBack={onClose} />
 
           {/* WebCal form — the only option for new connections */}
           {type === "webcal" && (
@@ -323,13 +321,12 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                   ? (onDelete && (
                       <ActionButton
                         variant="ghost"
-                        size="icon"
                         onAction={onDelete}
-                        confirmLabel="Confirmer la suppression"
-                        className="text-muted-foreground hover:text-destructive"
-                        aria-label="Supprimer la source"
+                        confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
+                        className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={13} />
+                        Supprimer
                       </ActionButton>
                     ))
                   : <div />}
@@ -408,13 +405,12 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 {onDelete && (
                   <ActionButton
                     variant="ghost"
-                    size="icon"
                     onAction={onDelete}
-                    confirmLabel="Confirmer la suppression"
-                    className="text-muted-foreground hover:text-destructive"
-                    aria-label="Supprimer la source"
+                    confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
+                    className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={13} />
+                    Supprimer
                   </ActionButton>
                 )}
                 <div className="flex items-center gap-2">
@@ -461,13 +457,12 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 {onDelete && (
                   <ActionButton
                     variant="ghost"
-                    size="icon"
                     onAction={onDelete}
-                    confirmLabel="Confirmer la suppression"
-                    className="text-muted-foreground hover:text-destructive"
-                    aria-label="Supprimer la source"
+                    confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
+                    className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={13} />
+                    Supprimer
                   </ActionButton>
                 )}
                 <Button type="button" onClick={handleAdd} disabled={!canAdd}>

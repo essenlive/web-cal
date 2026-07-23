@@ -113,6 +113,7 @@ layer(base);
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  button:not(:disabled) { cursor: pointer; }
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }

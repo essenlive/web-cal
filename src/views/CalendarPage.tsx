@@ -3,6 +3,7 @@ import { format, parse } from "date-fns";
 import { Header } from "../components/sidebar/Header";
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
+import { SettingsDrawer } from "../components/settings/SettingsDrawer";
 import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore } from "../store";
 import { stepDate } from "../lib/utils";
 import { presetMatchesState } from "../lib/presets";
@@ -116,6 +117,7 @@ export function CalendarPage() {
           <CalendarGrid />
         </main>
       </div>
+      <SettingsDrawer />
     </div>
   );
 }

@@ -8,74 +8,30 @@
  */
 
 import { Drawer, DrawerContent } from "../ui/drawer";
-import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
-import { AddConnectionModal } from "./AddConnectionModal";
-import { EventTypeModal } from "./EventTypeModal";
+import { useUIStore } from "../../store";
+import { ConnectionsPanel } from "./ConnectionsPanel";
+import { EventTypesPanel } from "./EventTypesPanel";
 import { RulesPanel } from "../../views/RulesPage";
-import { ThemeEditorDialog } from "../sidebar/ThemeEditorDialog";
+import { ThemesPanel } from "./ThemesPanel";
+import { PresetsPanel } from "../sidebar/PresetsPanel";
 import { PreferencesPanel } from "../../views/SettingsPage";
 import { ShortcutsPanel } from "../sidebar/ShortcutsHelp";
-import type { EventType } from "../../types";
 
 export function SettingsDrawer() {
   const { activeDrawer, closeDrawer } = useUIStore();
-  const { connections, addConnection, updateConnection, removeConnection } = useConnectionStore();
-  const { types, addType, updateType, removeType, setDefaultType } = useEventTypeStore();
-  const { customThemes } = useThemeStore();
-
-  const editingConn = activeDrawer?.panel === "connection"
-    ? connections.find((c) => c.id === activeDrawer.editId)
-    : undefined;
-  const editingType = activeDrawer?.panel === "eventType"
-    ? types.find((t) => t.id === activeDrawer.editId)
-    : undefined;
-  const editingTheme = activeDrawer?.panel === "theme"
-    ? customThemes.find((t) => t.id === activeDrawer.editId)
-    : undefined;
 
   return (
     <Drawer direction="right" open={activeDrawer !== null} onOpenChange={(v) => { if (!v) closeDrawer(); }}>
       <DrawerContent className="overflow-y-auto" aria-describedby={undefined}>
-        {activeDrawer?.panel === "connection" && (
-          <AddConnectionModal
-            key={activeDrawer.editId ?? "new-conn"}
-            connection={editingConn}
-            existingColors={connections.map((c) => c.color)}
-            onAdd={addConnection}
-            onUpdate={updateConnection}
-            onDelete={editingConn ? () => { removeConnection(editingConn.id); closeDrawer(); } : undefined}
-            onClose={closeDrawer}
-          />
-        )}
+        {activeDrawer?.panel === "connection" && <ConnectionsPanel initialEditId={activeDrawer.editId} />}
 
-        {activeDrawer?.panel === "eventType" && (
-          <EventTypeModal
-            key={activeDrawer.editId ?? "new-type"}
-            type={editingType}
-            existingLabels={types.map((t) => t.label)}
-            onSave={(t) => {
-              if (t.id) {
-                updateType(t as EventType);
-                if (t.isDefault) setDefaultType(t.id);
-              } else {
-                addType(t);
-              }
-            }}
-            onDelete={editingType ? () => { removeType(editingType.id); closeDrawer(); } : undefined}
-            deleteDisabledReason={editingType?.isDefault ? "Le type par défaut ne peut pas être supprimé — définissez d'abord un autre type par défaut" : undefined}
-            onClose={closeDrawer}
-          />
-        )}
+        {activeDrawer?.panel === "eventType" && <EventTypesPanel initialEditId={activeDrawer.editId} />}
 
-        {activeDrawer?.panel === "rules" && <RulesPanel />}
+        {activeDrawer?.panel === "rules" && <RulesPanel initialEditRuleId={activeDrawer.editId} />}
 
-        {activeDrawer?.panel === "theme" && (
-          <ThemeEditorDialog
-            key={activeDrawer.editId ?? "new-theme"}
-            theme={editingTheme}
-            onClose={closeDrawer}
-          />
-        )}
+        {activeDrawer?.panel === "theme" && <ThemesPanel initialEditId={activeDrawer.editId} />}
+
+        {activeDrawer?.panel === "preset" && <PresetsPanel initialEditId={activeDrawer.editId} />}
 
         {activeDrawer?.panel === "preferences" && <PreferencesPanel />}
 

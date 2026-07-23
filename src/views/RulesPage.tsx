@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, ChevronUp, ChevronDown, AlertTriangle } from "lucide-react";
+import { Trash2, ChevronUp, ChevronDown, AlertTriangle } from "lucide-react";
 import { cn } from "../lib/utils";
-import { Button } from "../components/ui/button";
 import { ActionButton } from "../components/ui/action-button";
 import { Switch } from "../components/ui/switch";
-import { DrawerHeader, DrawerTitle } from "../components/ui/drawer";
+import { PanelHeader } from "../components/settings/PanelHeader";
 import { useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
+import { useDragReorder } from "../hooks/useDragReorder";
 import { getIconEl } from "../components/settings/EventTypeModal";
 import { RuleModal } from "../components/settings/RuleModal";
 import { describeMatch } from "../lib/rules";
@@ -22,7 +22,7 @@ const MATCH_TYPE_LABELS: Record<Rule["matchType"], string> = {
 
 function RuleRow({
   rule, description, displayType, broken, isFirst, isLast,
-  onToggle, onEdit, onRemove, onMoveUp, onMoveDown, onDragStart, onDragOver, onDrop,
+  onToggle, onEdit, onRemove, onMoveUp, onMoveDown, dragProps,
 }: {
   rule: Rule;
   description: string;
@@ -35,18 +35,13 @@ function RuleRow({
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
-  onDragStart: () => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void;
+  dragProps?: { draggable: boolean; onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDrop: () => void };
 }) {
   const isCatchAll = rule.matchType === "all";
 
   return (
     <div
-      draggable={!isCatchAll}
-      onDragStart={isCatchAll ? undefined : onDragStart}
-      onDragOver={isCatchAll ? undefined : onDragOver}
-      onDrop={isCatchAll ? undefined : onDrop}
+      {...(isCatchAll ? undefined : dragProps)}
       className={cn(
         "flex items-center gap-2 rounded-lg border border-border px-3 py-2 bg-card",
         !rule.enabled && "opacity-50",
@@ -102,11 +97,11 @@ function RuleRow({
         <ActionButton
           variant="ghost"
           onAction={onRemove}
-          confirmLabel="Confirmer la suppression"
-          className="h-auto w-auto p-0.5 shrink-0 text-muted-foreground hover:text-destructive"
-          aria-label="Supprimer la règle"
+          confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
+          className="gap-1.5 h-auto px-2 py-1 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 size={13} />
+          Supprimer
         </ActionButton>
       )}
     </div>
@@ -114,15 +109,16 @@ function RuleRow({
 }
 
 /** Rules manager — rendered as drawer content from the sidebar, beneath the display types list. */
-export function RulesPanel() {
+export function RulesPanel({ initialEditRuleId }: { initialEditRuleId?: string } = {}) {
   const { rules, toggleRule, removeRule, reorderRule } = useRuleStore();
   const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<Rule | null>(null);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const initialRule = initialEditRuleId ? rules.find((r) => r.id === initialEditRuleId) ?? null : null;
+  const [formOpen, setFormOpen] = useState(!!initialRule);
+  const [editingRule, setEditingRule] = useState<Rule | null>(initialRule);
+  const { getDragProps } = useDragReorder(rules, (r) => r.id, reorderRule);
 
   const getEventTitle = (id: string) => events.find((e) => e.id === id)?.title;
   const getConnectionName = (id: string) => connections.find((c) => c.id === id)?.name;
@@ -140,19 +136,17 @@ export function RulesPanel() {
         key={editingRule?.id ?? "new-rule"}
         rule={editingRule ?? undefined}
         onClose={() => { setFormOpen(false); setEditingRule(null); }}
+        showBackButton
       />
     );
   }
 
   return (
     <>
-      <DrawerHeader className="flex-row items-center justify-between space-y-0">
-        <DrawerTitle>Règles d'affichage</DrawerTitle>
-        <Button onClick={() => { setEditingRule(null); setFormOpen(true); }} className="gap-1.5 rounded-lg text-sm">
-          <Plus size={14} />
-          Nouvelle règle
-        </Button>
-      </DrawerHeader>
+      <PanelHeader
+        title="Règles d'affichage"
+        action={{ label: "Nouvelle règle", onClick: () => { setEditingRule(null); setFormOpen(true); } }}
+      />
 
       <div className="space-y-1.5 px-4 pb-4">
         {rules.map((rule, index) => (
@@ -169,12 +163,7 @@ export function RulesPanel() {
             onRemove={() => removeRule(rule.id)}
             onMoveUp={() => move(rule.id, -1)}
             onMoveDown={() => move(rule.id, 1)}
-            onDragStart={() => setDragIndex(index)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => {
-              if (dragIndex !== null && dragIndex !== index) reorderRule(rules[dragIndex].id, index);
-              setDragIndex(null);
-            }}
+            dragProps={getDragProps(index)}
           />
         ))}
       </div>

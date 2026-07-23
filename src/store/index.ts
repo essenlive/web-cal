@@ -189,6 +189,8 @@ interface EventTypeStore {
   getDefaultType: () => EventType;
   /** Makes `id` the default type, clearing the flag from every other type. */
   setDefaultType: (id: string) => void;
+  /** Array order is display order. Moves `id` to `toIndex`. */
+  reorderType: (id: string, toIndex: number) => void;
 }
 
 export const useEventTypeStore = create<EventTypeStore>()(
@@ -204,6 +206,15 @@ export const useEventTypeStore = create<EventTypeStore>()(
       getType: (id) => get().types.find((t) => t.id === id),
       getDefaultType: () => get().types.find((t) => t.isDefault) ?? get().types[0],
       setDefaultType: (id) => set((s) => ({ types: s.types.map((t) => ({ ...t, isDefault: t.id === id })) })),
+      reorderType: (id, toIndex) =>
+        set((s) => {
+          const idx = s.types.findIndex((t) => t.id === id);
+          if (idx === -1) return s;
+          const types = [...s.types];
+          const [item] = types.splice(idx, 1);
+          types.splice(Math.max(0, Math.min(toIndex, types.length)), 0, item);
+          return { types };
+        }),
     }),
     {
       name: "proton-cal:event-types",
@@ -352,25 +363,28 @@ export const useRuleStore = create<RuleStore>()(
 
 interface PresetStore {
   presets: Preset[];
-  addPreset: (name: string) => void;
+  addPreset: (name: string, description?: string) => void;
   updatePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
   applyPreset: (id: string) => void;
   /** Unhides every connection and event type — the "no preset" state (shortcut: 0). */
   clearPreset: () => void;
+  /** Array order drives both the sidebar list and the 1-9 keyboard shortcuts. Moves `id` to `toIndex`. */
+  reorderPreset: (id: string, toIndex: number) => void;
 }
 
 export const usePresetStore = create<PresetStore>()(
   persist(
     (set, get) => ({
       presets: [],
-      addPreset: (name) =>
+      addPreset: (name, description) =>
         set((s) => ({
           presets: [
             ...s.presets,
             {
               id: crypto.randomUUID(),
               name,
+              description,
               ...capturePresetState(useConnectionStore.getState().connections, useEventTypeStore.getState().types),
             },
           ],
@@ -378,6 +392,15 @@ export const usePresetStore = create<PresetStore>()(
       updatePreset: (preset) =>
         set((s) => ({ presets: s.presets.map((p) => (p.id === preset.id ? preset : p)) })),
       removePreset: (id) => set((s) => ({ presets: s.presets.filter((p) => p.id !== id) })),
+      reorderPreset: (id, toIndex) =>
+        set((s) => {
+          const idx = s.presets.findIndex((p) => p.id === id);
+          if (idx === -1) return s;
+          const presets = [...s.presets];
+          const [item] = presets.splice(idx, 1);
+          presets.splice(Math.max(0, Math.min(toIndex, presets.length)), 0, item);
+          return { presets };
+        }),
       applyPreset: (id) => {
         const preset = get().presets.find((p) => p.id === id);
         if (!preset) return;
@@ -423,7 +446,7 @@ export const useEventsStore = create<EventsStore>()((set) => ({
 // ── UI Store ──────────────────────────────────────────────────────────────────
 
 /** Which settings drawer panel is currently open, if any. See specs/007-settings-side-drawer. */
-export type DrawerPanel = "connection" | "eventType" | "rules" | "theme" | "preferences" | "shortcuts";
+export type DrawerPanel = "connection" | "eventType" | "rules" | "preset" | "theme" | "preferences" | "shortcuts";
 
 export interface ActiveDrawer {
   panel: DrawerPanel;
@@ -439,6 +462,8 @@ interface UIStore {
   use24h: boolean;
   dateFormatEU: boolean;
   activeDrawer: ActiveDrawer | null;
+  /** Sidebar section id → collapsed state. Missing id = expanded. */
+  collapsedSections: Record<string, boolean>;
   setView: (v: CalendarView) => void;
   setCurrentDate: (d: Date) => void;
   toggleSidebar: () => void;
@@ -447,6 +472,7 @@ interface UIStore {
   setDateFormatEU: (v: boolean) => void;
   openDrawer: (panel: DrawerPanel, editId?: string) => void;
   closeDrawer: () => void;
+  toggleSection: (id: string) => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -459,6 +485,7 @@ export const useUIStore = create<UIStore>()(
       use24h: true,
       dateFormatEU: true,
       activeDrawer: null,
+      collapsedSections: {},
       setView: (view) => set({ view }),
       setCurrentDate: (currentDate) => set({ currentDate }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -467,6 +494,7 @@ export const useUIStore = create<UIStore>()(
       setDateFormatEU: (dateFormatEU) => set({ dateFormatEU }),
       openDrawer: (panel, editId) => set({ activeDrawer: { panel, editId } }),
       closeDrawer: () => set({ activeDrawer: null }),
+      toggleSection: (id) => set((s) => ({ collapsedSections: { ...s.collapsedSections, [id]: !s.collapsedSections[id] } })),
     }),
     {
       name: "proton-cal:ui",
@@ -476,6 +504,7 @@ export const useUIStore = create<UIStore>()(
         weekStartsOnMonday: s.weekStartsOnMonday,
         use24h: s.use24h,
         dateFormatEU: s.dateFormatEU,
+        collapsedSections: s.collapsedSections,
       }),
     }
   )
@@ -496,6 +525,8 @@ interface ThemeStore {
   updateTheme: (t: Theme) => void;
   removeTheme: (id: string) => void;
   selectTheme: (id: string) => void;
+  /** Array order is display order. Built-in themes never enter `customThemes`, so they're never reordered. */
+  reorderTheme: (id: string, toIndex: number) => void;
 }
 
 export const useThemeStore = create<ThemeStore>()(
@@ -511,6 +542,15 @@ export const useThemeStore = create<ThemeStore>()(
       removeTheme: (id) =>
         set((s) => ({ customThemes: s.customThemes.filter((x) => x.id !== id) })),
       selectTheme: (id) => set({ selectedThemeId: id }),
+      reorderTheme: (id, toIndex) =>
+        set((s) => {
+          const idx = s.customThemes.findIndex((t) => t.id === id);
+          if (idx === -1) return s;
+          const customThemes = [...s.customThemes];
+          const [item] = customThemes.splice(idx, 1);
+          customThemes.splice(Math.max(0, Math.min(toIndex, customThemes.length)), 0, item);
+          return { customThemes };
+        }),
     }),
     {
       name: "proton-cal:themes",

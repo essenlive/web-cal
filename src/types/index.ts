@@ -182,6 +182,8 @@ export interface Preset {
   id: string;
   /** Display name, shown in the preset list. Unique case-insensitively across all presets. */
   name: string;
+  /** Optional free-text note, shown under the name in the preset list. */
+  description?: string;
   /** Connection.id → hidden state at save/update time. Absent id = not covered by this preset. */
   connections: Record<string, boolean>;
   /** EventType.id → hidden state at save/update time. Absent id = not covered by this preset. */
