@@ -12,10 +12,22 @@
  *   all connections are read-only (specs/003-display-type-rules-engine amendment, FR-016).
  */
 
+import { isWithinInterval, parseISO } from "date-fns";
 import type { DataProvider } from "./data-provider";
 import type { CalendarEvent, Connection, ConnectionStatus } from "../types";
 import { WebCalProvider } from "./webcal-provider";
 import { CalDAVProvider } from "./caldav-provider";
+import { generateSeedEvents } from "./mock-seed";
+
+/** Local, offline provider backing the seeded "demo" connection — see DemoConnection in types. */
+const demoProvider: DataProvider = {
+  async getEvents(start, end) {
+    return generateSeedEvents().filter((e) => {
+      const s = parseISO(e.start);
+      return isWithinInterval(s, { start, end }) || (s < end && parseISO(e.end) > start);
+    });
+  },
+};
 
 /** Build a sub-provider from a connection config. */
 function makeProvider(conn: Connection): DataProvider {
@@ -32,6 +44,8 @@ function makeProvider(conn: Connection): DataProvider {
         conn.password,
         conn.proxyUrl ?? ""
       );
+    case "demo":
+      return demoProvider;
   }
 }
 
@@ -51,6 +65,7 @@ function applyConnectionMeta(events: CalendarEvent[], conn: Connection): Calenda
   return events.map((e) => ({
     ...e,
     id: conn.type === "caldav" ? `${conn.id}::${e.id}` : e.id,
+    calendarId: conn.type === "demo" ? conn.id : e.calendarId,
   }));
 }
 

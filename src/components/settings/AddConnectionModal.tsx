@@ -18,7 +18,7 @@ import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { DrawerHeader, DrawerTitle } from "../ui/drawer";
-import type { CalDAVConnection, Connection, WebCalConnection } from "../../types";
+import type { CalDAVConnection, Connection, DemoConnection, WebCalConnection } from "../../types";
 import { CalDAVProvider } from "../../lib/caldav-provider";
 import { RuleModal } from "./RuleModal";
 
@@ -161,12 +161,14 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
   const editing = !!connection;
   // Never changed after mount — new connections are always "webcal"; an existing
   // "caldav" connection keeps its type (there's no UI to convert one to the other).
-  const type: "webcal" | "caldav" = connection?.type ?? "webcal";
+  // "demo" is never created here either — it only ever comes pre-seeded (see
+  // useConnectionStore) and can only be edited (name/colour) or deleted.
+  const type: "webcal" | "caldav" | "demo" = connection?.type ?? "webcal";
 
   // Shared fields
   const [name, setName]       = useState(connection?.name ?? "");
   const [color, setColor]     = useState(() => connection?.color ?? pickInitialColor(existingColors));
-  const [proxyUrl, setProxy]  = useState(connection?.proxyUrl ?? "");
+  const [proxyUrl, setProxy]  = useState(connection?.type !== "demo" ? connection?.proxyUrl ?? "" : "");
 
   // WebCal-specific
   const [wcUrl, setWcUrl] = useState(connection?.type === "webcal" ? connection.url : "");
@@ -189,7 +191,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
     if (type === "webcal") {
       if (!wcUrl.trim()) errs.wcUrl = "L'URL du calendrier est requise.";
       else if (!isValidWebCalUrl(wcUrl)) errs.wcUrl = "Doit commencer par https://, http:// ou webcal://";
-    } else {
+    } else if (type === "caldav") {
       if (!cdUrl.trim()) errs.cdUrl = "L'URL du serveur est requise.";
       else if (!isValidHttpUrl(cdUrl)) errs.cdUrl = "Doit commencer par https:// ou http://";
       if (!cdUser.trim()) errs.cdUser = "Le nom d'utilisateur est requis.";
@@ -231,7 +233,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
       };
       if (editing) onUpdate?.({ ...conn, id: connection!.id });
       else onAdd(conn);
-    } else {
+    } else if (type === "caldav") {
       const conn: Omit<CalDAVConnection, "id"> = {
         type: "caldav",
         name: name.trim(),
@@ -243,16 +245,21 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
       };
       if (editing) onUpdate?.({ ...conn, id: connection!.id });
       else onAdd(conn);
+    } else {
+      const conn: DemoConnection = { type: "demo", id: connection!.id, name: name.trim(), color, hidden: connection!.hidden };
+      onUpdate?.(conn);
     }
     onClose();
   }
 
   const canAdd = type === "webcal"
     ? name.trim() && isValidWebCalUrl(wcUrl)
-    : name.trim() && isValidHttpUrl(cdUrl) && cdUser.trim() && cdPass.trim();
+    : type === "caldav"
+    ? name.trim() && isValidHttpUrl(cdUrl) && cdUser.trim() && cdPass.trim()
+    : !!name.trim();
 
   const title = editing
-    ? `Modifier la source ${type === "webcal" ? "WebCal" : "CalDAV"}`
+    ? `Modifier la source ${type === "webcal" ? "WebCal" : type === "caldav" ? "CalDAV" : "de démonstration"}`
     : "Ajouter une source de calendrier";
 
   // Creating a rule for this source is a nested form within the same panel —
@@ -433,6 +440,39 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                     Enregistrer
                   </Button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Demo form — only reachable when editing the seeded demo connection */}
+          {editing && type === "demo" && (
+            <div className="space-y-4 px-4 pb-4">
+              <p className="text-xs text-muted-foreground">
+                Calendrier de démonstration généré localement, sans connexion réseau. Supprimez-le une fois vos propres sources ajoutées.
+              </p>
+              <Field
+                label="Nom *"
+                value={name}
+                onChange={setName}
+                error={errors.name}
+              />
+              <ColorPicker value={color} onChange={setColor} />
+              <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+                {onDelete && (
+                  <ActionButton
+                    variant="ghost"
+                    size="icon"
+                    onAction={onDelete}
+                    confirmLabel="Confirmer la suppression"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Supprimer la source"
+                  >
+                    <Trash2 size={15} />
+                  </ActionButton>
+                )}
+                <Button type="button" onClick={handleAdd} disabled={!canAdd}>
+                  Enregistrer
+                </Button>
               </div>
             </div>
           )}

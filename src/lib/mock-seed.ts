@@ -54,6 +54,13 @@ export function generateSeedEvents(): CalendarEvent[] {
       setMinutes(setHours(addDays(monday, 5), 10), 0),
       setMinutes(setHours(addDays(monday, 5), 17), 0),
       false, "FabLab M19"),
+    // All-day events, chosen to exercise every display style at a glance:
+    // a multi-day "day" banner, and three avatar corners (tl/bl/br) stacked
+    // on the same day plus one shown in isolation the day after.
+    ev("Livraison module A", "deadline", monday, addDays(monday, 3), true),
+    ev("Focus · Rédaction rapport", "focus-time", addDays(monday, 4), addDays(monday, 6), true),
+    ev("Admin · RTT", "admin", addDays(monday, 4), addDays(monday, 5), true),
+    ev("Vacances (pont)", "social", addDays(monday, 4), addDays(monday, 5), true),
   );
 
   // Previous week

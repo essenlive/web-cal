@@ -9,7 +9,6 @@ import {
 } from "react";
 import { addMonths, subMonths } from "date-fns";
 import type { DataProvider } from "../lib/data-provider";
-import { MockDataProvider } from "../lib/mock-data-provider";
 import { MultiSourceProvider } from "../lib/multi-source-provider";
 import { useConnectionStore, useEventsStore, useUIStore } from "../store";
 import type { ConnectionStatusMap } from "../types";
@@ -31,11 +30,14 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   // stable memo key so adding/removing/editing a connection triggers a new provider.
   const connectionKey = JSON.stringify(connections.map((c) => c.id));
 
-  const provider = useMemo<DataProvider>(() => {
-    if (connections.length === 0) return new MockDataProvider();
-    return new MultiSourceProvider(connections, handleStatusChange);
+  // MultiSourceProvider already resolves to [] for an empty connections list —
+  // a fresh install seeds a deletable "demo" connection (see useConnectionStore),
+  // so an empty list here means the user deliberately removed every source.
+  const provider = useMemo<DataProvider>(
+    () => new MultiSourceProvider(connections, handleStatusChange),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionKey, handleStatusChange]);
+    [connectionKey, handleStatusChange]
+  );
 
   useEffect(() => {
     const start = subMonths(currentDate, 1);

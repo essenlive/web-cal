@@ -150,10 +150,25 @@ export interface CalDAVConnection {
 }
 
 /**
+ * Local demo calendar, seeded once on first run so the app never starts on an
+ * empty, sourceless calendar. Read-only and offline — events come from
+ * lib/mock-seed.ts, no network fetch involved. Deletable like any other
+ * connection (see useConnectionStore's initial state in store/index.ts).
+ */
+export interface DemoConnection {
+  type: "demo";
+  /** Fixed id ("demo") — stable across reloads so hidden-state and source rules stick. */
+  id: string;
+  name: string;
+  color: string;
+  hidden?: boolean;
+}
+
+/**
  * Discriminated union — use `conn.type` to narrow to the specific variant.
  * TypeScript provides exhaustive narrowing via switch/case.
  */
-export type Connection = WebCalConnection | CalDAVConnection;
+export type Connection = WebCalConnection | CalDAVConnection | DemoConnection;
 
 // ── Preset types ───────────────────────────────────────────────────────────────
 

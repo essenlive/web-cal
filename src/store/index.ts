@@ -63,6 +63,15 @@ export const useBackendStore = create<BackendStore>()(
 
 // ── Connection Store ──────────────────────────────────────────────────────────
 
+/**
+ * First-run-only seed: gives a fresh install a visible, deletable source
+ * instead of silently faking data behind an empty sources list (see
+ * MultiSourceProvider's "demo" case and generateSeedEvents in mock-seed.ts).
+ * Only used as useConnectionStore's initial state — same pattern as
+ * useRuleStore's seedDemoRules, never re-applied once connections are persisted.
+ */
+const DEMO_CONNECTION: Connection = { type: "demo", id: "demo", name: "Démo", color: "#6366f1" };
+
 interface ConnectionStore {
   connections: Connection[];
   addConnection: (conn: Omit<Connection, "id">) => void;
@@ -73,7 +82,7 @@ interface ConnectionStore {
 export const useConnectionStore = create<ConnectionStore>()(
   persist(
     (set) => ({
-      connections: [],
+      connections: [DEMO_CONNECTION],
       addConnection: (conn) =>
         set((s) => ({
           connections: [...s.connections, { ...conn, id: crypto.randomUUID() } as Connection],
