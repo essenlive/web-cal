@@ -1,0 +1,59 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "#6366f1",
+        "createdAt": "2026-07-23T13:26:28.275Z",
+        "reason": "Default EventType swatch — user/event-type data, deliberately excluded from DESIGN.md's system palette (The Event Color Is Data Rule)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#3b82f6",
+        "createdAt": "2026-07-23T13:26:28.319Z",
+        "reason": "Default EventType swatch — user/event-type data, deliberately excluded from DESIGN.md's system palette (The Event Color Is Data Rule)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#8b5cf6",
+        "createdAt": "2026-07-23T13:26:28.362Z",
+        "reason": "Default EventType swatch — user/event-type data, deliberately excluded from DESIGN.md's system palette (The Event Color Is Data Rule)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#10b981",
+        "createdAt": "2026-07-23T13:26:28.415Z",
+        "reason": "Default EventType swatch — user/event-type data, deliberately excluded from DESIGN.md's system palette (The Event Color Is Data Rule)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#f59e0b",
+        "createdAt": "2026-07-23T13:26:28.471Z",
+        "reason": "Default EventType swatch — user/event-type data, deliberately excluded from DESIGN.md's system palette (The Event Color Is Data Rule)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#ec4899",
+        "createdAt": "2026-07-23T13:26:28.515Z",
+        "reason": "Default EventType swatch — user/event-type data, deliberately excluded from DESIGN.md's system palette (The Event Color Is Data Rule)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "src/lib/theme.ts"
+        ],
+        "createdAt": "2026-07-23T13:32:25.024Z",
+        "reason": "loadGoogleFont() builds a dynamic stylesheet URL from a user-selected font family (theme editor's font search) — not a hardcoded font, confirmed false positive in the global-ui-rework critique"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#ef4444",
+        "createdAt": "2026-07-23T13:50:21.008Z",
+        "reason": "Default EventType swatch (deadline) — user/event-type data, deliberately excluded from DESIGN.md's system palette (The Event Color Is Data Rule); previously unflagged only by accidental proximity to the old, lower-contrast destructive red"
+      }
+    ]
+  }
+}
