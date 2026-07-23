@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useThemeStore } from "../store";
-import { getActiveTheme, resolveThemeCssVars } from "../lib/theme";
+import { getActiveTheme, loadGoogleFont, resolveThemeCssVars } from "../lib/theme";
 import { Toaster } from "../components/ui/sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -12,6 +12,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", activeTheme.mode === "dark");
+    loadGoogleFont(activeTheme.fontFamily ?? "DM Sans");
     const vars = resolveThemeCssVars(activeTheme);
     for (const [key, value] of Object.entries(vars)) {
       root.style.setProperty(key, value);

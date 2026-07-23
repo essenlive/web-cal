@@ -80,6 +80,20 @@ export interface Theme {
   mode: ThemeMode;
   /** Hex color string, e.g. "#6366f1". */
   accent: string;
+  /**
+   * Google Fonts family name, e.g. "Roboto" (see src/lib/google-fonts.ts).
+   * Optional for themes persisted before this field existed. Themes saved by
+   * an earlier version of this app may instead hold a full CSS font-family
+   * stack (e.g. "'DM Sans', sans-serif") — see rawFamilyName() in lib/theme.ts.
+   */
+  fontFamily?: string;
+  /** CSS length, e.g. "0.75rem". Optional for themes persisted before this field existed. */
+  radius?: string;
+  /** Base surface colors, hex strings. Unset falls back to the app's per-mode default (see DEFAULT_BASE_COLORS in lib/theme.ts). */
+  background?: string;
+  card?: string;
+  border?: string;
+  muted?: string;
 }
 
 // ── Connection types ──────────────────────────────────────────────────────────
