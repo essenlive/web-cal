@@ -57,7 +57,7 @@ export function StylePreview({ style, color, icon }: { style: DisplayStyle; colo
         style={{ backgroundColor: color + "28", border: `2px solid ${color}` }}
       >
         <span className="absolute top-1 right-1.5 text-[10px] font-semibold" style={{ color }}>15</span>
-        <span className="absolute bottom-1 left-1 right-1 text-[9px] font-medium truncate" style={{ color, opacity: 0.65 }}>Titre</span>
+        <span className="absolute bottom-1 left-1 right-1 text-[10px] font-medium truncate" style={{ color, opacity: 0.65 }}>Titre</span>
       </div>
     );
   }
@@ -70,7 +70,7 @@ export function StylePreview({ style, color, icon }: { style: DisplayStyle; colo
       {style === "avatar-br" && <div className="absolute bottom-0.5 right-0.5">{avatarDot(color, icon)}</div>}
       {style === "block" && (
         <div className="absolute bottom-1 left-1 right-1">
-          <div className="rounded px-1.5 py-0.5 text-[9px] font-medium text-white truncate" style={{ backgroundColor: color }}>
+          <div className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white truncate" style={{ backgroundColor: color }}>
             Titre
           </div>
         </div>

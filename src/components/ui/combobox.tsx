@@ -21,7 +21,7 @@ export interface ComboboxProps {
 }
 
 /** Single-select searchable combobox — built on the existing Popover primitive, no new dependency. */
-export function Combobox({ options, value, onChange, placeholder = "Search…", emptyText = "No results.", className }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder = "Rechercher…", emptyText = "Aucun résultat.", className }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
 

@@ -251,6 +251,24 @@ function seedCatchAllRule(rules: Rule[]): Rule[] {
   return [...rules, catchAll];
 }
 
+/**
+ * First-run-only rule set: a handful of illustrative name-pattern rules matching the
+ * demo events in mock-seed.ts, so a fresh install (no connections, no rules yet) shows
+ * the rules engine actually differentiating event types instead of one flat color.
+ * Only used as useRuleStore's initial state — never re-applied to an already-persisted
+ * store (see onRehydrateStorage below, which only tops up the catch-all).
+ */
+function seedDemoRules(): Rule[] {
+  const demo: Omit<Rule, "id" | "enabled">[] = [
+    { matchType: "name", matchValue: "Rendu|Livraison", displayTypeId: "deadline", createdAt: 1 },
+    { matchType: "name", matchValue: "Atelier|Workshop|Conf", displayTypeId: "workshop", createdAt: 2 },
+    { matchType: "name", matchValue: "Focus", displayTypeId: "focus-time", createdAt: 3 },
+    { matchType: "name", matchValue: "Admin", displayTypeId: "admin", createdAt: 4 },
+    { matchType: "name", matchValue: "Apéro|Cinéma|Dîner|Vacances", displayTypeId: "social", createdAt: 5 },
+  ];
+  return seedCatchAllRule(demo.map((r) => ({ ...r, id: `seed-${r.displayTypeId}`, enabled: true })));
+}
+
 interface RuleStore {
   /** Array order IS priority — index 0 matches first. The catch-all (matchType:"all") rule is always last. */
   rules: Rule[];
@@ -268,7 +286,7 @@ interface RuleStore {
 export const useRuleStore = create<RuleStore>()(
   persist(
     (set) => ({
-      rules: seedCatchAllRule([]),
+      rules: seedDemoRules(),
       addRule: (r) =>
         set((s) => {
           const rule: Rule = { ...r, id: crypto.randomUUID(), createdAt: Date.now(), enabled: r.enabled ?? true };

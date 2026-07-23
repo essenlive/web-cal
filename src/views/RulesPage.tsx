@@ -14,10 +14,10 @@ import { describeMatch } from "../lib/rules";
 import type { EventType, Rule } from "../types";
 
 const MATCH_TYPE_LABELS: Record<Rule["matchType"], string> = {
-  event: "Event",
-  name: "Title",
+  event: "Événement",
+  name: "Titre",
   source: "Source",
-  all: "Default",
+  all: "Défaut",
 };
 
 function RuleRow({
@@ -55,7 +55,7 @@ function RuleRow({
       <div className="flex flex-col shrink-0">
         <button
           onClick={onMoveUp}
-          aria-label="Move rule up"
+          aria-label="Monter la règle"
           disabled={isCatchAll || isFirst}
           className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
         >
@@ -63,7 +63,7 @@ function RuleRow({
         </button>
         <button
           onClick={onMoveDown}
-          aria-label="Move rule down"
+          aria-label="Descendre la règle"
           disabled={isCatchAll || isLast}
           className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
         >
@@ -78,13 +78,13 @@ function RuleRow({
       <span className="flex-1 min-w-0 truncate text-xs text-foreground">{description}</span>
 
       {broken ? (
-        <span className="flex items-center gap-1 text-[11px] text-destructive shrink-0" title="Display type no longer exists">
+        <span className="flex items-center gap-1 text-[10px] text-destructive shrink-0" title="Le type d'affichage n'existe plus">
           <AlertTriangle size={12} />
-          Broken
+          Cassé
         </span>
       ) : (
         <span
-          className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0"
+          className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={{ backgroundColor: (displayType?.color ?? "#6366f1") + "20", color: displayType?.color ?? "#6366f1" }}
         >
           {displayType && getIconEl(displayType.icon, 10)}
@@ -95,16 +95,16 @@ function RuleRow({
       <Switch checked={rule.enabled} onCheckedChange={onToggle} disabled={isCatchAll} />
 
       <button onClick={onEdit} className="text-xs font-medium text-primary hover:underline shrink-0">
-        Edit
+        Modifier
       </button>
 
       {!isCatchAll && (
         <ActionButton
           variant="ghost"
           onAction={onRemove}
-          confirmLabel="Confirm delete"
+          confirmLabel="Confirmer la suppression"
           className="h-auto w-auto p-0.5 shrink-0 text-muted-foreground hover:text-destructive"
-          aria-label="Delete rule"
+          aria-label="Supprimer la règle"
         >
           <Trash2 size={13} />
         </ActionButton>
@@ -147,10 +147,10 @@ export function RulesPanel() {
   return (
     <>
       <DrawerHeader className="flex-row items-center justify-between space-y-0">
-        <DrawerTitle>Display Rules</DrawerTitle>
+        <DrawerTitle>Règles d'affichage</DrawerTitle>
         <Button onClick={() => { setEditingRule(null); setFormOpen(true); }} className="gap-1.5 rounded-lg text-sm">
           <Plus size={14} />
-          New Rule
+          Nouvelle règle
         </Button>
       </DrawerHeader>
 

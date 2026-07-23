@@ -73,7 +73,7 @@ function PresetRow({
           )}
         />
         {isDuplicate && trimmed.length > 0 && (
-          <p className="text-[11px] text-destructive mt-1">Ce nom est déjà utilisé.</p>
+          <p className="text-xs text-destructive mt-1">Ce nom est déjà utilisé.</p>
         )}
       </div>
     );
@@ -183,7 +183,7 @@ export function PresetSelector() {
 
       <div className="space-y-0.5">
         {presets.length === 0 && !adding && (
-          <p className="px-2 text-[11px] text-muted-foreground">Aucun preset.</p>
+          <p className="px-2 text-xs text-muted-foreground">Aucun preset.</p>
         )}
 
         {adding && (
@@ -204,7 +204,7 @@ export function PresetSelector() {
               className="w-full rounded-md border border-border bg-background px-1.5 py-0.5 text-xs outline-hidden focus:ring-2 focus:ring-primary/30"
             />
             {overwriteTarget && (
-              <p className="text-[11px] text-destructive mt-1">
+              <p className="text-xs text-destructive mt-1">
                 « {overwriteTarget.name} » existe déjà — Entrée pour écraser, Échap pour annuler.
               </p>
             )}

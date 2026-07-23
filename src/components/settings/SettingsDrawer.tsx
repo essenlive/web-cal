@@ -62,7 +62,7 @@ export function SettingsDrawer() {
               }
             }}
             onDelete={editingType ? () => { removeType(editingType.id); closeDrawer(); } : undefined}
-            deleteDisabledReason={editingType?.isDefault ? "The default type cannot be deleted — make another type default first" : undefined}
+            deleteDisabledReason={editingType?.isDefault ? "Le type par défaut ne peut pas être supprimé — définissez d'abord un autre type par défaut" : undefined}
             onClose={closeDrawer}
           />
         )}

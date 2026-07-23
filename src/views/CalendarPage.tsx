@@ -102,10 +102,12 @@ export function CalendarPage() {
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       <Header />
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Mobile backdrop — closes sidebar on tap */}
+        {/* Mobile backdrop — closes sidebar on tap. Starts below the header (top-14) so the
+            header, including its sidebar-toggle button, stays visible and reachable while
+            the sidebar is open instead of being covered by it. */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/40 sm:hidden"
+            className="fixed top-14 inset-x-0 bottom-0 z-30 bg-black/40 sm:hidden"
             onClick={toggleSidebar}
           />
         )}

@@ -61,8 +61,8 @@ export function hslToHex(h: number, s: number, l: number): string {
  * (pre-theming) light/dark appearance.
  */
 export const BUILTIN_THEMES: Theme[] = [
-  { id: "light", name: "Light", mode: "light", accent: "#3e50f4", fontFamily: "DM Sans", radius: "0.75rem" },
-  { id: "dark",  name: "Dark",  mode: "dark",  accent: "#5666f5", fontFamily: "DM Sans", radius: "0.75rem" },
+  { id: "light", name: "Clair",  mode: "light", accent: "#3e50f4", fontFamily: "DM Sans", radius: "0.75rem" },
+  { id: "dark",  name: "Sombre", mode: "dark",  accent: "#5666f5", fontFamily: "DM Sans", radius: "0.75rem" },
 ];
 
 const BUILTIN_IDS = new Set(BUILTIN_THEMES.map((t) => t.id));

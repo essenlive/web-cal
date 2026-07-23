@@ -12,9 +12,9 @@ import type { Rule, RuleMatchType } from "../../types";
 type CreatableMatchType = Exclude<RuleMatchType, "all">;
 
 const MATCH_TYPE_LABELS: Record<CreatableMatchType, string> = {
-  event: "This event",
-  name: "Title matches",
-  source: "This source",
+  event: "Cet événement",
+  name: "Le titre correspond à",
+  source: "Cette source",
 };
 
 export interface RuleModalProps {
@@ -49,22 +49,22 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
     }
 
     if (!matchValue.trim()) {
-      setError(matchType === "name" ? "A pattern is required." : "Choose an option.");
+      setError(matchType === "name" ? "Un motif est requis." : "Choisissez une option.");
       return;
     }
     if (matchType === "name" && !isValidPattern(matchValue)) {
-      setError("Invalid regular expression.");
+      setError("Expression régulière invalide.");
       return;
     }
     if (!displayTypeId) {
-      setError("Choose a display type.");
+      setError("Choisissez un type d'affichage.");
       return;
     }
     const isDuplicate = rules.some(
       (r) => r.id !== rule?.id && r.matchType === matchType && r.matchValue === matchValue && r.displayTypeId === displayTypeId,
     );
     if (isDuplicate) {
-      setError("An identical rule already exists.");
+      setError("Une règle identique existe déjà.");
       return;
     }
 
@@ -83,7 +83,7 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
           and can't depend on either overlay primitive's compound components. */}
       <div className="flex flex-col gap-0.5 p-4 pr-10">
         <h2 className="font-semibold text-foreground">
-          {isCatchAll ? "Edit Default Rule" : editing ? "Edit Rule" : "New Rule"}
+          {isCatchAll ? "Modifier la règle par défaut" : editing ? "Modifier la règle" : "Nouvelle règle"}
         </h2>
       </div>
 
@@ -91,7 +91,7 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
           {!isCatchAll && (
             <>
               <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Match by</Label>
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Correspondance par</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {(Object.keys(MATCH_TYPE_LABELS) as CreatableMatchType[]).map((mt) => (
                     <button
@@ -111,13 +111,13 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
 
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {matchType === "name" ? "Title pattern (text or regex)" : matchType === "event" ? "Event" : "Source"}
+                  {matchType === "name" ? "Motif du titre (texte ou regex)" : matchType === "event" ? "Événement" : "Source"}
                 </Label>
                 {matchType === "name" ? (
                   <Input
                     value={matchValue}
                     onChange={(e) => setMatchValue(e.target.value)}
-                    placeholder="e.g. Dentist"
+                    placeholder="ex. Dentiste"
                     className="rounded-lg px-2.5 py-2 h-auto text-sm"
                   />
                 ) : matchType === "event" ? (
@@ -125,16 +125,16 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
                     options={events.map((e) => ({ value: e.id, label: e.title }))}
                     value={matchValue || undefined}
                     onChange={setMatchValue}
-                    placeholder="Search events…"
-                    emptyText="No events found."
+                    placeholder="Rechercher un événement…"
+                    emptyText="Aucun événement trouvé."
                   />
                 ) : (
                   <Combobox
                     options={connections.map((c) => ({ value: c.id, label: c.name }))}
                     value={matchValue || undefined}
                     onChange={setMatchValue}
-                    placeholder="Search sources…"
-                    emptyText="No sources found."
+                    placeholder="Rechercher une source…"
+                    emptyText="Aucune source trouvée."
                   />
                 )}
               </div>
@@ -143,19 +143,19 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
 
           {isCatchAll ? (
             <div>
-              <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Display type</Label>
+              <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Type d'affichage</Label>
               <p className="text-xs text-muted-foreground">
-                Always resolves to the default type — currently{" "}
+                Se résout toujours vers le type par défaut — actuellement{" "}
                 <span className="font-medium text-foreground inline-flex items-center gap-1">
                   {getIconEl(getDefaultType().icon, 12)}
                   {getDefaultType().label}
                 </span>
-                . Change the default type from its edit screen.
+                . Modifiez le type par défaut depuis son écran d'édition.
               </p>
             </div>
           ) : (
             <div>
-              <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Display type</Label>
+              <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Type d'affichage</Label>
               <div className="flex flex-wrap gap-1.5">
                 {types.map((t) => (
                   <button
@@ -180,10 +180,10 @@ export function RuleModal({ rule, initialMatchType, initialMatchValue, onClose }
 
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={onClose} className="text-muted-foreground">
-              Cancel
+              Annuler
             </Button>
             <Button type="button" onClick={handleSave}>
-              {editing ? "Save" : "Create Rule"}
+              {editing ? "Enregistrer" : "Créer la règle"}
             </Button>
           </div>
         </div>

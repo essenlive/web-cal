@@ -183,9 +183,9 @@ function DayCell({
                 className={cn(
                   "transition-colors",
                   isToday
-                    ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-[11px] font-bold leading-none"
+                    ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none"
                     : cn(
-                        "text-[11px] sm:text-xs font-medium leading-none underline underline-offset-2 decoration-dotted",
+                        "text-xs font-medium leading-none underline underline-offset-2 decoration-dotted",
                         isCurrentMonth ? "text-foreground hover:text-primary" : "text-muted-foreground/40",
                       )
                 )}
@@ -220,9 +220,9 @@ function DayCell({
             className={cn(
               "transition-colors",
               isToday
-                ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-[11px] font-bold leading-none"
+                ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none"
                 : cn(
-                    "text-[11px] sm:text-xs font-medium leading-none underline underline-offset-2 decoration-dotted",
+                    "text-xs font-medium leading-none underline underline-offset-2 decoration-dotted",
                     isCurrentMonth ? "text-foreground hover:text-primary" : "text-muted-foreground/40",
                   )
             )}
@@ -232,12 +232,12 @@ function DayCell({
           </button>
         ) : isToday ? (
           <span className="inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary
-                           text-primary-foreground text-[10px] sm:text-[11px] font-bold leading-none">
+                           text-primary-foreground text-[10px] font-bold leading-none">
             {format(day, "d")}
           </span>
         ) : (
           <span className={cn(
-            "text-[11px] sm:text-xs font-medium leading-none",
+            "text-xs font-medium leading-none",
             isCurrentMonth ? "text-foreground" : "text-muted-foreground/40",
           )}>
             {format(day, "d")}
@@ -282,7 +282,7 @@ function DayCell({
               onClick={(ev) => { ev.stopPropagation(); setAvatarModal({ events: tlAvatars, corner: "tl" }); }}
               style={{ pointerEvents: "auto" }}
               className="size-5 sm:size-6 rounded-full bg-muted flex items-center justify-center
-                         text-[9px] font-semibold text-muted-foreground shrink-0 cursor-pointer
+                         text-[10px] font-semibold text-muted-foreground shrink-0 cursor-pointer
                          hover:bg-muted/80 transition-colors shadow-xs"
             >
               +{tlAvatars.length - MAX_VISIBLE_AVATARS}
@@ -301,7 +301,7 @@ function DayCell({
             <button
               onClick={(ev) => { ev.stopPropagation(); setAvatarModal({ events: blAvatars, corner: "bl" }); }}
               className="size-5 sm:size-6 rounded-full bg-muted flex items-center justify-center
-                         text-[9px] font-semibold text-muted-foreground shrink-0 cursor-pointer
+                         text-[10px] font-semibold text-muted-foreground shrink-0 cursor-pointer
                          hover:bg-muted/80 transition-colors shadow-xs"
             >
               +{blAvatars.length - MAX_VISIBLE_AVATARS}
@@ -320,7 +320,7 @@ function DayCell({
             <button
               onClick={(ev) => { ev.stopPropagation(); setAvatarModal({ events: brAvatars, corner: "br" }); }}
               className="size-5 sm:size-6 rounded-full bg-muted flex items-center justify-center
-                         text-[9px] font-semibold text-muted-foreground shrink-0 cursor-pointer
+                         text-[10px] font-semibold text-muted-foreground shrink-0 cursor-pointer
                          hover:bg-muted/80 transition-colors shadow-xs"
             >
               +{brAvatars.length - MAX_VISIBLE_AVATARS}
@@ -410,7 +410,7 @@ export function MonthView({ onEventClick }: Props) {
         {dayLabels.map((label) => (
           <div
             key={label}
-            className="py-1.5 text-center text-[10px] sm:text-[11px] font-medium text-muted-foreground uppercase tracking-wide"
+            className="py-1.5 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
           >
             {label}
           </div>

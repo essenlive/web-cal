@@ -26,7 +26,7 @@ export function Header() {
   return (
     <header className="flex items-center h-14 px-2 sm:px-4 border-b border-border bg-card shrink-0 gap-1 sm:gap-2">
       {/* Left */}
-      <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-muted-foreground">
+      <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-muted-foreground" aria-label="Afficher/masquer la barre latérale">
         <Menu size={18} />
       </Button>
 
@@ -41,10 +41,10 @@ export function Header() {
         Auj.
       </Button>
 
-      <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground">
+      <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground" aria-label="Période précédente">
         <ChevronLeft size={18} />
       </Button>
-      <Button variant="ghost" size="icon" onClick={() => navigate(1)} className="text-muted-foreground">
+      <Button variant="ghost" size="icon" onClick={() => navigate(1)} className="text-muted-foreground" aria-label="Période suivante">
         <ChevronRight size={18} />
       </Button>
 

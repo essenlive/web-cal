@@ -50,8 +50,8 @@ export function describeMatch(
   getEventTitle: (id: string) => string | undefined,
   getConnectionName: (id: string) => string | undefined,
 ): string {
-  if (rule.matchType === "event") return getEventTitle(rule.matchValue) ?? `Event ${rule.matchValue}`;
+  if (rule.matchType === "event") return getEventTitle(rule.matchValue) ?? `Événement ${rule.matchValue}`;
   if (rule.matchType === "source") return getConnectionName(rule.matchValue) ?? `Source ${rule.matchValue}`;
-  if (rule.matchType === "all") return "Any event (default)";
+  if (rule.matchType === "all") return "Tous les événements";
   return rule.matchValue;
 }

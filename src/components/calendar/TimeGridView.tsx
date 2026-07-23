@@ -107,11 +107,11 @@ function TimeEventBlock({
           <Icon size={10} color="#fff" className="shrink-0 mt-[3px]" />
         )}
         <div className="min-w-0 overflow-hidden">
-          <div className="text-[11px] font-medium text-white leading-tight truncate">
+          <div className="text-xs font-medium text-white leading-tight truncate">
             {event.title}
           </div>
           {height > 44 && (
-            <div className="text-[9px] text-white/75 truncate mt-0.5">
+            <div className="text-[10px] text-white/75 truncate mt-0.5">
               {format(new Date(event.start), timeFormat)} – {format(new Date(event.end), timeFormat)}
             </div>
           )}
@@ -205,7 +205,7 @@ export function TimeGridView({ days, onEventClick }: Props) {
           {/* All-day strip */}
           <div className="flex shrink-0 border-b border-border">
             <div className="w-14 sm:w-16 shrink-0 flex items-center justify-end pr-2 py-1">
-              <span className="text-[9px] text-muted-foreground leading-none">all day</span>
+              <span className="text-[10px] text-muted-foreground leading-none">jour entier</span>
             </div>
             {days.map((day) => {
               const dayAllDay = getAllDayEventsForDay(events, day);

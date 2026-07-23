@@ -83,8 +83,8 @@ function Field({
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Colour</label>
-      <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Connection colour">
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Couleur</label>
+      <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Couleur de la connexion">
         {PALETTE.map((c) => (
           <button
             key={c}
@@ -117,16 +117,16 @@ function AdvancedSection({ proxyUrl, onProxyChange }: { proxyUrl: string; onProx
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
         {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-        Advanced
+        Avancé
       </button>
       {open && (
         <div className="mt-2">
           <Field
-            label="CORS Proxy URL (optional)"
+            label="URL du proxy CORS (optionnel)"
             placeholder="https://corsproxy.io/?"
             value={proxyUrl}
             onChange={onProxyChange}
-            hint="Required if the server does not allow cross-origin requests from a browser."
+            hint="Nécessaire si le serveur n'autorise pas les requêtes cross-origin depuis un navigateur."
           />
         </div>
       )}
@@ -183,21 +183,21 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "Name is required.";
-    else if (name.trim().length > 80) errs.name = "Name must be 80 characters or fewer.";
+    if (!name.trim()) errs.name = "Le nom est requis.";
+    else if (name.trim().length > 80) errs.name = "Le nom doit comporter 80 caractères ou moins.";
 
     if (type === "webcal") {
-      if (!wcUrl.trim()) errs.wcUrl = "Calendar URL is required.";
-      else if (!isValidWebCalUrl(wcUrl)) errs.wcUrl = "Must start with https://, http://, or webcal://";
+      if (!wcUrl.trim()) errs.wcUrl = "L'URL du calendrier est requise.";
+      else if (!isValidWebCalUrl(wcUrl)) errs.wcUrl = "Doit commencer par https://, http:// ou webcal://";
     } else {
-      if (!cdUrl.trim()) errs.cdUrl = "Server URL is required.";
-      else if (!isValidHttpUrl(cdUrl)) errs.cdUrl = "Must start with https:// or http://";
-      if (!cdUser.trim()) errs.cdUser = "Username is required.";
-      if (!cdPass.trim()) errs.cdPass = "Password is required.";
+      if (!cdUrl.trim()) errs.cdUrl = "L'URL du serveur est requise.";
+      else if (!isValidHttpUrl(cdUrl)) errs.cdUrl = "Doit commencer par https:// ou http://";
+      if (!cdUser.trim()) errs.cdUser = "Le nom d'utilisateur est requis.";
+      if (!cdPass.trim()) errs.cdPass = "Le mot de passe est requis.";
     }
 
     if (proxyUrl.trim() && !isValidHttpUrl(proxyUrl)) {
-      errs.proxyUrl = "Proxy URL must start with https:// or http://";
+      errs.proxyUrl = "L'URL du proxy doit commencer par https:// ou http://";
     }
 
     setErrors(errs);
@@ -205,7 +205,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
   }
 
   async function testConnection() {
-    if (!validate()) throw new Error("Fix the highlighted fields");
+    if (!validate()) throw new Error("Corrigez les champs en surbrillance");
     if (type === "webcal") {
       const url = wcUrl.trim().replace(/^webcal:\/\//i, "https://");
       // Same default as WebCalProvider.getEvents: route through the app's
@@ -252,8 +252,8 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
     : name.trim() && isValidHttpUrl(cdUrl) && cdUser.trim() && cdPass.trim();
 
   const title = editing
-    ? `Edit ${type === "webcal" ? "WebCal" : "CalDAV"} Source`
-    : "Add Calendar Source";
+    ? `Modifier la source ${type === "webcal" ? "WebCal" : "CalDAV"}`
+    : "Ajouter une source de calendrier";
 
   // Creating a rule for this source is a nested form within the same panel —
   // it swaps the content instead of stacking a second drawer (FR-005).
@@ -277,26 +277,26 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
           {type === "webcal" && (
             <div className="space-y-4 px-4 pb-4">
               <Field
-                label="Name *"
-                placeholder="Work Holidays"
+                label="Nom *"
+                placeholder="Vacances - Travail"
                 value={name}
                 onChange={setName}
                 error={errors.name}
               />
               <Field
-                label="Calendar URL *"
-                placeholder="https://… or webcal://…"
+                label="URL du calendrier *"
+                placeholder="https://… ou webcal://…"
                 value={wcUrl}
                 onChange={setWcUrl}
                 error={errors.wcUrl}
-                hint="Link to an .ics file or WebCal subscription URL"
+                hint="Lien vers un fichier .ics ou une URL d'abonnement WebCal"
               />
               <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer select-none hover:text-foreground">Where do I find this?</summary>
+                <summary className="cursor-pointer select-none hover:text-foreground">Où puis-je trouver ça ?</summary>
                 <ul className="mt-1.5 ml-4 list-disc space-y-1">
-                  <li><strong className="text-foreground">Google Calendar:</strong> Settings → [calendar] → "Secret address in iCal format"</li>
-                  <li><strong className="text-foreground">Apple iCloud:</strong> Calendar app → Share Calendar → Public Calendar, then copy the link</li>
-                  <li><strong className="text-foreground">Microsoft / Outlook:</strong> Settings → Shared calendars → Publish a calendar → ICS link</li>
+                  <li><strong className="text-foreground">Google Agenda :</strong> Paramètres → [calendrier] → « Adresse secrète au format iCal »</li>
+                  <li><strong className="text-foreground">Apple iCloud :</strong> Application Calendrier → Partager le calendrier → Calendrier public, puis copier le lien</li>
+                  <li><strong className="text-foreground">Microsoft / Outlook :</strong> Paramètres → Calendriers partagés → Publier un calendrier → lien ICS</li>
                 </ul>
               </details>
               <ColorPicker value={color} onChange={setColor} />
@@ -306,7 +306,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                   onClick={() => setRuleFormOpen(true)}
                   className="text-xs font-medium text-primary hover:underline"
                 >
-                  Create a rule for this source
+                  Créer une règle pour cette source
                 </button>
               )}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
@@ -318,9 +318,9 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                         variant="ghost"
                         size="icon"
                         onAction={onDelete}
-                        confirmLabel="Confirm removal"
+                        confirmLabel="Confirmer la suppression"
                         className="text-muted-foreground hover:text-destructive"
-                        aria-label="Remove source"
+                        aria-label="Supprimer la source"
                       >
                         <Trash2 size={15} />
                       </ActionButton>
@@ -332,21 +332,21 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                     variant="outline"
                     confirm={false}
                     onAction={testConnection}
-                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Testing…</>}
-                    successChildren={<><CheckCircle2 size={13} />Connection OK</>}
+                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Test en cours…</>}
+                    successChildren={<><CheckCircle2 size={13} />Connexion OK</>}
                     errorChildren={(err) => (
                       <>
                         <AlertCircle size={13} />
-                        {err instanceof Error ? err.message : "Could not reach server"}
+                        {err instanceof Error ? err.message : "Impossible de contacter le serveur"}
                       </>
                     )}
                     className="gap-1.5"
                   >
                     <RefreshCw size={13} />
-                    Test
+                    Tester
                   </ActionButton>
                   <Button type="button" onClick={handleAdd} disabled={!canAdd}>
-                    {editing ? "Save" : "Add Source"}
+                    {editing ? "Enregistrer" : "Ajouter la source"}
                   </Button>
                 </div>
               </div>
@@ -357,28 +357,28 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
           {editing && type === "caldav" && (
             <div className="space-y-4 px-4 pb-4">
               <Field
-                label="Name *"
-                placeholder="Nextcloud – Personal"
+                label="Nom *"
+                placeholder="Nextcloud – Personnel"
                 value={name}
                 onChange={setName}
                 error={errors.name}
               />
               <Field
-                label="Server URL *"
+                label="URL du serveur *"
                 placeholder="https://nextcloud.example.com/dav/"
                 value={cdUrl}
                 onChange={setCdUrl}
                 error={errors.cdUrl}
               />
               <Field
-                label="Username *"
+                label="Nom d'utilisateur *"
                 placeholder="user@example.com"
                 value={cdUser}
                 onChange={setCdUser}
                 error={errors.cdUser}
               />
               <Field
-                label="Password / App Password *"
+                label="Mot de passe / mot de passe d'application *"
                 placeholder="••••••••"
                 type="password"
                 value={cdPass}
@@ -392,7 +392,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                   onClick={() => setRuleFormOpen(true)}
                   className="text-xs font-medium text-primary hover:underline"
                 >
-                  Create a rule for this source
+                  Créer une règle pour cette source
                 </button>
               )}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
@@ -403,9 +403,9 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                     variant="ghost"
                     size="icon"
                     onAction={onDelete}
-                    confirmLabel="Confirm removal"
+                    confirmLabel="Confirmer la suppression"
                     className="text-muted-foreground hover:text-destructive"
-                    aria-label="Remove source"
+                    aria-label="Supprimer la source"
                   >
                     <Trash2 size={15} />
                   </ActionButton>
@@ -416,21 +416,21 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                     variant="outline"
                     confirm={false}
                     onAction={testConnection}
-                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Testing…</>}
-                    successChildren={<><CheckCircle2 size={13} />Connection OK</>}
+                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Test en cours…</>}
+                    successChildren={<><CheckCircle2 size={13} />Connexion OK</>}
                     errorChildren={(err) => (
                       <>
                         <AlertCircle size={13} />
-                        {err instanceof Error ? err.message : "Could not reach server"}
+                        {err instanceof Error ? err.message : "Impossible de contacter le serveur"}
                       </>
                     )}
                     className="gap-1.5"
                   >
                     <RefreshCw size={13} />
-                    Test
+                    Tester
                   </ActionButton>
                   <Button type="button" onClick={handleAdd} disabled={!canAdd}>
-                    Save
+                    Enregistrer
                   </Button>
                 </div>
               </div>

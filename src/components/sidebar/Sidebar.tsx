@@ -84,7 +84,7 @@ function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
   return (
     <div className="flex items-center justify-between px-2 mb-1">
       <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
-      <button onClick={onAdd} className="text-muted-foreground hover:text-foreground" aria-label={`Add ${label}`}>
+      <button onClick={onAdd} className="text-muted-foreground hover:text-foreground" aria-label={`Ajouter : ${label}`}>
         <Plus size={12} />
       </button>
     </div>
@@ -113,7 +113,7 @@ export function Sidebar() {
 
   return (
     <aside className="
-      fixed inset-y-0 left-0 z-40 w-56
+      fixed top-14 bottom-0 left-0 z-40 w-56
       sm:relative sm:inset-auto sm:z-auto sm:translate-x-0
       shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto
       transition-transform duration-200
@@ -143,7 +143,7 @@ export function Sidebar() {
               key={day.toISOString()}
               onClick={() => { setCurrentDate(day); setMiniDate(day); }}
               className={cn(
-                "flex items-center justify-center size-6 mx-auto rounded-full text-[11px] transition-colors",
+                "flex items-center justify-center size-6 mx-auto rounded-full text-[10px] transition-colors",
                 !isSameMonth(day, miniDate) && "opacity-30",
                 isToday(day) && "bg-primary/20 text-primary font-semibold",
                 isSameDay(day, currentDate) && "bg-primary text-primary-foreground font-semibold",
@@ -168,7 +168,7 @@ export function Sidebar() {
         <SectionHeader label="Sources" onAdd={() => openDrawer("connection")} />
         <div className="space-y-0.5">
           {connections.length === 0 && (
-            <p className="px-2 text-[11px] text-muted-foreground">Aucune source.</p>
+            <p className="px-2 text-xs text-muted-foreground">Aucune source.</p>
           )}
           {connections.map((c) => (
             <ConnectionRow
