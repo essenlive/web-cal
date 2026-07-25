@@ -4,6 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "proton-cal",
+  applicationName: "web-cal",
   manifest: "/site.webmanifest",
   icons: {
     icon: [
@@ -13,6 +14,11 @@ export const metadata: Metadata = {
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "web-cal",
   },
 };
 

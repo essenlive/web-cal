@@ -19,6 +19,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [activeTheme]);
 
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js");
+    }
+  }, []);
+
   return (
     <>
       {children}
