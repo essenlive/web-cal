@@ -20,7 +20,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [activeTheme]);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
+    // ponytail: dev-mode SW would intercept and re-cache every HMR/chunk
+    // request on each recompile — that's the GET spam. Production only.
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js");
     }
   }, []);
