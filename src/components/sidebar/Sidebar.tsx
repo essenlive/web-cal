@@ -3,7 +3,7 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Settings, Eye, EyeOff, Check, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Keyboard, Eye, EyeOff, Check, Pencil } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -273,14 +273,23 @@ export function Sidebar() {
       </Section>
 
       {/* Preferences — flat, no sub-items to collapse or reorder */}
-      <div className="mt-auto border-t border-border px-3 py-3">
+      <div className="mt-auto border-t border-border px-3 py-3 flex items-center gap-1">
         <button
           onClick={() => openDrawer("preferences")}
-          className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-muted text-xs text-foreground"
+          className="flex items-center gap-2 flex-1 min-w-0 rounded-lg px-2 py-1.5 hover:bg-muted text-xs text-foreground"
         >
           <Settings size={14} className="text-muted-foreground" />
           Réglages
         </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground shrink-0"
+          onClick={() => openDrawer("shortcuts")}
+          aria-label="Raccourcis clavier"
+        >
+          <Keyboard size={16} />
+        </Button>
       </div>
     </aside>
   );
