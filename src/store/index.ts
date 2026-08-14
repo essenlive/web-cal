@@ -77,6 +77,8 @@ interface ConnectionStore {
   addConnection: (conn: Omit<Connection, "id">) => void;
   removeConnection: (id: string) => void;
   updateConnection: (conn: Connection) => void;
+  /** Array order is display order. Moves `id` to `toIndex`. */
+  reorderConnection: (id: string, toIndex: number) => void;
 }
 
 export const useConnectionStore = create<ConnectionStore>()(
@@ -93,6 +95,15 @@ export const useConnectionStore = create<ConnectionStore>()(
       },
       updateConnection: (conn) =>
         set((s) => ({ connections: s.connections.map((c) => (c.id === conn.id ? conn : c)) })),
+      reorderConnection: (id, toIndex) =>
+        set((s) => {
+          const idx = s.connections.findIndex((c) => c.id === id);
+          if (idx === -1) return s;
+          const connections = [...s.connections];
+          const [item] = connections.splice(idx, 1);
+          connections.splice(Math.max(0, Math.min(toIndex, connections.length)), 0, item);
+          return { connections };
+        }),
     }),
     {
       name: "webcal:connections",

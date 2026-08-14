@@ -3,27 +3,27 @@
 /**
  * Shared drawer header for the section list/item-edit panels: a title, plus
  * either a leading back-chevron (item-edit forms, returns to the section's
- * list) or a trailing action button (list panels, "+ Nouveau X"). One of the
- * two, never both — a list panel has no back target, an item form has no
- * secondary action.
+ * list) or a descriptive blurb below the title (list panels, explaining what
+ * the section is for — see InlineLink for the cross-references it embeds).
+ * One or the other, never both — a list panel has no back target, an item
+ * form has no description.
  */
 
 import type { ReactNode } from "react";
-import { ChevronLeft, Plus } from "lucide-react";
-import { Button } from "../ui/button";
+import { ChevronLeft } from "lucide-react";
 import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 
 export interface PanelHeaderProps {
   title: string;
   /** Item-edit forms: back to the list. */
   onBack?: () => void;
-  /** List panels: primary "add new" action. */
-  action?: { label: string; onClick: () => void; icon?: ReactNode };
+  /** List panels: explains the section, with InlineLink cross-references to related sections. */
+  description?: ReactNode;
 }
 
-export function PanelHeader({ title, onBack, action }: PanelHeaderProps) {
+export function PanelHeader({ title, onBack, description }: PanelHeaderProps) {
   return (
-    <DrawerHeader className="flex-row items-center justify-between space-y-0">
+    <DrawerHeader className="space-y-2">
       <div className="flex items-center gap-1 min-w-0">
         {onBack && (
           <button
@@ -36,12 +36,16 @@ export function PanelHeader({ title, onBack, action }: PanelHeaderProps) {
         )}
         <DrawerTitle className="truncate">{title}</DrawerTitle>
       </div>
-      {action && (
-        <Button onClick={action.onClick} className="gap-1.5 rounded-lg text-sm shrink-0">
-          {action.icon ?? <Plus size={14} />}
-          {action.label}
-        </Button>
-      )}
+      {description && <p className="text-sm text-muted-foreground">{description}</p>}
     </DrawerHeader>
+  );
+}
+
+/** An underlined, same-color cross-reference inside a PanelHeader description — jumps to another section's drawer. */
+export function InlineLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button onClick={onClick} className="font-semibold text-foreground underline underline-offset-2 hover:text-primary">
+      {children}
+    </button>
   );
 }

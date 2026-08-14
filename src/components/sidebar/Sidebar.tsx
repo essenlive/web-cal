@@ -27,7 +27,7 @@ export interface DragProps {
 
 // ── Compact data source row ───────────────────────────────────────────────────
 
-function statusColor(status: ConnectionStatus) {
+export function statusColor(status: ConnectionStatus) {
   switch (status) {
     case "active":  return "bg-green-500";
     case "error":   return "bg-amber-500";
@@ -116,7 +116,7 @@ export function Sidebar() {
 
   const { connections, updateConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
-  const { types, updateType, getType, getDefaultType } = useEventTypeStore();
+  const { types, updateType, getType } = useEventTypeStore();
   const { rules, toggleRule } = useRuleStore();
   const { events } = useEventsStore();
   const { customThemes, selectedThemeId, selectTheme } = useThemeStore();
@@ -219,12 +219,12 @@ export function Sidebar() {
 
       {/* Rules preview */}
       <Section id="rules" label="Règles" onOpen={() => openDrawer("rules")} onAdd={() => openNewItemDrawer("rules")}>
-        {rules.map((r) => (
+        {rules.filter((r) => r.matchType !== "all").map((r) => (
           <RuleRow
             key={r.id}
             rule={r}
             description={describeMatch(r, (id) => events.find((e) => e.id === id)?.title, (id) => connections.find((c) => c.id === id)?.name)}
-            displayType={r.matchType === "all" ? getDefaultType() : getType(r.displayTypeId)}
+            displayType={getType(r.displayTypeId)}
             onEdit={() => openDrawer("rules", r.id)}
             onToggleEnabled={() => toggleRule(r.id)}
           />

@@ -1,50 +1,24 @@
 "use client";
 
 /**
- * PresetsPanel — list wrapper for the "Presets" drawer. Uses its own row (not
- * the compact sidebar PresetRow) since the description needs room to show —
- * same reasoning RulesPanel has its own richer RuleRow.
+ * PresetsPanel — list wrapper for the "Presets" drawer: pure management
+ * (reorder/edit/delete), same DrawerItemRow as every other section. Applying
+ * a preset happens from the sidebar's compact PresetSelector, not here.
  */
 
 import { useState } from "react";
-import { Check } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { usePresetStore, useConnectionStore, useEventTypeStore } from "../../store";
+import { usePresetStore, useUIStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
-import { presetMatchesState } from "../../lib/presets";
+import { ItemBadge } from "./ItemRow";
+import { PRESET_COLORS } from "../settings/EventTypeModal";
 import { PresetModal } from "../settings/PresetModal";
-import { PanelHeader } from "../settings/PanelHeader";
+import { DrawerItemRow, AddItemButton } from "../settings/DrawerItemRow";
+import { PanelHeader, InlineLink } from "../settings/PanelHeader";
 import type { Preset } from "../../types";
-import type { DragProps } from "./Sidebar";
-
-function PresetListRow({ preset, active, onApply, onEdit, dragProps }: {
-  preset: Preset; active: boolean; onApply: () => void; onEdit: () => void; dragProps?: DragProps;
-}) {
-  return (
-    <div
-      onClick={onApply}
-      {...dragProps}
-      className={cn(
-        "group flex items-start gap-2 rounded-lg border border-border px-3 py-2 bg-card cursor-pointer",
-        active && "border-primary"
-      )}
-    >
-      <Check size={14} className={cn("shrink-0 mt-0.5 text-primary", !active && "invisible")} />
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-foreground truncate">{preset.name}</div>
-        {preset.description && <div className="text-xs text-muted-foreground truncate">{preset.description}</div>}
-      </div>
-      <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="text-xs font-medium text-primary hover:underline shrink-0">
-        Modifier
-      </button>
-    </div>
-  );
-}
 
 export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
-  const { presets, applyPreset, clearPreset, removePreset, reorderPreset } = usePresetStore();
-  const { connections } = useConnectionStore();
-  const { types } = useEventTypeStore();
+  const { openDrawer } = useUIStore();
+  const { presets, removePreset, reorderPreset } = usePresetStore();
   const { getDragProps } = useDragReorder(presets, (p) => p.id, reorderPreset);
 
   const initialPreset = initialEditId ? presets.find((p) => p.id === initialEditId) ?? null : null;
@@ -69,22 +43,31 @@ export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: st
 
   return (
     <>
-      <PanelHeader title="Presets" action={{ label: "Nouveau preset", onClick: () => { setEditingPreset(null); setFormOpen(true); } }} />
+      <PanelHeader
+        title="Presets"
+        description={
+          <>
+            Les presets sont une combinaison de préréglages d&apos;affichage de{" "}
+            <InlineLink onClick={() => openDrawer("eventType")}>Types</InlineLink>,{" "}
+            <InlineLink onClick={() => openDrawer("connection")}>Sources</InlineLink> et{" "}
+            <InlineLink onClick={() => openDrawer("rules")}>Règles</InlineLink>. Ils permettent d&apos;enregistrer
+            certains affichages pour des usages particuliers (travail, vacances).
+          </>
+        }
+      />
       <div className="space-y-1.5 px-4 pb-4">
         {presets.length === 0 && <p className="text-xs text-muted-foreground">Aucun preset.</p>}
-        {presets.map((preset, index) => {
-          const active = presetMatchesState(preset, connections, types);
-          return (
-            <PresetListRow
-              key={preset.id}
-              preset={preset}
-              active={active}
-              onApply={() => (active ? clearPreset() : applyPreset(preset.id))}
-              onEdit={() => { setEditingPreset(preset); setFormOpen(true); }}
-              dragProps={getDragProps(index)}
-            />
-          );
-        })}
+        {presets.map((preset, index) => (
+          <DrawerItemRow
+            key={preset.id}
+            badge={<ItemBadge color={PRESET_COLORS[index % PRESET_COLORS.length]}>{index + 1}</ItemBadge>}
+            name={preset.name}
+            onEdit={() => { setEditingPreset(preset); setFormOpen(true); }}
+            onDelete={() => removePreset(preset.id)}
+            dragProps={getDragProps(index)}
+          />
+        ))}
+        <AddItemButton label="Nouveau preset" onClick={() => { setEditingPreset(null); setFormOpen(true); }} />
       </div>
     </>
   );

@@ -9,14 +9,18 @@
 import { useState } from "react";
 import { useConnectionStore } from "../../store";
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
-import { ConnectionRow } from "../sidebar/Sidebar";
+import { useDragReorder } from "../../hooks/useDragReorder";
+import { ItemBadge } from "../sidebar/ItemRow";
+import { statusColor } from "../sidebar/Sidebar";
 import { AddConnectionModal } from "./AddConnectionModal";
+import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader } from "./PanelHeader";
 import type { Connection } from "../../types";
 
 export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
-  const { connections, addConnection, updateConnection, removeConnection } = useConnectionStore();
+  const { connections, addConnection, updateConnection, removeConnection, reorderConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
+  const { getDragProps } = useDragReorder(connections, (c) => c.id, reorderConnection);
 
   const initialConn = initialEditId ? connections.find((c) => c.id === initialEditId) ?? null : null;
   const [formOpen, setFormOpen] = useState(!!initialConn || !!openCreate);
@@ -43,18 +47,24 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
 
   return (
     <>
-      <PanelHeader title="Sources" action={{ label: "Ajouter", onClick: () => { setEditingConn(null); setFormOpen(true); } }} />
+      <PanelHeader
+        title="Sources"
+        description="Les sources sont des liens webcal. Pour l'instant, les sources sont en lecture seule. Vous pouvez ajouter vos propres liens ou des liens de calendrier publics (jours fériés...)."
+      />
       <div className="space-y-1.5 px-4 pb-4">
         {connections.length === 0 && <p className="text-xs text-muted-foreground">Aucune source.</p>}
-        {connections.map((c) => (
-          <ConnectionRow
+        {connections.map((c, index) => (
+          <DrawerItemRow
             key={c.id}
-            connection={c}
-            status={statusMap[c.id] ?? "unchecked"}
+            badge={<ItemBadge color={c.color}>{c.name.trim().charAt(0).toUpperCase()}</ItemBadge>}
+            name={c.name}
+            state={<span className={`size-1.5 rounded-full shrink-0 ${statusColor(statusMap[c.id] ?? "unchecked")}`} />}
             onEdit={() => { setEditingConn(c); setFormOpen(true); }}
-            onToggleHidden={() => updateConnection({ ...c, hidden: !c.hidden })}
+            onDelete={() => removeConnection(c.id)}
+            dragProps={getDragProps(index)}
           />
         ))}
+        <AddItemButton label="Nouvelle source" onClick={() => { setEditingConn(null); setFormOpen(true); }} />
       </div>
     </>
   );

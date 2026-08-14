@@ -7,14 +7,16 @@
  */
 
 import { useState } from "react";
-import { useEventTypeStore } from "../../store";
+import { useUIStore, useEventTypeStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
-import { TypeRow } from "../sidebar/Sidebar";
-import { EventTypeModal } from "./EventTypeModal";
-import { PanelHeader } from "./PanelHeader";
+import { ItemBadge } from "../sidebar/ItemRow";
+import { EventTypeModal, getIconEl } from "./EventTypeModal";
+import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
+import { PanelHeader, InlineLink } from "./PanelHeader";
 import type { EventType } from "../../types";
 
 export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
+  const { openDrawer } = useUIStore();
   const { types, addType, updateType, removeType, setDefaultType, reorderType } = useEventTypeStore();
   const { getDragProps } = useDragReorder(types, (t) => t.id, reorderType);
 
@@ -50,17 +52,30 @@ export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?:
 
   return (
     <>
-      <PanelHeader title="Types" action={{ label: "Ajouter", onClick: () => { setEditingType(null); setFormOpen(true); } }} />
+      <PanelHeader
+        title="Types"
+        description={
+          <>
+            Les types d&apos;affichages sont des manières d&apos;afficher des événements, que ce soit par un badge, une
+            couleur de fond, ou bloc d&apos;événement standard. C&apos;est ensuite{" "}
+            <InlineLink onClick={() => openDrawer("rules")}>les règles</InlineLink>{" "}
+            qui définissent sous quel type chaque événement doit s&apos;afficher. Le type par défaut ne peut pas être supprimé.
+          </>
+        }
+      />
       <div className="space-y-1.5 px-4 pb-4">
         {types.map((t, index) => (
-          <TypeRow
+          <DrawerItemRow
             key={t.id}
-            type={t}
+            badge={<ItemBadge color={t.color}>{getIconEl(t.icon, 10, "#fff")}</ItemBadge>}
+            name={t.label}
             onEdit={() => { setEditingType(t); setFormOpen(true); }}
-            onToggleHidden={() => updateType({ ...t, hidden: !t.hidden })}
+            onDelete={t.isDefault ? undefined : () => removeType(t.id)}
+            deleteDisabledReason={t.isDefault ? "Le type par défaut ne peut pas être supprimé" : undefined}
             dragProps={getDragProps(index)}
           />
         ))}
+        <AddItemButton label="Nouveau type" onClick={() => { setEditingType(null); setFormOpen(true); }} />
       </div>
     </>
   );
