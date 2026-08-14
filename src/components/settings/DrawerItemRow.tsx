@@ -54,7 +54,7 @@ export function DrawerItemRow({ badge, name, tag, state, onEdit, onDelete, delet
           aria-label="Supprimer"
           confirmLabel="Confirmer la suppression"
           confirmChildren={<Check size={12} />}
-          className="size-6 shrink-0 rounded-full p-0 text-muted-foreground hover:text-destructive [&_svg]:size-3"
+          className="size-6 shrink-0 rounded-full p-0 text-muted-foreground hover:text-destructive data-[status=armed]:text-white [&_svg]:size-3"
         >
           <Trash2 size={12} />
         </ActionButton>
@@ -75,7 +75,7 @@ export function AddItemButton({ label, onClick }: { label: string; onClick: () =
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-center gap-1.5 rounded-lg bg-muted py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+      className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-muted py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
     >
       <Plus size={14} />
       {label}

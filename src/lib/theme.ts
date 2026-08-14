@@ -77,6 +77,12 @@ export function getAllThemes(customThemes: Theme[]): Theme[] {
   return [...BUILTIN_THEMES, ...customThemes];
 }
 
+/** Sorts built-in + custom themes together by a persisted id order (useThemeStore.themeOrder), appending any id missing from `order` — e.g. a just-created theme — at the end in its natural position. */
+export function orderThemes(themes: Theme[], order: string[]): Theme[] {
+  const rank = new Map(order.map((id, i) => [id, i]));
+  return [...themes].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
+}
+
 /** Resolves the active theme by id, falling back to the built-in "Light" theme (FR-011). */
 export function getActiveTheme(customThemes: Theme[], selectedThemeId: string): Theme {
   return getAllThemes(customThemes).find((t) => t.id === selectedThemeId) ?? BUILTIN_THEMES[0];

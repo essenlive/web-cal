@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Preset, Rule, RuleMatchType, Theme } from "../types";
-import { BUILTIN_THEMES } from "../lib/theme";
+import { BUILTIN_THEMES, getAllThemes, orderThemes } from "../lib/theme";
 import { capturePresetState } from "../lib/presets";
 
 // Next.js server-renders "use client" components once for the initial HTML,
@@ -534,13 +534,15 @@ export const useUIStore = create<UIStore>()(
 interface ThemeStore {
   customThemes: Theme[];
   selectedThemeId: string;
+  /** Display order for ALL themes (built-in + custom), by id — see lib/theme.ts orderThemes. */
+  themeOrder: string[];
   /** Internal one-time migration guard — not meant to be read by UI code. */
   migratedLegacyDarkMode: boolean;
   addTheme: (t: Omit<Theme, "id">) => void;
   updateTheme: (t: Theme) => void;
   removeTheme: (id: string) => void;
   selectTheme: (id: string) => void;
-  /** Array order is display order. Built-in themes never enter `customThemes`, so they're never reordered. */
+  /** Moves `id` to `toIndex` in the full built-in + custom display order. */
   reorderTheme: (id: string, toIndex: number) => void;
 }
 
@@ -549,22 +551,29 @@ export const useThemeStore = create<ThemeStore>()(
     (set) => ({
       customThemes: [],
       selectedThemeId: BUILTIN_THEMES[0].id, // "light"
+      themeOrder: BUILTIN_THEMES.map((t) => t.id),
       migratedLegacyDarkMode: false,
       addTheme: (t) =>
-        set((s) => ({ customThemes: [...s.customThemes, { ...t, id: crypto.randomUUID() }] })),
+        set((s) => {
+          const id = crypto.randomUUID();
+          return { customThemes: [...s.customThemes, { ...t, id }], themeOrder: [...s.themeOrder, id] };
+        }),
       updateTheme: (t) =>
         set((s) => ({ customThemes: s.customThemes.map((x) => (x.id === t.id ? t : x)) })),
       removeTheme: (id) =>
-        set((s) => ({ customThemes: s.customThemes.filter((x) => x.id !== id) })),
+        set((s) => ({
+          customThemes: s.customThemes.filter((x) => x.id !== id),
+          themeOrder: s.themeOrder.filter((x) => x !== id),
+        })),
       selectTheme: (id) => set({ selectedThemeId: id }),
       reorderTheme: (id, toIndex) =>
         set((s) => {
-          const idx = s.customThemes.findIndex((t) => t.id === id);
+          const ids = orderThemes(getAllThemes(s.customThemes), s.themeOrder).map((t) => t.id);
+          const idx = ids.indexOf(id);
           if (idx === -1) return s;
-          const customThemes = [...s.customThemes];
-          const [item] = customThemes.splice(idx, 1);
-          customThemes.splice(Math.max(0, Math.min(toIndex, customThemes.length)), 0, item);
-          return { customThemes };
+          ids.splice(idx, 1);
+          ids.splice(Math.max(0, Math.min(toIndex, ids.length)), 0, id);
+          return { themeOrder: ids };
         }),
     }),
     {
@@ -573,6 +582,7 @@ export const useThemeStore = create<ThemeStore>()(
       partialize: (s) => ({
         customThemes: s.customThemes,
         selectedThemeId: s.selectedThemeId,
+        themeOrder: s.themeOrder,
         migratedLegacyDarkMode: s.migratedLegacyDarkMode,
       }),
       onRehydrateStorage: () => (state) => {

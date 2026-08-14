@@ -1,12 +1,48 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { toast } from "sonner";
-import { RotateCcw } from "lucide-react";
+import { Download, Upload, RotateCcw } from "lucide-react";
+import { cn } from "../lib/utils";
 import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
 import { ActionButton } from "../components/ui/action-button";
-import { DrawerHeader, DrawerTitle } from "../components/ui/drawer";
+import { PanelHeader } from "../components/settings/PanelHeader";
 import { useUIStore } from "../store";
 import { downloadSettingsExport, importSettingsFile, resetSettings } from "../lib/settings-export";
+
+function ToggleRow({ title, description, checked, onCheckedChange }: {
+  title: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-foreground">{title}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
+
+function ActionCard({ tone = "default", title, description, children }: {
+  tone?: "default" | "amber" | "destructive"; title: string; description: string; children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 rounded-lg border px-3 py-3",
+        tone === "default" && "border-border bg-card",
+        tone === "amber" && "border-amber-500/20 bg-amber-500/10",
+        tone === "destructive" && "border-destructive/20 bg-destructive/10"
+      )}
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-foreground">{title}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
 
 /** Preferences — rendered as drawer content from the sidebar's Settings icon. */
 export function PreferencesPanel() {
@@ -35,77 +71,73 @@ export function PreferencesPanel() {
 
   return (
     <>
-      <DrawerHeader>
-        <DrawerTitle>Préférences</DrawerTitle>
-      </DrawerHeader>
+      <PanelHeader title="Réglages" description="Ces réglages généraux s'appliquent à tous les thèmes et presets." />
 
-      <div className="mx-4 mb-4 rounded-xl border border-border bg-card p-4 space-y-5">
+      <div className="space-y-1.5 px-4 pb-4">
+        <ToggleRow
+          title="Semaine commence le lundi"
+          description="Afficher lundi en premier dans la vue calendrier"
+          checked={weekStartsOnMonday}
+          onCheckedChange={toggleWeekStart}
+        />
+        <ToggleRow
+          title="Format 24h"
+          description="Afficher les heures au format 24h (ex : 14:30)"
+          checked={use24h}
+          onCheckedChange={setUse24h}
+        />
+        <ToggleRow
+          title="Format de date européen"
+          description={dateFormatEU ? "JJ/MM/AAAA — ex : 15/03/2025" : "MM/JJ/AAAA — ex : 03/15/2025"}
+          checked={dateFormatEU}
+          onCheckedChange={setDateFormatEU}
+        />
+      </div>
 
-        {/* Week start */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-foreground">Semaine commence le lundi</div>
-            <div className="text-xs text-muted-foreground">Afficher lundi en premier dans la vue calendrier</div>
-          </div>
-          <Switch checked={weekStartsOnMonday} onCheckedChange={toggleWeekStart} />
-        </div>
+      <p className="px-4 pb-3 text-sm text-muted-foreground">
+        Cette application n&apos;a pas de serveurs, tout est stocké localement sur votre appareil. Pour la porter
+        sur un autre appareil, exportez-la puis importez-la.
+      </p>
 
-        <div className="border-t border-border" />
+      <div className="space-y-1.5 px-4 pb-4">
+        <ActionCard
+          title="Exporter"
+          description="Exporte toute la configuration dans un fichier .json : presets, sources, types, règles, thèmes et réglages."
+        >
+          <Button size="sm" className="gap-1.5" onClick={handleExport}>
+            <Download size={13} />
+            Exporter
+          </Button>
+        </ActionCard>
 
-        {/* 24h clock */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-foreground">Format 24h</div>
-            <div className="text-xs text-muted-foreground">Afficher les heures au format 24h (ex : 14:30)</div>
-          </div>
-          <Switch checked={use24h} onCheckedChange={setUse24h} />
-        </div>
+        <ActionCard
+          tone="amber"
+          title="Importer"
+          description="Importe et remplace toute la configuration : presets, sources, types, règles, thèmes et réglages."
+        >
+          <Button size="sm" className="gap-1.5 bg-amber-500 text-white hover:bg-amber-600" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={13} />
+            Importer
+          </Button>
+          <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
+        </ActionCard>
 
-        <div className="border-t border-border" />
-
-        {/* Date format */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-foreground">Format de date européen</div>
-            <div className="text-xs text-muted-foreground">{dateFormatEU ? "JJ/MM/AAAA — ex : 15/03/2025" : "MM/JJ/AAAA — ex : 03/15/2025"}</div>
-          </div>
-          <Switch checked={dateFormatEU} onCheckedChange={setDateFormatEU} />
-        </div>
-
-        <div className="border-t border-border" />
-
-        {/* Export / import */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-foreground">Paramètres</div>
-            <div className="text-xs text-muted-foreground">Exporter ou importer connexions, types, règles, préférences et thèmes</div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExport}>Exporter</Button>
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Importer</Button>
-            <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
-          </div>
-        </div>
-
-        <div className="border-t border-border" />
-
-        {/* Reset */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-foreground">Réinitialiser</div>
-            <div className="text-xs text-muted-foreground">Supprime sources, types, règles, préférences et thèmes personnalisés</div>
-          </div>
+        <ActionCard
+          tone="destructive"
+          title="Réinitialiser"
+          description="Supprime toute la configuration pour les valeurs par défaut : presets, sources, types, règles, thèmes et réglages."
+        >
           <ActionButton
-            variant="outline"
             size="sm"
+            variant="destructive"
+            className="gap-1.5"
             onAction={resetSettings}
-            confirmChildren={<><RotateCcw size={13} />Confirmer</>}
+            confirmChildren="Confirmer"
           >
             <RotateCcw size={13} />
             Réinitialiser
           </ActionButton>
-        </div>
-
+        </ActionCard>
       </div>
     </>
   );

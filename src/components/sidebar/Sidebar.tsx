@@ -14,7 +14,7 @@ import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
 import { PresetSelector } from "./PresetSelector";
 import { describeMatch } from "../../lib/rules";
-import { getAllThemes, isBuiltinTheme } from "../../lib/theme";
+import { getAllThemes, orderThemes, isBuiltinTheme } from "../../lib/theme";
 import type { Connection, ConnectionStatus, EventType, Rule, Theme } from "../../types";
 
 /** Native HTML5 drag handlers for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
@@ -119,7 +119,7 @@ export function Sidebar() {
   const { types, updateType, getType } = useEventTypeStore();
   const { rules, toggleRule } = useRuleStore();
   const { events } = useEventsStore();
-  const { customThemes, selectedThemeId, selectTheme } = useThemeStore();
+  const { customThemes, themeOrder, selectedThemeId, selectTheme } = useThemeStore();
 
   if (!sidebarOpen) return null;
 
@@ -131,7 +131,7 @@ export function Sidebar() {
   const dayHeaders = Array.from({ length: 7 }, (_, i) =>
     format(addDays(gridStart, i), "EEEEE", { locale: fr })
   );
-  const themes = getAllThemes(customThemes);
+  const themes = orderThemes(getAllThemes(customThemes), themeOrder);
 
   return (
     <aside className="
