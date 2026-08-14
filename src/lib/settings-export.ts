@@ -61,3 +61,9 @@ export async function importSettingsFile(file: File): Promise<void> {
   for (const [key, value] of writes) localStorage.setItem(key, value);
   window.location.reload();
 }
+
+/** Wipes every persisted key and reloads, so every store re-seeds its defaults from scratch. */
+export function resetSettings(): void {
+  for (const key of SETTINGS_KEYS) localStorage.removeItem(key);
+  window.location.reload();
+}

@@ -1,10 +1,12 @@
 import { useRef } from "react";
 import { toast } from "sonner";
+import { RotateCcw } from "lucide-react";
 import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
+import { ActionButton } from "../components/ui/action-button";
 import { DrawerHeader, DrawerTitle } from "../components/ui/drawer";
 import { useUIStore } from "../store";
-import { downloadSettingsExport, importSettingsFile } from "../lib/settings-export";
+import { downloadSettingsExport, importSettingsFile, resetSettings } from "../lib/settings-export";
 
 /** Preferences — rendered as drawer content from the sidebar's Settings icon. */
 export function PreferencesPanel() {
@@ -83,6 +85,25 @@ export function PreferencesPanel() {
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Importer</Button>
             <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
           </div>
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Reset */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-foreground">Réinitialiser</div>
+            <div className="text-xs text-muted-foreground">Supprime sources, types, règles, préférences et thèmes personnalisés</div>
+          </div>
+          <ActionButton
+            variant="outline"
+            size="sm"
+            onAction={resetSettings}
+            confirmChildren={<><RotateCcw size={13} />Confirmer</>}
+          >
+            <RotateCcw size={13} />
+            Réinitialiser
+          </ActionButton>
         </div>
 
       </div>
