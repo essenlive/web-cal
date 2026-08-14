@@ -14,12 +14,12 @@ import { AddConnectionModal } from "./AddConnectionModal";
 import { PanelHeader } from "./PanelHeader";
 import type { Connection } from "../../types";
 
-export function ConnectionsPanel({ initialEditId }: { initialEditId?: string } = {}) {
+export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { connections, addConnection, updateConnection, removeConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
 
   const initialConn = initialEditId ? connections.find((c) => c.id === initialEditId) ?? null : null;
-  const [formOpen, setFormOpen] = useState(!!initialConn);
+  const [formOpen, setFormOpen] = useState(!!initialConn || !!openCreate);
   const [editingConn, setEditingConn] = useState<Connection | null>(initialConn);
 
   function back() {

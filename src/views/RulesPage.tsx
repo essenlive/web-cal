@@ -109,14 +109,14 @@ function RuleRow({
 }
 
 /** Rules manager — rendered as drawer content from the sidebar, beneath the display types list. */
-export function RulesPanel({ initialEditRuleId }: { initialEditRuleId?: string } = {}) {
+export function RulesPanel({ initialEditRuleId, openCreate }: { initialEditRuleId?: string; openCreate?: boolean } = {}) {
   const { rules, toggleRule, removeRule, reorderRule } = useRuleStore();
   const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
 
   const initialRule = initialEditRuleId ? rules.find((r) => r.id === initialEditRuleId) ?? null : null;
-  const [formOpen, setFormOpen] = useState(!!initialRule);
+  const [formOpen, setFormOpen] = useState(!!initialRule || !!openCreate);
   const [editingRule, setEditingRule] = useState<Rule | null>(initialRule);
   const { getDragProps } = useDragReorder(rules, (r) => r.id, reorderRule);
 

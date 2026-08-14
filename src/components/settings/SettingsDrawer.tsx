@@ -23,15 +23,15 @@ export function SettingsDrawer() {
   return (
     <Drawer direction="right" open={activeDrawer !== null} onOpenChange={(v) => { if (!v) closeDrawer(); }}>
       <DrawerContent className="overflow-y-auto" aria-describedby={undefined}>
-        {activeDrawer?.panel === "connection" && <ConnectionsPanel initialEditId={activeDrawer.editId} />}
+        {activeDrawer?.panel === "connection" && <ConnectionsPanel initialEditId={activeDrawer.editId} openCreate={activeDrawer.create} />}
 
-        {activeDrawer?.panel === "eventType" && <EventTypesPanel initialEditId={activeDrawer.editId} />}
+        {activeDrawer?.panel === "eventType" && <EventTypesPanel initialEditId={activeDrawer.editId} openCreate={activeDrawer.create} />}
 
-        {activeDrawer?.panel === "rules" && <RulesPanel initialEditRuleId={activeDrawer.editId} />}
+        {activeDrawer?.panel === "rules" && <RulesPanel initialEditRuleId={activeDrawer.editId} openCreate={activeDrawer.create} />}
 
-        {activeDrawer?.panel === "theme" && <ThemesPanel initialEditId={activeDrawer.editId} />}
+        {activeDrawer?.panel === "theme" && <ThemesPanel initialEditId={activeDrawer.editId} openCreate={activeDrawer.create} />}
 
-        {activeDrawer?.panel === "preset" && <PresetsPanel initialEditId={activeDrawer.editId} />}
+        {activeDrawer?.panel === "preset" && <PresetsPanel initialEditId={activeDrawer.editId} openCreate={activeDrawer.create} />}
 
         {activeDrawer?.panel === "preferences" && <PreferencesPanel />}
 

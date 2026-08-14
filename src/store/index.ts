@@ -149,7 +149,7 @@ export const useConnectionStore = create<ConnectionStore>()(
 // ── Event Types Store ─────────────────────────────────────────────────────────
 
 const DEFAULT_EVENT_TYPES: EventType[] = [
-  { id: "meeting",    label: "Meeting",    color: "#3b82f6", icon: "Users",       allDayStyle: "day",       timedStyle: "block", isDefault: true },
+  { id: "meeting",    label: "Classique",  color: "#3b82f6", icon: "Users",       allDayStyle: "day",       timedStyle: "block", isDefault: true },
   { id: "deadline",   label: "Deadline",   color: "#ef4444", icon: "AlertCircle", allDayStyle: "day",       timedStyle: "block" },
   { id: "workshop",   label: "Workshop",   color: "#8b5cf6", icon: "Layers",      allDayStyle: "day",       timedStyle: "block" },
   { id: "focus-time", label: "Focus time", color: "#10b981", icon: "Brain",       allDayStyle: "avatar-tl", timedStyle: "block" },
@@ -452,6 +452,8 @@ export interface ActiveDrawer {
   panel: DrawerPanel;
   /** id of the Connection/EventType being edited; absent means "create new". */
   editId?: string;
+  /** True when the drawer's "+" was used — skip the list and open straight into the new-item form. */
+  create?: boolean;
 }
 
 interface UIStore {
@@ -471,6 +473,7 @@ interface UIStore {
   setUse24h: (v: boolean) => void;
   setDateFormatEU: (v: boolean) => void;
   openDrawer: (panel: DrawerPanel, editId?: string) => void;
+  openNewItemDrawer: (panel: DrawerPanel) => void;
   closeDrawer: () => void;
   toggleSection: (id: string) => void;
 }
@@ -493,6 +496,7 @@ export const useUIStore = create<UIStore>()(
       setUse24h: (use24h) => set({ use24h }),
       setDateFormatEU: (dateFormatEU) => set({ dateFormatEU }),
       openDrawer: (panel, editId) => set({ activeDrawer: { panel, editId } }),
+      openNewItemDrawer: (panel) => set({ activeDrawer: { panel, create: true } }),
       closeDrawer: () => set({ activeDrawer: null }),
       toggleSection: (id) => set((s) => ({ collapsedSections: { ...s.collapsedSections, [id]: !s.collapsedSections[id] } })),
     }),

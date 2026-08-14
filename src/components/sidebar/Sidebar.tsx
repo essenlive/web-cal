@@ -3,7 +3,7 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Settings, Keyboard, Eye, EyeOff, Check, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Keyboard, Eye, EyeOff, Pencil, Sun, Moon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -11,6 +11,7 @@ import { useUIStore, useConnectionStore, useEventTypeStore, useRuleStore, useEve
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
 import { getIconEl } from "../settings/EventTypeModal";
 import { Section } from "./Section";
+import { ItemRow, ItemBadge } from "./ItemRow";
 import { PresetSelector } from "./PresetSelector";
 import { describeMatch } from "../../lib/rules";
 import { getAllThemes, isBuiltinTheme } from "../../lib/theme";
@@ -35,35 +36,21 @@ function statusColor(status: ConnectionStatus) {
   }
 }
 
-function HideToggle({ hidden, label, onToggle }: { hidden?: boolean; label: string; onToggle: () => void }) {
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      aria-label={hidden ? `Afficher ${label}` : `Masquer ${label}`}
-      title={hidden ? "Afficher" : "Masquer"}
-      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-    >
-      {hidden ? <EyeOff size={12} /> : <Eye size={12} />}
-    </button>
-  );
-}
-
 export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
   connection: Connection; status: ConnectionStatus; onEdit: () => void; onToggleHidden: () => void;
 }) {
   const hidden = !!connection.hidden;
   return (
-    <div
-      onClick={onEdit}
-      className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer"
-    >
-      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: connection.color }} />
-      <span className={cn("flex-1 min-w-0 truncate text-xs text-foreground", hidden && "text-muted-foreground line-through")}>
-        {connection.name}
-      </span>
-      <span className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} title={status} />
-      <HideToggle hidden={hidden} label={connection.name} onToggle={onToggleHidden} />
-    </div>
+    <ItemRow
+      badge={<ItemBadge color={connection.color}>{connection.name.trim().charAt(0).toUpperCase()}</ItemBadge>}
+      name={connection.name}
+      muted={hidden}
+      state={<span className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} title={status} />}
+      actions={[
+        { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
+        { icon: hidden ? <EyeOff size={12} /> : <Eye size={12} />, label: hidden ? "Afficher" : "Masquer", onClick: onToggleHidden },
+      ]}
+    />
   );
 }
 
@@ -74,37 +61,34 @@ export function TypeRow({ type, onEdit, onToggleHidden, dragProps }: {
 }) {
   const hidden = !!type.hidden;
   return (
-    <div
-      onClick={onEdit}
-      {...dragProps}
-      className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer"
-    >
-      <div className="flex size-4 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: type.color + "20", color: type.color }}>
-        {getIconEl(type.icon, 10)}
-      </div>
-      <span className={cn("flex-1 min-w-0 truncate text-xs text-foreground", hidden && "text-muted-foreground line-through")}>
-        {type.label}
-      </span>
-      <HideToggle hidden={hidden} label={type.label} onToggle={onToggleHidden} />
-    </div>
+    <ItemRow
+      badge={<ItemBadge color={type.color}>{getIconEl(type.icon, 10, "#fff")}</ItemBadge>}
+      name={type.label}
+      muted={hidden}
+      dragProps={dragProps}
+      actions={[
+        { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
+        { icon: hidden ? <EyeOff size={12} /> : <Eye size={12} />, label: hidden ? "Afficher" : "Masquer", onClick: onToggleHidden },
+      ]}
+    />
   );
 }
 
 // ── Compact rule row ──────────────────────────────────────────────────────────
 
-export function RuleRow({ rule, description, displayType, onEdit }: {
-  rule: Rule; description: string; displayType: EventType | undefined; onEdit: () => void;
+export function RuleRow({ rule, description, displayType, onEdit, onToggleEnabled }: {
+  rule: Rule; description: string; displayType: EventType | undefined; onEdit: () => void; onToggleEnabled: () => void;
 }) {
   return (
-    <div
-      onClick={onEdit}
-      className={cn("group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer", !rule.enabled && "opacity-50")}
-    >
-      <div className="flex size-4 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: (displayType?.color ?? "#6366f1") + "20", color: displayType?.color ?? "#6366f1" }}>
-        {displayType && getIconEl(displayType.icon, 10)}
-      </div>
-      <span className="flex-1 min-w-0 truncate text-xs text-foreground">{description}</span>
-    </div>
+    <ItemRow
+      badge={<ItemBadge color={displayType?.color ?? "#6366f1"}>{displayType && getIconEl(displayType.icon, 10, "#fff")}</ItemBadge>}
+      name={description}
+      muted={!rule.enabled}
+      actions={[
+        { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
+        { icon: rule.enabled ? <Eye size={12} /> : <EyeOff size={12} />, label: rule.enabled ? "Désactiver" : "Activer", onClick: onToggleEnabled },
+      ]}
+    />
   );
 }
 
@@ -114,37 +98,26 @@ export function ThemeRow({ theme, active, onSelect, onEdit, dragProps }: {
   theme: Theme; active: boolean; onSelect: () => void; onEdit?: () => void; dragProps?: DragProps;
 }) {
   return (
-    <div
-      onClick={onSelect}
-      {...dragProps}
-      className={cn("group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted cursor-pointer", active && "bg-muted")}
-    >
-      <Check size={12} className={cn("shrink-0 text-primary", !active && "invisible")} />
-      <span className="size-3 rounded-full border border-border shrink-0" style={{ backgroundColor: theme.accent }} />
-      <span className="flex-1 min-w-0 truncate text-xs text-foreground">{theme.name}</span>
-      {onEdit && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          aria-label={`Modifier ${theme.name}`}
-          title="Modifier"
-          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-        >
-          <Pencil size={12} />
-        </button>
-      )}
-    </div>
+    <ItemRow
+      badge={<ItemBadge color={theme.accent}>{theme.mode === "dark" ? <Moon size={10} color="#fff" /> : <Sun size={10} color="#fff" />}</ItemBadge>}
+      name={theme.name}
+      selected={active}
+      onSelect={onSelect}
+      dragProps={dragProps}
+      actions={onEdit ? [{ icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit }] : undefined}
+    />
   );
 }
 
 export function Sidebar() {
-  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen, openDrawer } = useUIStore();
+  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen, openDrawer, openNewItemDrawer } = useUIStore();
   const [miniDate, setMiniDate] = useState(currentDate);
   const weekStart = weekStartsOnMonday ? 1 : 0;
 
   const { connections, updateConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
   const { types, updateType, getType, getDefaultType } = useEventTypeStore();
-  const { rules } = useRuleStore();
+  const { rules, toggleRule } = useRuleStore();
   const { events } = useEventsStore();
   const { customThemes, selectedThemeId, selectTheme } = useThemeStore();
 
@@ -213,7 +186,7 @@ export function Sidebar() {
       <div className="border-t border-border" />
 
       {/* Data sources preview */}
-      <Section id="connections" label="Sources" onOpen={() => openDrawer("connection")}>
+      <Section id="connections" label="Sources" onOpen={() => openDrawer("connection")} onAdd={() => openNewItemDrawer("connection")}>
         {connections.length === 0 && (
           <p className="px-2 text-xs text-muted-foreground">Aucune source.</p>
         )}
@@ -231,7 +204,7 @@ export function Sidebar() {
       <div className="border-t border-border" />
 
       {/* Event types preview */}
-      <Section id="eventType" label="Types" onOpen={() => openDrawer("eventType")}>
+      <Section id="eventType" label="Types" onOpen={() => openDrawer("eventType")} onAdd={() => openNewItemDrawer("eventType")}>
         {types.map((t) => (
           <TypeRow
             key={t.id}
@@ -245,7 +218,7 @@ export function Sidebar() {
       <div className="border-t border-border" />
 
       {/* Rules preview */}
-      <Section id="rules" label="Règles" onOpen={() => openDrawer("rules")}>
+      <Section id="rules" label="Règles" onOpen={() => openDrawer("rules")} onAdd={() => openNewItemDrawer("rules")}>
         {rules.map((r) => (
           <RuleRow
             key={r.id}
@@ -253,6 +226,7 @@ export function Sidebar() {
             description={describeMatch(r, (id) => events.find((e) => e.id === id)?.title, (id) => connections.find((c) => c.id === id)?.name)}
             displayType={r.matchType === "all" ? getDefaultType() : getType(r.displayTypeId)}
             onEdit={() => openDrawer("rules", r.id)}
+            onToggleEnabled={() => toggleRule(r.id)}
           />
         ))}
       </Section>
@@ -260,7 +234,7 @@ export function Sidebar() {
       <div className="border-t border-border" />
 
       {/* Theme preview */}
-      <Section id="theme" label="Thème" onOpen={() => openDrawer("theme")}>
+      <Section id="theme" label="Thème" onOpen={() => openDrawer("theme")} onAdd={() => openNewItemDrawer("theme")}>
         {themes.map((t) => (
           <ThemeRow
             key={t.id}

@@ -41,14 +41,14 @@ function PresetListRow({ preset, active, onApply, onEdit, dragProps }: {
   );
 }
 
-export function PresetsPanel({ initialEditId }: { initialEditId?: string } = {}) {
+export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { presets, applyPreset, clearPreset, removePreset, reorderPreset } = usePresetStore();
   const { connections } = useConnectionStore();
   const { types } = useEventTypeStore();
   const { getDragProps } = useDragReorder(presets, (p) => p.id, reorderPreset);
 
   const initialPreset = initialEditId ? presets.find((p) => p.id === initialEditId) ?? null : null;
-  const [formOpen, setFormOpen] = useState(!!initialPreset);
+  const [formOpen, setFormOpen] = useState(!!initialPreset || !!openCreate);
   const [editingPreset, setEditingPreset] = useState<Preset | null>(initialPreset);
 
   function back() {

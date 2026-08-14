@@ -14,12 +14,12 @@ import { EventTypeModal } from "./EventTypeModal";
 import { PanelHeader } from "./PanelHeader";
 import type { EventType } from "../../types";
 
-export function EventTypesPanel({ initialEditId }: { initialEditId?: string } = {}) {
+export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { types, addType, updateType, removeType, setDefaultType, reorderType } = useEventTypeStore();
   const { getDragProps } = useDragReorder(types, (t) => t.id, reorderType);
 
   const initialType = initialEditId ? types.find((t) => t.id === initialEditId) ?? null : null;
-  const [formOpen, setFormOpen] = useState(!!initialType);
+  const [formOpen, setFormOpen] = useState(!!initialType || !!openCreate);
   const [editingType, setEditingType] = useState<EventType | null>(initialType);
 
   function back() {

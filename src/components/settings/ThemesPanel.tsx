@@ -15,12 +15,12 @@ import { ThemeEditorDialog } from "../sidebar/ThemeEditorDialog";
 import { PanelHeader } from "./PanelHeader";
 import type { Theme } from "../../types";
 
-export function ThemesPanel({ initialEditId }: { initialEditId?: string } = {}) {
+export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { customThemes, selectedThemeId, selectTheme, reorderTheme } = useThemeStore();
   const { getDragProps } = useDragReorder(customThemes, (t) => t.id, reorderTheme);
 
   const initialTheme = initialEditId ? customThemes.find((t) => t.id === initialEditId) ?? null : null;
-  const [formOpen, setFormOpen] = useState(!!initialTheme);
+  const [formOpen, setFormOpen] = useState(!!initialTheme || !!openCreate);
   const [editingTheme, setEditingTheme] = useState<Theme | null>(initialTheme);
 
   function back() {
