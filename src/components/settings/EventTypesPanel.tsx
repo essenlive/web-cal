@@ -71,6 +71,7 @@ export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?:
             badge={<ItemBadge color={t.color}>{getIconEl(t.icon, 10, "#fff")}</ItemBadge>}
             name={t.label}
             onEdit={() => { setEditingType(t); setFormOpen(true); }}
+            onDuplicate={() => { const { id, ...rest } = t; addType({ ...rest, isDefault: false, label: `${rest.label} (copie)` }); }}
             onDelete={t.isDefault ? undefined : () => removeType(t.id)}
             deleteDisabledReason={t.isDefault ? "Le type par défaut ne peut pas être supprimé" : undefined}
             dragProps={getDragProps(index)}

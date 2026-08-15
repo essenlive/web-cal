@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Preset, Rule, RuleMatchType, Theme } from "../types";
-import { BUILTIN_THEMES, getAllThemes, orderThemes } from "../lib/theme";
+import { BUILTIN_THEMES, orderThemes } from "../lib/theme";
 import { capturePresetState } from "../lib/presets";
 
 // Next.js server-renders "use client" components once for the initial HTML,
@@ -376,6 +376,8 @@ interface PresetStore {
   presets: Preset[];
   addPreset: (name: string, color: string, description?: string) => void;
   updatePreset: (preset: Preset) => void;
+  /** Copies an existing preset's captured connections/eventTypes as-is (not the live app state). */
+  duplicatePreset: (id: string) => void;
   removePreset: (id: string) => void;
   applyPreset: (id: string) => void;
   /** Unhides every connection and event type — the "no preset" state (shortcut: 0). */
@@ -403,6 +405,12 @@ export const usePresetStore = create<PresetStore>()(
         })),
       updatePreset: (preset) =>
         set((s) => ({ presets: s.presets.map((p) => (p.id === preset.id ? preset : p)) })),
+      duplicatePreset: (id) =>
+        set((s) => {
+          const preset = s.presets.find((p) => p.id === id);
+          if (!preset) return s;
+          return { presets: [...s.presets, { ...preset, id: crypto.randomUUID(), name: `${preset.name} (copie)` }] };
+        }),
       removePreset: (id) => set((s) => ({ presets: s.presets.filter((p) => p.id !== id) })),
       reorderPreset: (id, toIndex) =>
         set((s) => {
@@ -528,32 +536,36 @@ export const useUIStore = create<UIStore>()(
 
 // ── Theme Store ────────────────────────────────────────────────────────────────
 //
-// Built-in themes ("light"/"dark", see src/lib/theme.ts BUILTIN_THEMES) are NOT
-// stored here — only user-created custom themes and the current selection are
-// persisted. See specs/005-global-theming/data-model.md.
+// customThemes is seeded with the two defaults (src/lib/theme.ts BUILTIN_THEMES)
+// and holds every theme from then on — all equally editable/renamable/deletable,
+// except the store refuses to remove the last remaining theme. See
+// specs/005-global-theming/data-model.md.
 
 interface ThemeStore {
   customThemes: Theme[];
   selectedThemeId: string;
-  /** Display order for ALL themes (built-in + custom), by id — see lib/theme.ts orderThemes. */
+  /** Display order for all themes, by id — see lib/theme.ts orderThemes. */
   themeOrder: string[];
-  /** Internal one-time migration guard — not meant to be read by UI code. */
+  /** Internal one-time migration guards — not meant to be read by UI code. */
   migratedLegacyDarkMode: boolean;
+  migratedBuiltinThemes: boolean;
   addTheme: (t: Omit<Theme, "id">) => void;
   updateTheme: (t: Theme) => void;
+  /** No-ops when `id` is the only remaining theme — at least one theme must always exist. */
   removeTheme: (id: string) => void;
   selectTheme: (id: string) => void;
-  /** Moves `id` to `toIndex` in the full built-in + custom display order. */
+  /** Moves `id` to `toIndex` in the display order. */
   reorderTheme: (id: string, toIndex: number) => void;
 }
 
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set) => ({
-      customThemes: [],
+      customThemes: [...BUILTIN_THEMES],
       selectedThemeId: BUILTIN_THEMES[0].id, // "light"
       themeOrder: BUILTIN_THEMES.map((t) => t.id),
       migratedLegacyDarkMode: false,
+      migratedBuiltinThemes: false,
       addTheme: (t) =>
         set((s) => {
           const id = crypto.randomUUID();
@@ -562,14 +574,19 @@ export const useThemeStore = create<ThemeStore>()(
       updateTheme: (t) =>
         set((s) => ({ customThemes: s.customThemes.map((x) => (x.id === t.id ? t : x)) })),
       removeTheme: (id) =>
-        set((s) => ({
-          customThemes: s.customThemes.filter((x) => x.id !== id),
-          themeOrder: s.themeOrder.filter((x) => x !== id),
-        })),
+        set((s) => {
+          if (s.customThemes.length <= 1) return s;
+          const customThemes = s.customThemes.filter((x) => x.id !== id);
+          return {
+            customThemes,
+            themeOrder: s.themeOrder.filter((x) => x !== id),
+            selectedThemeId: s.selectedThemeId === id ? customThemes[0].id : s.selectedThemeId,
+          };
+        }),
       selectTheme: (id) => set({ selectedThemeId: id }),
       reorderTheme: (id, toIndex) =>
         set((s) => {
-          const ids = orderThemes(getAllThemes(s.customThemes), s.themeOrder).map((t) => t.id);
+          const ids = orderThemes(s.customThemes, s.themeOrder).map((t) => t.id);
           const idx = ids.indexOf(id);
           if (idx === -1) return s;
           ids.splice(idx, 1);
@@ -585,24 +602,38 @@ export const useThemeStore = create<ThemeStore>()(
         selectedThemeId: s.selectedThemeId,
         themeOrder: s.themeOrder,
         migratedLegacyDarkMode: s.migratedLegacyDarkMode,
+        migratedBuiltinThemes: s.migratedBuiltinThemes,
       }),
       onRehydrateStorage: () => (state) => {
-        if (!state || typeof window === "undefined" || state.migratedLegacyDarkMode) return;
-        // One-time migration: honor the legacy darkMode toggle's preference
-        // (proton-cal:ui) for users upgrading from before this feature existed.
-        // Read-only — proton-cal:ui / useUIStore.darkMode are left untouched.
-        try {
-          const raw = localStorage.getItem("proton-cal:ui");
-          if (raw) {
-            const parsed = JSON.parse(raw) as { state?: { darkMode?: boolean } };
-            if (parsed?.state?.darkMode === true) {
-              state.selectedThemeId = "dark";
+        if (!state || typeof window === "undefined") return;
+        if (!state.migratedLegacyDarkMode) {
+          // One-time migration: honor the legacy darkMode toggle's preference
+          // (proton-cal:ui) for users upgrading from before this feature existed.
+          // Read-only — proton-cal:ui / useUIStore.darkMode are left untouched.
+          try {
+            const raw = localStorage.getItem("proton-cal:ui");
+            if (raw) {
+              const parsed = JSON.parse(raw) as { state?: { darkMode?: boolean } };
+              if (parsed?.state?.darkMode === true) {
+                state.selectedThemeId = "dark";
+              }
             }
+          } catch {
+            // Migration failure is non-fatal; keep the default "light" selection.
           }
-        } catch {
-          // Migration failure is non-fatal; keep the default "light" selection.
+          state.migratedLegacyDarkMode = true;
         }
-        state.migratedLegacyDarkMode = true;
+        if (!state.migratedBuiltinThemes) {
+          // One-time migration: older versions kept "light"/"dark" out of
+          // customThemes entirely — add whichever of them are still missing
+          // so upgrading users don't lose the defaults from their theme list.
+          const missing = BUILTIN_THEMES.filter((b) => !state.customThemes.some((t) => t.id === b.id));
+          if (missing.length > 0) {
+            state.customThemes = [...missing, ...state.customThemes];
+            state.themeOrder = [...missing.map((t) => t.id), ...state.themeOrder];
+          }
+          state.migratedBuiltinThemes = true;
+        }
       },
     }
   )

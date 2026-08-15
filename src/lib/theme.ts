@@ -51,41 +51,34 @@ export function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
-// ── Built-in themes ────────────────────────────────────────────────────────────
+// ── Default themes ────────────────────────────────────────────────────────────
 
 /**
- * "light"/"dark" ids are reserved: never editable/deletable, never stored in
- * useThemeStore.customThemes. Accent values match the app's pre-existing
- * default primary hue/saturation/lightness (hsl(234 89% 60%) / hsl(234 89% 65%))
- * converted to hex, so the built-ins render identically to the app's original
- * (pre-theming) light/dark appearance.
+ * The two themes useThemeStore.customThemes is seeded with — on first load,
+ * and again for any user who deletes/renames every theme down to none (the
+ * store never allows removing the very last one, so this is also the "reset"
+ * state). Like any theme, these are fully editable/renamable/deletable once
+ * seeded. Accent values match the app's pre-existing default primary
+ * hue/saturation/lightness (hsl(234 89% 60%) / hsl(234 89% 65%)) converted to
+ * hex, so they render identically to the app's original (pre-theming) light/
+ * dark appearance.
  */
 export const BUILTIN_THEMES: Theme[] = [
   { id: "light", name: "Clair",  mode: "light", accent: "#3e50f4", fontFamily: "DM Sans", radius: "0.75rem" },
   { id: "dark",  name: "Sombre", mode: "dark",  accent: "#5666f5", fontFamily: "DM Sans", radius: "0.75rem" },
 ];
 
-const BUILTIN_IDS = new Set(BUILTIN_THEMES.map((t) => t.id));
-
-export function isBuiltinTheme(id: string): boolean {
-  return BUILTIN_IDS.has(id);
-}
-
 // ── Lookups ────────────────────────────────────────────────────────────────────
 
-export function getAllThemes(customThemes: Theme[]): Theme[] {
-  return [...BUILTIN_THEMES, ...customThemes];
-}
-
-/** Sorts built-in + custom themes together by a persisted id order (useThemeStore.themeOrder), appending any id missing from `order` — e.g. a just-created theme — at the end in its natural position. */
+/** Sorts themes by a persisted id order (useThemeStore.themeOrder), appending any id missing from `order` — e.g. a just-created theme — at the end in its natural position. */
 export function orderThemes(themes: Theme[], order: string[]): Theme[] {
   const rank = new Map(order.map((id, i) => [id, i]));
   return [...themes].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
 }
 
-/** Resolves the active theme by id, falling back to the built-in "Light" theme (FR-011). */
+/** Resolves the active theme by id, falling back to the default "Clair" theme (FR-011). */
 export function getActiveTheme(customThemes: Theme[], selectedThemeId: string): Theme {
-  return getAllThemes(customThemes).find((t) => t.id === selectedThemeId) ?? BUILTIN_THEMES[0];
+  return customThemes.find((t) => t.id === selectedThemeId) ?? BUILTIN_THEMES[0];
 }
 
 // ── CSS variable resolution ──────────────────────────────────────────────────────

@@ -4,13 +4,10 @@
  */
 
 import { useState } from "react";
-import { Check, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
-import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { ColorPicker } from "./ColorPicker";
-import { PanelHeader, InlineLink } from "./PanelHeader";
+import { PanelHeader, PanelFooter, InlineLink } from "./PanelHeader";
 import { RuleEditRow } from "./RuleEditRow";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { ItemBadge } from "../sidebar/ItemRow";
@@ -277,29 +274,14 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-2">
-            {onDelete ? (
-              <ActionButton
-                variant="ghost"
-                onAction={onDelete}
-                disabled={!!deleteDisabledReason}
-                title={deleteDisabledReason}
-                confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
-                className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              >
-                <Trash2 size={13} />
-                Supprimer
-              </ActionButton>
-            ) : <span />}
-
-            <div className="flex gap-2">
-              <Button variant="ghost" className="text-muted-foreground" onClick={onClose}>Annuler</Button>
-              <Button onClick={handleSave} disabled={!trimmed || isDuplicate} className="gap-1.5">
-                <Check size={14} />
-                {type ? "Enregistrer" : "Créer"}
-              </Button>
-            </div>
-          </div>
+          <PanelFooter
+            onDelete={onDelete}
+            deleteDisabledReason={deleteDisabledReason}
+            onCancel={onClose}
+            onSave={handleSave}
+            saveDisabled={!trimmed || isDuplicate}
+            saveLabel={type ? "Enregistrer" : "Créer"}
+          />
         </div>
     </>
   );

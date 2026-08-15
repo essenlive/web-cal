@@ -18,7 +18,7 @@ import type { Preset } from "../../types";
 
 export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { openDrawer } = useUIStore();
-  const { presets, removePreset, reorderPreset } = usePresetStore();
+  const { presets, duplicatePreset, removePreset, reorderPreset } = usePresetStore();
   const { getDragProps } = useDragReorder(presets, (p) => p.id, reorderPreset);
 
   const initialPreset = initialEditId ? presets.find((p) => p.id === initialEditId) ?? null : null;
@@ -63,6 +63,7 @@ export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: st
             badge={<ItemBadge color={preset.color ?? PRESET_COLORS[index % PRESET_COLORS.length]}>{index + 1}</ItemBadge>}
             name={preset.name}
             onEdit={() => { setEditingPreset(preset); setFormOpen(true); }}
+            onDuplicate={() => duplicatePreset(preset.id)}
             onDelete={() => removePreset(preset.id)}
             dragProps={getDragProps(index)}
           />

@@ -60,9 +60,11 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
       />
 
       <div className="space-y-1.5 px-4 pb-4">
-        {visibleRules.map((rule, index) =>
-          rule.matchType === "source" || rule.matchType === "name" ? (
-            <RuleEditRow key={rule.id} rule={rule} onDelete={() => removeRule(rule.id)} dragProps={getDragProps(index)} />
+        {visibleRules.map((rule, index) => {
+          const duplicate = () =>
+            addRule({ matchType: rule.matchType, matchValue: rule.matchValue, displayTypeId: rule.displayTypeId, enabled: rule.enabled });
+          return rule.matchType === "source" || rule.matchType === "name" ? (
+            <RuleEditRow key={rule.id} rule={rule} onDuplicate={duplicate} onDelete={() => removeRule(rule.id)} dragProps={getDragProps(index)} />
           ) : (
             <DrawerItemRow
               key={rule.id}
@@ -77,11 +79,12 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
                   {MATCH_TYPE_LABELS[rule.matchType]}
                 </span>
               }
+              onDuplicate={duplicate}
               onDelete={() => removeRule(rule.id)}
               dragProps={getDragProps(index)}
             />
-          )
-        )}
+          );
+        })}
         <AddItemButton
           label="Nouvelle règle"
           onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: defaultType.id })}

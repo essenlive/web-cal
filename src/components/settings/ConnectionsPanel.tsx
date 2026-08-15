@@ -65,6 +65,7 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
               </SimpleTooltip>
             }
             onEdit={() => { setEditingConn(c); setFormOpen(true); }}
+            onDuplicate={() => { const { id, ...rest } = c; addConnection({ ...rest, name: `${rest.name} (copie)` } as Omit<Connection, "id">); }}
             onDelete={() => removeConnection(c.id)}
             dragProps={getDragProps(index)}
           />

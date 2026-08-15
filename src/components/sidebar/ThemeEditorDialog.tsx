@@ -8,16 +8,13 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { ActionButton } from "../ui/action-button";
 import { ColorPicker } from "../settings/ColorPicker";
-import { PanelHeader } from "../settings/PanelHeader";
+import { PanelHeader, PanelFooter } from "../settings/PanelHeader";
 import { useThemeStore } from "../../store";
 import {
-  getAllThemes,
   THEME_ACCENT_PRESETS,
   THEME_RADIUS_PRESETS,
   DEFAULT_BASE_COLORS,
@@ -89,7 +86,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
   }
 
   const trimmed = name.trim();
-  const isDuplicate = getAllThemes(customThemes)
+  const isDuplicate = customThemes
     .filter((t) => !theme || t.id !== theme.id)
     .some((t) => t.name.toLowerCase() === trimmed.toLowerCase());
   const canSave = trimmed.length > 0 && !isDuplicate;
@@ -253,34 +250,13 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-2">
-              <div>
-                {theme && (
-                  <ActionButton
-                    variant="ghost"
-                    onAction={() => {
-                      removeTheme(theme.id);
-                      onClose();
-                    }}
-                    confirmChildren={
-                      <>
-                        <Trash2 size={13} />
-                        Confirmer la suppression
-                      </>
-                    }
-                    className="gap-1.5 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 size={13} />
-                    Supprimer
-                  </ActionButton>
-                )}
-              </div>
-              <Button type="button" onClick={handleSave} disabled={!canSave} className="gap-1.5">
-                <Check size={14} />
-                {theme ? "Enregistrer" : "Créer"}
-              </Button>
-            </div>
+            <PanelFooter
+              onDelete={theme && customThemes.length > 1 ? () => { removeTheme(theme.id); onClose(); } : undefined}
+              onCancel={onClose}
+              onSave={handleSave}
+              saveDisabled={!canSave}
+              saveLabel={theme ? "Enregistrer" : "Créer"}
+            />
           </div>
     </>
   );

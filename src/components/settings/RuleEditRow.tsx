@@ -12,13 +12,13 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { AlertTriangle, ArrowRight, CaseSensitive, ChevronDown, GripVertical, Link2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, CaseSensitive, ChevronDown, Copy, GripVertical, Link2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent, SimpleTooltip } from "../ui/tooltip";
 import { ItemBadge } from "../sidebar/ItemRow";
 import type { DragProps } from "../sidebar/Sidebar";
-import { DeleteButton } from "./DrawerItemRow";
+import { DeleteButton, IconButton } from "./DrawerItemRow";
 import { useRuleStore, useEventTypeStore, useConnectionStore } from "../../store";
 import { getIconEl } from "../../lib/icons";
 import { isValidPattern } from "../../lib/rules";
@@ -82,8 +82,9 @@ export function RuleDropdown<T extends string>({ value, options, onChange, rende
   );
 }
 
-export function RuleEditRow({ rule, onDelete, dragProps, lockMatch, lockDisplayType }: {
+export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockMatch, lockDisplayType }: {
   rule: Rule;
+  onDuplicate?: () => void;
   onDelete: () => void;
   dragProps?: DragProps;
   /** The match (type + value) is implied by context (e.g. "this source") — render it read-only instead of a dropdown/input. */
@@ -213,6 +214,7 @@ export function RuleEditRow({ rule, onDelete, dragProps, lockMatch, lockDisplayT
         />
       )}
 
+      {onDuplicate && <IconButton icon={<Copy size={12} />} label="Dupliquer" onClick={onDuplicate} />}
       <DeleteButton onDelete={onDelete} />
     </div>
   );

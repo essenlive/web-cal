@@ -3,22 +3,22 @@
 /**
  * DrawerItemRow — shared row for every section's management drawer list
  * (Presets, Sources, Types, Règles, Thème): drag handle, badge, name, optional
- * tag/state, then always-visible edit/delete icon buttons (no hover-reveal —
- * unlike the sidebar's compact preview rows, this list has nothing else to
- * see). Delete requires a second click to confirm (ActionButton, turns into a
- * red check). Items that can't be deleted pass `deleteDisabledReason` instead
- * of `onDelete`, rendering a static "protected" icon with that tooltip; items
- * with neither (built-in themes) get no action area at all.
+ * tag/state, then always-visible edit/duplicate/delete icon buttons (no
+ * hover-reveal — unlike the sidebar's compact preview rows, this list has
+ * nothing else to see). Delete requires a second click to confirm
+ * (ActionButton, turns into a red check). Items that can't be deleted pass
+ * `deleteDisabledReason` instead of `onDelete`, rendering a static
+ * "protected" icon with that tooltip.
  */
 
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
-import { GripVertical, Pencil, Trash2, Check, Sparkles, Plus } from "lucide-react";
+import { GripVertical, Pencil, Copy, Trash2, Check, Sparkles, Plus } from "lucide-react";
 import { ActionButton } from "../ui/action-button";
 import { SimpleTooltip } from "../ui/tooltip";
 import type { DragProps } from "../sidebar/Sidebar";
 
-function IconButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+export function IconButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <SimpleTooltip label={label}>
       <button
@@ -49,12 +49,13 @@ export function DeleteButton({ onDelete, label = "Supprimer" }: { onDelete: () =
   );
 }
 
-export function DrawerItemRow({ badge, name, tag, state, onEdit, onDelete, deleteDisabledReason, dragProps }: {
+export function DrawerItemRow({ badge, name, tag, state, onEdit, onDuplicate, onDelete, deleteDisabledReason, dragProps }: {
   badge: ReactNode;
   name: string;
   tag?: ReactNode;
   state?: ReactNode;
   onEdit?: () => void;
+  onDuplicate?: () => void;
   onDelete?: () => void;
   deleteDisabledReason?: string;
   dragProps?: DragProps;
@@ -85,6 +86,7 @@ export function DrawerItemRow({ badge, name, tag, state, onEdit, onDelete, delet
       {state}
       {tag}
       {onEdit && <IconButton icon={<Pencil size={12} />} label="Modifier" onClick={onEdit} />}
+      {onDuplicate && <IconButton icon={<Copy size={12} />} label="Dupliquer" onClick={onDuplicate} />}
       {onDelete && <DeleteButton onDelete={onDelete} />}
       {!onDelete && deleteDisabledReason && (
         <SimpleTooltip label={deleteDisabledReason}>

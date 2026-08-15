@@ -6,19 +6,19 @@
  * persisted with type "caldav" still opens its original form (name, URL,
  * username, password, colour, optional proxy) so existing sources keep working.
  *
- * The [Test] button validates connectivity without saving.
+ * The [Test] button validates connectivity without saving — it sits right next
+ * to the URL field it tests, rather than down in the footer.
  * The [Add Source] button fires onAdd with the completed connection data.
  */
 
-import { useState } from "react";
-import { RefreshCw, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { RefreshCw, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { ColorPicker } from "./ColorPicker";
-import { PanelHeader } from "./PanelHeader";
+import { PanelHeader, PanelFooter } from "./PanelHeader";
 import { RuleEditRow } from "./RuleEditRow";
 import { AddItemButton } from "./DrawerItemRow";
 import { useRuleStore, useEventTypeStore } from "../../store";
@@ -51,7 +51,7 @@ function isValidHttpUrl(url: string): boolean {
 // ── Field helper ──────────────────────────────────────────────────────────────
 
 function Field({
-  label, placeholder, value, onChange, type = "text", error, hint,
+  label, placeholder, value, onChange, type = "text", error, hint, action,
 }: {
   label: string;
   placeholder?: string;
@@ -60,24 +60,53 @@ function Field({
   type?: string;
   error?: string;
   hint?: string;
+  /** Rendered next to the input, e.g. a "Tester" button for a URL field. */
+  action?: ReactNode;
 }) {
   return (
     <div>
       <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</Label>
-      <Input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoComplete={type === "password" ? "current-password" : undefined}
-        aria-describedby={error ? `err-${label}` : undefined}
-        className={cn("rounded-lg px-2.5 py-2 h-auto text-sm", error && "border-destructive")}
-      />
+      <div className="flex items-center gap-2 flex-wrap">
+        <Input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoComplete={type === "password" ? "current-password" : undefined}
+          aria-describedby={error ? `err-${label}` : undefined}
+          className={cn("flex-1 min-w-0 rounded-lg px-2.5 py-2 h-auto text-sm", error && "border-destructive")}
+        />
+        {action}
+      </div>
       {error && (
         <p id={`err-${label}`} className="text-xs text-destructive mt-1">{error}</p>
       )}
       {hint && !error && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
     </div>
+  );
+}
+
+/** The "Tester" action for a WebCal/CalDAV URL field — validates connectivity without saving. */
+function TestButton({ onTest }: { onTest: () => Promise<void> }) {
+  return (
+    <ActionButton
+      type="button"
+      variant="outline"
+      confirm={false}
+      onAction={onTest}
+      pendingChildren={<><RefreshCw size={13} className="animate-spin" />Test en cours…</>}
+      successChildren={<><CheckCircle2 size={13} />Connexion OK</>}
+      errorChildren={(err) => (
+        <>
+          <AlertCircle size={13} />
+          {err instanceof Error ? err.message : "Impossible de contacter le serveur"}
+        </>
+      )}
+      className="shrink-0 gap-1.5 h-auto py-2"
+    >
+      <RefreshCw size={13} />
+      Tester
+    </ActionButton>
   );
 }
 
@@ -286,6 +315,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 onChange={setWcUrl}
                 error={errors.wcUrl}
                 hint="Lien vers un fichier .ics ou une URL d'abonnement WebCal"
+                action={<TestButton onTest={testConnection} />}
               />
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer select-none hover:text-foreground">Où puis-je trouver ça ?</summary>
@@ -299,44 +329,13 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
               {connection && <SourceRuleSection connection={connection} />}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
-              <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                {editing
-                  ? (onDelete && (
-                      <ActionButton
-                        variant="ghost"
-                        onAction={onDelete}
-                        confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
-                        className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 size={13} />
-                        Supprimer
-                      </ActionButton>
-                    ))
-                  : <div />}
-                <div className="flex items-center gap-2">
-                  <ActionButton
-                    type="button"
-                    variant="outline"
-                    confirm={false}
-                    onAction={testConnection}
-                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Test en cours…</>}
-                    successChildren={<><CheckCircle2 size={13} />Connexion OK</>}
-                    errorChildren={(err) => (
-                      <>
-                        <AlertCircle size={13} />
-                        {err instanceof Error ? err.message : "Impossible de contacter le serveur"}
-                      </>
-                    )}
-                    className="gap-1.5"
-                  >
-                    <RefreshCw size={13} />
-                    Tester
-                  </ActionButton>
-                  <Button type="button" onClick={handleAdd} disabled={!canAdd}>
-                    {editing ? "Enregistrer" : "Ajouter la source"}
-                  </Button>
-                </div>
-              </div>
+              <PanelFooter
+                onDelete={editing ? onDelete : undefined}
+                onCancel={onClose}
+                onSave={handleAdd}
+                saveDisabled={!canAdd}
+                saveLabel={editing ? "Enregistrer" : "Ajouter la source"}
+              />
             </div>
           )}
 
@@ -356,6 +355,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 value={cdUrl}
                 onChange={setCdUrl}
                 error={errors.cdUrl}
+                action={<TestButton onTest={testConnection} />}
               />
               <Field
                 label="Nom d'utilisateur *"
@@ -376,42 +376,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
               {connection && <SourceRuleSection connection={connection} />}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
-              <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                {onDelete && (
-                  <ActionButton
-                    variant="ghost"
-                    onAction={onDelete}
-                    confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
-                    className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 size={13} />
-                    Supprimer
-                  </ActionButton>
-                )}
-                <div className="flex items-center gap-2">
-                  <ActionButton
-                    type="button"
-                    variant="outline"
-                    confirm={false}
-                    onAction={testConnection}
-                    pendingChildren={<><RefreshCw size={13} className="animate-spin" />Test en cours…</>}
-                    successChildren={<><CheckCircle2 size={13} />Connexion OK</>}
-                    errorChildren={(err) => (
-                      <>
-                        <AlertCircle size={13} />
-                        {err instanceof Error ? err.message : "Impossible de contacter le serveur"}
-                      </>
-                    )}
-                    className="gap-1.5"
-                  >
-                    <RefreshCw size={13} />
-                    Tester
-                  </ActionButton>
-                  <Button type="button" onClick={handleAdd} disabled={!canAdd}>
-                    Enregistrer
-                  </Button>
-                </div>
-              </div>
+              <PanelFooter onDelete={onDelete} onCancel={onClose} onSave={handleAdd} saveDisabled={!canAdd} saveLabel="Enregistrer" />
             </div>
           )}
 
@@ -429,22 +394,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
               />
               <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
               {connection && <SourceRuleSection connection={connection} />}
-              <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                {onDelete && (
-                  <ActionButton
-                    variant="ghost"
-                    onAction={onDelete}
-                    confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
-                    className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 size={13} />
-                    Supprimer
-                  </ActionButton>
-                )}
-                <Button type="button" onClick={handleAdd} disabled={!canAdd}>
-                  Enregistrer
-                </Button>
-              </div>
+              <PanelFooter onDelete={onDelete} onCancel={onClose} onSave={handleAdd} saveDisabled={!canAdd} saveLabel="Enregistrer" />
             </div>
           )}
     </>

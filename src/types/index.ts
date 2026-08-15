@@ -71,8 +71,8 @@ export type ThemeMode = "light" | "dark";
 /**
  * A named, saved appearance: a base light/dark mode plus a single accent color
  * that drives the app's primary/accent/ring CSS tokens (see src/lib/theme.ts).
- * "light" and "dark" ids are reserved for the built-in themes (see BUILTIN_THEMES)
- * and are never stored in useThemeStore.customThemes.
+ * All themes, including the two defaults (see BUILTIN_THEMES), live in
+ * useThemeStore.customThemes and are equally editable/renamable/deletable.
  */
 export interface Theme {
   id: string;

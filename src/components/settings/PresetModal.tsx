@@ -9,13 +9,11 @@
  */
 
 import { useState } from "react";
-import { Check, RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
-import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { PanelHeader } from "./PanelHeader";
+import { PanelHeader, PanelFooter } from "./PanelHeader";
 import { ColorPicker } from "./ColorPicker";
 import { PRESET_COLORS } from "./EventTypeModal";
 import { usePresetStore, useConnectionStore, useEventTypeStore } from "../../store";
@@ -103,24 +101,13 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
           </button>
         )}
 
-        <div className="flex items-center justify-between gap-2 pt-1">
-          {preset && onDelete ? (
-            <ActionButton
-              variant="ghost"
-              onAction={onDelete}
-              confirmChildren={<><Trash2 size={13} />Confirmer la suppression</>}
-              className="gap-1.5 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 size={13} />
-              Supprimer
-            </ActionButton>
-          ) : <span />}
-
-          <Button onClick={handleSave} disabled={!canSave} className="gap-1.5">
-            <Check size={14} />
-            {preset ? "Enregistrer" : "Créer"}
-          </Button>
-        </div>
+        <PanelFooter
+          onDelete={preset ? onDelete : undefined}
+          onCancel={onClose}
+          onSave={handleSave}
+          saveDisabled={!canSave}
+          saveLabel={preset ? "Enregistrer" : "Créer"}
+        />
       </div>
     </>
   );

@@ -2,16 +2,15 @@
 
 /**
  * ThemesPanel — list wrapper for the "Thème" drawer, same list/edit composition
- * as the other panels. Built-in themes (Clair/Sombre) are reorderable like any
- * other theme but get no edit/delete action area — they never enter
- * `customThemes`, so there's nothing to edit or delete.
+ * as the other panels. Every theme is editable and reorderable; delete is
+ * hidden on the last remaining theme since at least one must always exist.
  */
 
 import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useThemeStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
-import { getAllThemes, orderThemes, isBuiltinTheme } from "../../lib/theme";
+import { orderThemes } from "../../lib/theme";
 import { ItemBadge } from "../sidebar/ItemRow";
 import { ThemeEditorDialog } from "../sidebar/ThemeEditorDialog";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
@@ -23,8 +22,8 @@ function themeBadge(theme: Theme) {
 }
 
 export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
-  const { customThemes, themeOrder, reorderTheme, removeTheme } = useThemeStore();
-  const themes = orderThemes(getAllThemes(customThemes), themeOrder);
+  const { customThemes, themeOrder, reorderTheme, addTheme, removeTheme } = useThemeStore();
+  const themes = orderThemes(customThemes, themeOrder);
   const { getDragProps } = useDragReorder(themes, (t) => t.id, reorderTheme);
 
   const initialTheme = initialEditId ? customThemes.find((t) => t.id === initialEditId) ?? null : null;
@@ -44,7 +43,7 @@ export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: str
     <>
       <PanelHeader
         title="Thème"
-        description="Les thèmes permettent de personnaliser certains réglages de base comme la version claire ou sombre, la police, les arrondis et la couleur d'accroche. Cette personnalisation reste minime pour l'instant. Les thèmes de base ne peuvent ni être modifiés, ni être supprimés."
+        description="Les thèmes permettent de personnaliser certains réglages de base comme la version claire ou sombre, la police, les arrondis et la couleur d'accroche. Cette personnalisation reste minime pour l'instant. Au moins un thème doit toujours exister."
       />
       <div className="space-y-1.5 px-4 pb-4">
         {themes.map((t, index) => (
@@ -52,8 +51,9 @@ export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: str
             key={t.id}
             badge={themeBadge(t)}
             name={t.name}
-            onEdit={isBuiltinTheme(t.id) ? undefined : () => { setEditingTheme(t); setFormOpen(true); }}
-            onDelete={isBuiltinTheme(t.id) ? undefined : () => removeTheme(t.id)}
+            onEdit={() => { setEditingTheme(t); setFormOpen(true); }}
+            onDuplicate={() => { const { id, ...rest } = t; addTheme({ ...rest, name: `${rest.name} (copie)` }); }}
+            onDelete={themes.length > 1 ? () => removeTheme(t.id) : undefined}
             dragProps={getDragProps(index)}
           />
         ))}

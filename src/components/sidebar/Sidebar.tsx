@@ -14,7 +14,7 @@ import { getIconEl } from "../../lib/icons";
 import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
 import { PresetSelector } from "./PresetSelector";
-import { getAllThemes, orderThemes, isBuiltinTheme } from "../../lib/theme";
+import { orderThemes } from "../../lib/theme";
 import type { Connection, ConnectionStatus, EventType, Theme } from "../../types";
 
 /** Pointer-based (mouse + touch) drag handle wiring for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
@@ -122,7 +122,7 @@ export function Sidebar() {
   const dayHeaders = Array.from({ length: 7 }, (_, i) =>
     format(addDays(gridStart, i), "EEEEE", { locale: fr })
   );
-  const themes = orderThemes(getAllThemes(customThemes), themeOrder);
+  const themes = orderThemes(customThemes, themeOrder);
 
   return (
     <aside className="
@@ -216,7 +216,7 @@ export function Sidebar() {
             theme={t}
             active={t.id === selectedThemeId}
             onSelect={() => selectTheme(t.id)}
-            onEdit={isBuiltinTheme(t.id) ? undefined : () => openDrawer("theme", t.id)}
+            onEdit={() => openDrawer("theme", t.id)}
           />
         ))}
       </Section>
