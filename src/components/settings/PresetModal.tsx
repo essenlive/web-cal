@@ -16,6 +16,8 @@ import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { PanelHeader } from "./PanelHeader";
+import { ColorPicker } from "./ColorPicker";
+import { PRESET_COLORS } from "./EventTypeModal";
 import { usePresetStore, useConnectionStore, useEventTypeStore } from "../../store";
 import { capturePresetState } from "../../lib/presets";
 import type { Preset } from "../../types";
@@ -36,6 +38,7 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
 
   const [name, setName] = useState(preset?.name ?? "");
   const [description, setDescription] = useState(preset?.description ?? "");
+  const [color, setColor] = useState(preset?.color ?? PRESET_COLORS[0]);
 
   const trimmed = name.trim();
   const isDuplicate = presets
@@ -46,9 +49,9 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
   function handleSave() {
     if (!canSave) return;
     if (preset) {
-      updatePreset({ ...preset, name: trimmed, description: description.trim() || undefined });
+      updatePreset({ ...preset, name: trimmed, description: description.trim() || undefined, color });
     } else {
-      addPreset(trimmed, description.trim() || undefined);
+      addPreset(trimmed, color, description.trim() || undefined);
     }
     onClose();
   }
@@ -82,6 +85,8 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-hidden focus:ring-2 focus:ring-primary/30 resize-none"
           />
         </div>
+
+        <ColorPicker value={color} onChange={setColor} colors={PRESET_COLORS} />
 
         {preset && (
           <button

@@ -27,7 +27,7 @@ export function PresetRow({ preset, index, active, onApply, onEdit, onUpdate, dr
 }) {
   return (
     <ItemRow
-      badge={<ItemBadge color={PRESET_COLORS[index % PRESET_COLORS.length]}>{index + 1}</ItemBadge>}
+      badge={<ItemBadge color={preset.color ?? PRESET_COLORS[index % PRESET_COLORS.length]}>{index + 1}</ItemBadge>}
       name={preset.name}
       selected={active}
       onSelect={onApply}

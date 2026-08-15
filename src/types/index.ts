@@ -184,6 +184,8 @@ export interface Preset {
   name: string;
   /** Optional free-text note, shown under the name in the preset list. */
   description?: string;
+  /** Hex color for the preset's badge. Absent on presets created before this field existed — falls back to an index-based color (see PresetSelector/PresetsPanel). */
+  color?: string;
   /** Connection.id → hidden state at save/update time. Absent id = not covered by this preset. */
   connections: Record<string, boolean>;
   /** EventType.id → hidden state at save/update time. Absent id = not covered by this preset. */

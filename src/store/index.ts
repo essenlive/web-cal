@@ -374,7 +374,7 @@ export const useRuleStore = create<RuleStore>()(
 
 interface PresetStore {
   presets: Preset[];
-  addPreset: (name: string, description?: string) => void;
+  addPreset: (name: string, color: string, description?: string) => void;
   updatePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
   applyPreset: (id: string) => void;
@@ -388,13 +388,14 @@ export const usePresetStore = create<PresetStore>()(
   persist(
     (set, get) => ({
       presets: [],
-      addPreset: (name, description) =>
+      addPreset: (name, color, description) =>
         set((s) => ({
           presets: [
             ...s.presets,
             {
               id: crypto.randomUUID(),
               name,
+              color,
               description,
               ...capturePresetState(useConnectionStore.getState().connections, useEventTypeStore.getState().types),
             },

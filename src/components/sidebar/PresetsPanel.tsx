@@ -60,7 +60,7 @@ export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: st
         {presets.map((preset, index) => (
           <DrawerItemRow
             key={preset.id}
-            badge={<ItemBadge color={PRESET_COLORS[index % PRESET_COLORS.length]}>{index + 1}</ItemBadge>}
+            badge={<ItemBadge color={preset.color ?? PRESET_COLORS[index % PRESET_COLORS.length]}>{index + 1}</ItemBadge>}
             name={preset.name}
             onEdit={() => { setEditingPreset(preset); setFormOpen(true); }}
             onDelete={() => removePreset(preset.id)}
