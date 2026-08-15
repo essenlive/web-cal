@@ -18,9 +18,11 @@ import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { PanelHeader } from "./PanelHeader";
+import { RuleEditRow } from "./RuleEditRow";
+import { AddItemButton } from "./DrawerItemRow";
+import { useRuleStore, useEventTypeStore } from "../../store";
 import type { CalDAVConnection, Connection, DemoConnection, WebCalConnection } from "../../types";
 import { CalDAVProvider } from "../../lib/caldav-provider";
-import { RuleModal } from "./RuleModal";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -134,6 +136,31 @@ function AdvancedSection({ proxyUrl, onProxyChange }: { proxyUrl: string; onProx
   );
 }
 
+// ── Rules for this source — at most one (matchType "source", matchValue = connection.id) ──
+
+function SourceRuleSection({ connection }: { connection: Connection }) {
+  const { rules, addRule, removeRule } = useRuleStore();
+  const { getDefaultType } = useEventTypeStore();
+  const rule = rules.find((r) => r.matchType === "source" && r.matchValue === connection.id);
+
+  return (
+    <div>
+      <label className="text-sm font-semibold text-foreground mb-1 block">Règles</label>
+      <p className="text-xs text-muted-foreground mb-2">
+        Applique un type d&apos;affichage à tous les événements de cette source.
+      </p>
+      {rule ? (
+        <RuleEditRow rule={rule} onDelete={() => removeRule(rule.id)} lockMatch />
+      ) : (
+        <AddItemButton
+          label="Ajouter une règle"
+          onClick={() => addRule({ matchType: "source", matchValue: connection.id, displayTypeId: getDefaultType().id })}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface AddConnectionModalProps {
@@ -180,8 +207,6 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const [ruleFormOpen, setRuleFormOpen] = useState(false);
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -262,18 +287,6 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
     ? `Modifier la source ${type === "webcal" ? "WebCal" : type === "caldav" ? "CalDAV" : "de démonstration"}`
     : "Ajouter une source de calendrier";
 
-  // Creating a rule for this source is a nested form within the same panel —
-  // it swaps the content instead of stacking a second drawer (FR-005).
-  if (connection && ruleFormOpen) {
-    return (
-      <RuleModal
-        initialMatchType="source"
-        initialMatchValue={connection.id}
-        onClose={() => setRuleFormOpen(false)}
-      />
-    );
-  }
-
   return (
     <>
       <PanelHeader title={title} onBack={onClose} />
@@ -305,15 +318,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 </ul>
               </details>
               <ColorPicker value={color} onChange={setColor} />
-              {editing && (
-                <button
-                  type="button"
-                  onClick={() => setRuleFormOpen(true)}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Créer une règle pour cette source
-                </button>
-              )}
+              {connection && <SourceRuleSection connection={connection} />}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
@@ -390,15 +395,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 error={errors.cdPass}
               />
               <ColorPicker value={color} onChange={setColor} />
-              {editing && (
-                <button
-                  type="button"
-                  onClick={() => setRuleFormOpen(true)}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Créer une règle pour cette source
-                </button>
-              )}
+              {connection && <SourceRuleSection connection={connection} />}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
@@ -453,6 +450,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 error={errors.name}
               />
               <ColorPicker value={color} onChange={setColor} />
+              {connection && <SourceRuleSection connection={connection} />}
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
                 {onDelete && (
                   <ActionButton

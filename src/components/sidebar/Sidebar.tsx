@@ -9,7 +9,7 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
-import { getIconEl } from "../settings/EventTypeModal";
+import { getIconEl } from "../../lib/icons";
 import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
 import { PresetSelector } from "./PresetSelector";

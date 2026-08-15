@@ -6,7 +6,7 @@ import { Label } from "../ui/label";
 import { Combobox } from "../ui/combobox";
 import { useRuleStore, useEventTypeStore, useConnectionStore } from "../../store";
 import { isValidPattern } from "../../lib/rules";
-import { getIconEl } from "./EventTypeModal";
+import { getIconEl } from "../../lib/icons";
 import type { RuleMatchType } from "../../types";
 
 /** The only two match types a rule can be created as — "event" (matching one specific event) is retired, "all" is the single undeletable catch-all. */

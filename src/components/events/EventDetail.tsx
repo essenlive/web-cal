@@ -4,7 +4,7 @@ import { MapPin, StickyNote, ListOrdered } from "lucide-react";
 import { useEventTypeStore, useUIStore, useRuleStore, useEventsStore, useConnectionStore } from "../../store";
 import { resolveEventType } from "./EventChip";
 import { findMatchingRule, describeMatch } from "../../lib/rules";
-import { getIconEl } from "../settings/EventTypeModal";
+import { getIconEl } from "../../lib/icons";
 import { RuleModal } from "../settings/RuleModal";
 import {
   Dialog,

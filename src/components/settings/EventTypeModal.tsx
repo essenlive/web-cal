@@ -4,16 +4,20 @@
  */
 
 import { useState } from "react";
-import * as Icons from "lucide-react";
 import { Check, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
-import { PanelHeader } from "./PanelHeader";
-import { useRuleStore, useEventsStore, useConnectionStore } from "../../store";
+import { PanelHeader, InlineLink } from "./PanelHeader";
+import { RuleEditRow } from "./RuleEditRow";
+import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
+import { ItemBadge } from "../sidebar/ItemRow";
+import { useUIStore, useRuleStore, useEventTypeStore, useEventsStore, useConnectionStore } from "../../store";
 import { describeMatch } from "../../lib/rules";
-import type { DisplayStyle, EventType } from "../../types";
+import { getIconEl } from "../../lib/icons";
+import type { DisplayStyle, EventType, Rule } from "../../types";
+import type { DragProps } from "../sidebar/Sidebar";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -38,16 +42,37 @@ const ICON_OPTIONS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-export function getIconEl(name: string, size = 16, color?: string) {
-  const Icon = (Icons as any)[name];
-  return Icon ? <Icon size={size} color={color} /> : null;
-}
-
 const avatarDot = (color: string, icon: string) => (
   <div className="size-5 rounded-full flex items-center justify-center shadow-xs" style={{ backgroundColor: color }}>
     {getIconEl(icon, 9, "#fff")}
   </div>
 );
+
+/**
+ * Drag-reorder for a subset of `allRules` filtered down to just this type's
+ * rules — dropping at local index N moves the dragged rule to sit where the
+ * rule currently at that local slot sits in the *full* array, so relative
+ * order among same-type rules stays intuitive while still repositioning
+ * correctly against every other type's rules in the real priority list.
+ */
+function useFilteredRuleDragReorder(allRules: Rule[], filtered: Rule[], reorder: (id: string, toIndex: number) => void) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  function getDragProps(localIndex: number): DragProps {
+    return {
+      draggable: true,
+      onDragStart: () => setDragIndex(localIndex),
+      onDragOver: (e) => e.preventDefault(),
+      onDrop: () => {
+        if (dragIndex !== null && dragIndex !== localIndex) {
+          const globalIndex = allRules.findIndex((r) => r.id === filtered[localIndex].id);
+          reorder(filtered[dragIndex].id, globalIndex);
+        }
+        setDragIndex(null);
+      },
+    };
+  }
+  return { getDragProps };
+}
 
 export function StylePreview({ style, color, icon }: { style: DisplayStyle; color: string; icon: string }) {
   if (style === "day") {
@@ -103,12 +128,14 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const [timedStyle,  setTimedStyle]  = useState<DisplayStyle>(type?.timedStyle  ?? "block");
   const [isDefault,   setIsDefault]   = useState(type?.isDefault ?? false);
 
-  const { rules } = useRuleStore();
+  const { openDrawer } = useUIStore();
+  const { rules, addRule, removeRule, reorderRule } = useRuleStore();
+  const { getDefaultType } = useEventTypeStore();
   const { events } = useEventsStore();
   const { connections } = useConnectionStore();
-  const linkedRules = type
-    ? rules.filter((r) => (r.matchType === "all" ? isDefault : r.displayTypeId === type.id))
-    : [];
+  const linkedRules = type ? rules.filter((r) => r.displayTypeId === type.id && r.matchType !== "all") : [];
+  const { getDragProps } = useFilteredRuleDragReorder(rules, linkedRules, reorderRule);
+  const defaultType = getDefaultType();
 
   const trimmed = label.trim();
   const isDuplicate = existingLabels
@@ -222,6 +249,41 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
 
           {type && (
             <div>
+              <label className="text-sm font-semibold text-foreground mb-1 block">Règles</label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Les règles s&apos;appliquent par ordre de priorités de haut en bas. Si aucune règle ne s&apos;applique,
+                le style par défaut est actuellement —{" "}
+                <InlineLink onClick={() => openDrawer("eventType", defaultType.id)}>{defaultType.label}</InlineLink>.
+              </p>
+              <div className="space-y-1.5">
+                {linkedRules.map((r, index) =>
+                  r.matchType === "source" || r.matchType === "name" ? (
+                    <RuleEditRow key={r.id} rule={r} onDelete={() => removeRule(r.id)} dragProps={getDragProps(index)} lockDisplayType />
+                  ) : (
+                    <DrawerItemRow
+                      key={r.id}
+                      badge={<ItemBadge color={type.color}>{getIconEl(type.icon, 10, "#fff")}</ItemBadge>}
+                      name={describeMatch(r, (id) => events.find((e) => e.id === id)?.title, (id) => connections.find((c) => c.id === id)?.name)}
+                      tag={
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          Événement
+                        </span>
+                      }
+                      onDelete={() => removeRule(r.id)}
+                      dragProps={getDragProps(index)}
+                    />
+                  )
+                )}
+                <AddItemButton
+                  label="Nouvelle règle"
+                  onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: type.id })}
+                />
+              </div>
+            </div>
+          )}
+
+          {type && (
+            <div>
               <label className={cn("flex items-center gap-2 text-xs select-none", isDefault ? "text-muted-foreground" : "text-foreground cursor-pointer")}>
                 <input
                   type="checkbox"
@@ -232,29 +294,6 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
                 />
                 Type par défaut (utilisé quand aucune règle ne s'applique)
               </label>
-            </div>
-          )}
-
-          {type && (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Règles liées</label>
-              {linkedRules.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Aucune règle n'utilise ce type.</p>
-              ) : (
-                <ul className="space-y-1">
-                  {linkedRules.map((r) => (
-                    <li key={r.id} className="text-xs text-foreground truncate">
-                      {r.matchType === "all"
-                        ? "Règle par défaut (aucune correspondance)"
-                        : describeMatch(
-                            r,
-                            (id) => events.find((e) => e.id === id)?.title,
-                            (id) => connections.find((c) => c.id === id)?.name,
-                          )}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           )}
 
