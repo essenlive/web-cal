@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { ItemBadge } from "../components/sidebar/ItemRow";
-import { DrawerItemRow } from "../components/settings/DrawerItemRow";
+import { DrawerItemRow, AddItemButton } from "../components/settings/DrawerItemRow";
 import { RuleEditRow } from "../components/settings/RuleEditRow";
 import { PanelHeader, InlineLink } from "../components/settings/PanelHeader";
 import { useUIStore, useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
@@ -31,7 +31,7 @@ const MATCH_TYPE_LABELS: Record<RuleMatchType, string> = {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for prop-shape parity with SettingsDrawer's generic openDrawer(panel, editId)/openNewItemDrawer(panel) call; there's no deep-link edit view to jump to anymore.
 export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: boolean } = {}) {
   const { openDrawer } = useUIStore();
-  const { rules, removeRule, reorderRule } = useRuleStore();
+  const { rules, addRule, removeRule, reorderRule } = useRuleStore();
   const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
@@ -82,6 +82,10 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
             />
           )
         )}
+        <AddItemButton
+          label="Nouvelle règle"
+          onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: defaultType.id })}
+        />
       </div>
     </>
   );
