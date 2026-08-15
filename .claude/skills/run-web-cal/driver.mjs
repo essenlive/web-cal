@@ -67,6 +67,8 @@ for await (const raw of rl) {
       const path = join(shotsDir, `${arg || "screenshot"}.png`);
       await page.screenshot({ path, fullPage: true });
       console.log(`screenshot -> ${path}`);
+    } else if (cmd === "sleep") {
+      await page.waitForTimeout(Number(arg) || 500);
     } else if (cmd === "console") {
       console.log("ERRORS:", JSON.stringify(errors));
     } else {

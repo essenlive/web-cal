@@ -48,6 +48,7 @@ export const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProp
       variant,
       className,
       onBlur,
+      onClick,
       disabled,
       "aria-label": ariaLabel,
       title,
@@ -101,6 +102,7 @@ export const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProp
             if (confirm) setStatus("armed");
             else run();
           }
+          onClick?.(e);
         }}
         {...props}
       >
