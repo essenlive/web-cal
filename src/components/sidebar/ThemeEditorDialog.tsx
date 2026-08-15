@@ -233,7 +233,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
             {/* Radius */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Arrondi</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {THEME_RADIUS_PRESETS.map((r) => (
                   <button
                     key={r.value}

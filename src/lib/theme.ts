@@ -216,10 +216,15 @@ export function loadGoogleFont(rawFamily: string): void {
   document.head.appendChild(link);
 }
 
-/** Preset border-radius scale offered in ThemeEditorDialog. */
+/**
+ * Preset border-radius scale offered in ThemeEditorDialog. Every rounded-*
+ * utility in the app (sm/md/lg/xl/2xl/3xl) derives from this single value
+ * via globals.css's @theme block, so picking a tier here consistently
+ * affects badges, inputs, buttons, cards and dialogs alike — not just the
+ * elements that happen to use rounded-lg.
+ */
 export const THEME_RADIUS_PRESETS: { label: string; value: string }[] = [
   { label: "Aucun", value: "0rem" },
   { label: "Discret", value: "0.375rem" },
-  { label: "Défaut", value: "0.75rem" },
-  { label: "Arrondi", value: "1.25rem" },
+  { label: "Complet", value: "0.75rem" },
 ];
