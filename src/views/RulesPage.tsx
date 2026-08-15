@@ -7,7 +7,7 @@ import { cn } from "../lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "../components/ui/popover";
 import { ItemBadge } from "../components/sidebar/ItemRow";
 import type { DragProps } from "../components/sidebar/Sidebar";
-import { DrawerItemRow, AddItemButton, DeleteButton } from "../components/settings/DrawerItemRow";
+import { DrawerItemRow, DeleteButton } from "../components/settings/DrawerItemRow";
 import { PanelHeader, InlineLink } from "../components/settings/PanelHeader";
 import { useUIStore, useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
 import { useDragReorder } from "../hooks/useDragReorder";
@@ -177,7 +177,7 @@ function RuleEditRow({ rule, onDelete, dragProps }: { rule: Rule; onDelete: () =
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for prop-shape parity with SettingsDrawer's generic openDrawer(panel, editId)/openNewItemDrawer(panel) call; there's no deep-link edit view to jump to anymore.
 export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: boolean } = {}) {
   const { openDrawer } = useUIStore();
-  const { rules, addRule, removeRule, reorderRule } = useRuleStore();
+  const { rules, removeRule, reorderRule } = useRuleStore();
   const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
@@ -228,10 +228,6 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
             />
           )
         )}
-        <AddItemButton
-          label="Nouvelle règle"
-          onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: defaultType.id })}
-        />
       </div>
     </>
   );

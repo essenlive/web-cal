@@ -196,19 +196,6 @@ export function Sidebar() {
 
       <div className="border-t border-border" />
 
-      {/* Rules — flat entry point, editing happens entirely inside the drawer now */}
-      <div className="px-3 py-3">
-        <button
-          onClick={() => openDrawer("rules")}
-          className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-muted text-xs text-foreground"
-        >
-          <ListOrdered size={14} className="text-muted-foreground" />
-          Règles
-        </button>
-      </div>
-
-      <div className="border-t border-border" />
-
       {/* Theme preview */}
       <Section id="theme" label="Thème" onOpen={() => openDrawer("theme")} onAdd={() => openNewItemDrawer("theme")}>
         {themes.map((t) => (
@@ -231,6 +218,15 @@ export function Sidebar() {
           <Settings size={14} className="text-muted-foreground" />
           Réglages
         </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground shrink-0"
+          onClick={() => openDrawer("rules")}
+          aria-label="Règles"
+        >
+          <ListOrdered size={16} />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
