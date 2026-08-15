@@ -58,7 +58,11 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
 
   return (
     <>
-      <PanelHeader title={preset ? "Modifier le preset" : "Nouveau preset"} onBack={onClose} />
+      <PanelHeader
+        title={preset ? "Modifier le preset" : "Nouveau preset"}
+        onBack={onClose}
+        description="Nommez ce preset — il enregistre l'état actuel des sources et types visibles/masqués."
+      />
 
       <div className="space-y-4 px-4 pb-4">
         <div>

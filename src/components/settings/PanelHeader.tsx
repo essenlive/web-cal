@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Shared drawer header for the section list/item-edit panels: a title, plus
- * either a leading back-chevron (item-edit forms, returns to the section's
- * list) or a descriptive blurb below the title (list panels, explaining what
- * the section is for — see InlineLink for the cross-references it embeds).
- * One or the other, never both — a list panel has no back target, an item
- * form has no description.
+ * Shared drawer header for the section list/item-edit panels: a title, an
+ * optional leading back-chevron (item-edit forms, returns to the section's
+ * list), and an optional descriptive blurb below the title. List panels use
+ * description to explain what the section is for (see InlineLink for the
+ * cross-references it embeds); item-edit forms use it for a one-line hint
+ * about what the form does, alongside their back-chevron.
  */
 
 import type { ReactNode } from "react";

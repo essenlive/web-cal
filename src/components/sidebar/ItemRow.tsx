@@ -11,7 +11,7 @@
 
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
-import type { DragProps } from "./Sidebar";
+import { SimpleTooltip } from "../ui/tooltip";
 
 export function ItemBadge({ color, children }: { color: string; children: ReactNode }) {
   return (
@@ -30,7 +30,7 @@ export interface ItemRowAction {
   onClick: () => void;
 }
 
-export function ItemRow({ badge, name, muted, state, actions, selected, onSelect, dragProps }: {
+export function ItemRow({ badge, name, muted, state, actions, selected, onSelect }: {
   badge: ReactNode;
   name: string;
   muted?: boolean;
@@ -38,12 +38,10 @@ export function ItemRow({ badge, name, muted, state, actions, selected, onSelect
   actions?: ItemRowAction[];
   selected?: boolean;
   onSelect?: () => void;
-  dragProps?: DragProps;
 }) {
   return (
     <div
       onClick={onSelect}
-      {...dragProps}
       className={cn(
         "group flex items-center gap-2 rounded-lg px-2 py-1.5",
         onSelect && "cursor-pointer hover:bg-muted",
@@ -56,15 +54,15 @@ export function ItemRow({ badge, name, muted, state, actions, selected, onSelect
       </span>
       {state}
       {actions?.map((a) => (
-        <button
-          key={a.label}
-          onClick={(e) => { e.stopPropagation(); a.onClick(); }}
-          aria-label={a.label}
-          title={a.label}
-          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-        >
-          {a.icon}
-        </button>
+        <SimpleTooltip key={a.label} label={a.label}>
+          <button
+            onClick={(e) => { e.stopPropagation(); a.onClick(); }}
+            aria-label={a.label}
+            className="p-1.5 -m-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors shrink-0 opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            {a.icon}
+          </button>
+        </SimpleTooltip>
       ))}
     </div>
   );

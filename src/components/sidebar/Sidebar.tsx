@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Settings, Keyboard, ListOrdered, Eye, EyeOff
 import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import { SimpleTooltip } from "../ui/tooltip";
 import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
 import { getIconEl } from "../../lib/icons";
@@ -16,12 +17,12 @@ import { PresetSelector } from "./PresetSelector";
 import { getAllThemes, orderThemes, isBuiltinTheme } from "../../lib/theme";
 import type { Connection, ConnectionStatus, EventType, Theme } from "../../types";
 
-/** Native HTML5 drag handlers for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
+/** Pointer-based (mouse + touch) drag handle wiring for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
 export interface DragProps {
-  draggable?: boolean;
-  onDragStart?: () => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: () => void;
+  ref: (el: HTMLElement | null) => void;
+  dragging: boolean;
+  over: boolean;
+  onHandlePointerDown: (e: React.PointerEvent) => void;
 }
 
 // ── Compact data source row ───────────────────────────────────────────────────
@@ -35,6 +36,15 @@ export function statusColor(status: ConnectionStatus) {
   }
 }
 
+export function statusLabel(status: ConnectionStatus) {
+  switch (status) {
+    case "active":  return "Connecté";
+    case "error":   return "Échec de connexion";
+    case "loading": return "Chargement…";
+    default:        return "Non vérifié";
+  }
+}
+
 export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
   connection: Connection; status: ConnectionStatus; onEdit: () => void; onToggleHidden: () => void;
 }) {
@@ -44,7 +54,11 @@ export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
       badge={<ItemBadge color={connection.color}>{connection.name.trim().charAt(0).toUpperCase()}</ItemBadge>}
       name={connection.name}
       muted={hidden}
-      state={<span className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} title={status} />}
+      state={
+        <SimpleTooltip label={statusLabel(status)}>
+          <span className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} />
+        </SimpleTooltip>
+      }
       actions={[
         { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
         { icon: hidden ? <EyeOff size={12} /> : <Eye size={12} />, label: hidden ? "Afficher" : "Masquer", onClick: onToggleHidden },
@@ -55,8 +69,8 @@ export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
 
 // ── Compact event type row ────────────────────────────────────────────────────
 
-export function TypeRow({ type, onEdit, onToggleHidden, dragProps }: {
-  type: EventType; onEdit: () => void; onToggleHidden: () => void; dragProps?: DragProps;
+export function TypeRow({ type, onEdit, onToggleHidden }: {
+  type: EventType; onEdit: () => void; onToggleHidden: () => void;
 }) {
   const hidden = !!type.hidden;
   return (
@@ -64,7 +78,6 @@ export function TypeRow({ type, onEdit, onToggleHidden, dragProps }: {
       badge={<ItemBadge color={type.color}>{getIconEl(type.icon, 10, "#fff")}</ItemBadge>}
       name={type.label}
       muted={hidden}
-      dragProps={dragProps}
       actions={[
         { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
         { icon: hidden ? <EyeOff size={12} /> : <Eye size={12} />, label: hidden ? "Afficher" : "Masquer", onClick: onToggleHidden },
@@ -75,8 +88,8 @@ export function TypeRow({ type, onEdit, onToggleHidden, dragProps }: {
 
 // ── Compact theme row ─────────────────────────────────────────────────────────
 
-export function ThemeRow({ theme, active, onSelect, onEdit, dragProps }: {
-  theme: Theme; active: boolean; onSelect: () => void; onEdit?: () => void; dragProps?: DragProps;
+export function ThemeRow({ theme, active, onSelect, onEdit }: {
+  theme: Theme; active: boolean; onSelect: () => void; onEdit?: () => void;
 }) {
   return (
     <ItemRow
@@ -84,7 +97,6 @@ export function ThemeRow({ theme, active, onSelect, onEdit, dragProps }: {
       name={theme.name}
       selected={active}
       onSelect={onSelect}
-      dragProps={dragProps}
       actions={onEdit ? [{ icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit }] : undefined}
     />
   );
@@ -218,24 +230,28 @@ export function Sidebar() {
           <Settings size={14} className="text-muted-foreground" />
           Réglages
         </button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground shrink-0"
-          onClick={() => openDrawer("rules")}
-          aria-label="Règles"
-        >
-          <ListOrdered size={16} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground shrink-0"
-          onClick={() => openDrawer("shortcuts")}
-          aria-label="Raccourcis clavier"
-        >
-          <Keyboard size={16} />
-        </Button>
+        <SimpleTooltip label="Règles">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground shrink-0"
+            onClick={() => openDrawer("rules")}
+            aria-label="Règles"
+          >
+            <ListOrdered size={16} />
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip label="Raccourcis clavier">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground shrink-0"
+            onClick={() => openDrawer("shortcuts")}
+            aria-label="Raccourcis clavier"
+          >
+            <Keyboard size={16} />
+          </Button>
+        </SimpleTooltip>
       </div>
     </aside>
   );

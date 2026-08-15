@@ -9,15 +9,16 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
+import { ColorPicker } from "./ColorPicker";
 import { PanelHeader, InlineLink } from "./PanelHeader";
 import { RuleEditRow } from "./RuleEditRow";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { ItemBadge } from "../sidebar/ItemRow";
 import { useUIStore, useRuleStore, useEventTypeStore, useEventsStore, useConnectionStore } from "../../store";
+import { useDragReorder } from "../../hooks/useDragReorder";
 import { describeMatch } from "../../lib/rules";
 import { getIconEl } from "../../lib/icons";
 import type { DisplayStyle, EventType, Rule } from "../../types";
-import type { DragProps } from "../sidebar/Sidebar";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -56,22 +57,10 @@ const avatarDot = (color: string, icon: string) => (
  * correctly against every other type's rules in the real priority list.
  */
 function useFilteredRuleDragReorder(allRules: Rule[], filtered: Rule[], reorder: (id: string, toIndex: number) => void) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  function getDragProps(localIndex: number): DragProps {
-    return {
-      draggable: true,
-      onDragStart: () => setDragIndex(localIndex),
-      onDragOver: (e) => e.preventDefault(),
-      onDrop: () => {
-        if (dragIndex !== null && dragIndex !== localIndex) {
-          const globalIndex = allRules.findIndex((r) => r.id === filtered[localIndex].id);
-          reorder(filtered[dragIndex].id, globalIndex);
-        }
-        setDragIndex(null);
-      },
-    };
-  }
-  return { getDragProps };
+  return useDragReorder(filtered, (r) => r.id, (id, toLocalIndex) => {
+    const globalIndex = allRules.findIndex((r) => r.id === filtered[toLocalIndex].id);
+    reorder(id, globalIndex);
+  });
 }
 
 export function StylePreview({ style, color, icon }: { style: DisplayStyle; color: string; icon: string }) {
@@ -149,7 +138,11 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
 
   return (
     <>
-      <PanelHeader title={type ? "Modifier le type" : "Nouveau type"} onBack={onClose} />
+      <PanelHeader
+        title={type ? "Modifier le type" : "Nouveau type"}
+        onBack={onClose}
+        description="Choisissez un nom, une couleur, une icône et un style d'affichage pour les événements journée entière et horaires."
+      />
 
       <div className="space-y-4 px-4 pb-4">
           <div>
@@ -165,20 +158,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
             )}
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Couleur</label>
-            <div className="flex items-center gap-2 flex-wrap">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className="size-6 rounded-full border-2 transition-transform hover:scale-110"
-                  style={{ backgroundColor: c, borderColor: color === c ? "var(--foreground)" : "transparent" }}
-                />
-              ))}
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="size-6 rounded cursor-pointer border border-border" />
-            </div>
-          </div>
+          <ColorPicker value={color} onChange={setColor} colors={PRESET_COLORS} />
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Icône</label>

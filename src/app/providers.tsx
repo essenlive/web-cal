@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useThemeStore } from "../store";
 import { getActiveTheme, loadGoogleFont, resolveThemeCssVars } from "../lib/theme";
 import { Toaster } from "../components/ui/sonner";
+import { TooltipProvider } from "../components/ui/tooltip";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const { customThemes, selectedThemeId } = useThemeStore();
@@ -28,9 +30,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <>
-      {children}
-      <Toaster theme={activeTheme.mode} />
-    </>
+    <ErrorBoundary>
+      <TooltipProvider delayDuration={300}>
+        {children}
+        <Toaster theme={activeTheme.mode} />
+      </TooltipProvider>
+    </ErrorBoundary>
   );
 }

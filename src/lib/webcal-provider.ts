@@ -7,6 +7,7 @@
  */
 
 import ICAL from "ical.js";
+import { toast } from "sonner";
 import type { DataProvider } from "./data-provider";
 import type { CalendarEvent } from "../types";
 import type { WebCalSource } from "../store";
@@ -34,13 +35,14 @@ function icsTimeToISO(time: InstanceType<typeof ICAL.Time>): string {
   return time.toJSDate().toISOString();
 }
 
-function parseICS(text: string): ParsedEvent[] {
+/** Returns `null` (distinct from a legitimately empty calendar) when the feed itself can't be parsed. */
+function parseICS(text: string): ParsedEvent[] | null {
   let root: InstanceType<typeof ICAL.Component>;
   try {
     root = new ICAL.Component(ICAL.parse(text));
   } catch (err) {
     console.warn("[WebCalProvider] Failed to parse ICS feed:", err);
-    return [];
+    return null;
   }
 
   const events: ParsedEvent[] = [];
@@ -92,6 +94,12 @@ export class WebCalProvider implements DataProvider {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const text = await res.text();
           const parsed = parseICS(text);
+          if (parsed === null) {
+            toast.error(`Flux illisible pour « ${source.name} ».`, {
+              description: "Le fichier .ics ne semble pas valide.",
+            });
+            return;
+          }
 
           for (const e of parsed) {
             const eventStart = new Date(e.start);
@@ -112,6 +120,9 @@ export class WebCalProvider implements DataProvider {
           }
         } catch (err) {
           console.warn(`[WebCalProvider] Failed to fetch ${source.name}:`, err);
+          toast.error(`Échec du chargement de « ${source.name} ».`, {
+            description: err instanceof Error ? err.message : undefined,
+          });
         }
       })
     );

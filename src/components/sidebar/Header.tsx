@@ -3,6 +3,7 @@ import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { cn, stepDate } from "../../lib/utils";
 import { Button } from "../ui/button";
+import { SimpleTooltip } from "../ui/tooltip";
 import { useUIStore } from "../../store";
 import type { CalendarView } from "../../types";
 
@@ -26,9 +27,11 @@ export function Header() {
   return (
     <header className="flex items-center h-14 px-2 sm:px-4 border-b border-border bg-card shrink-0 gap-1 sm:gap-2">
       {/* Left */}
-      <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-muted-foreground" aria-label="Afficher/masquer la barre latérale">
-        <Menu size={18} />
-      </Button>
+      <SimpleTooltip label="Afficher/masquer la barre latérale">
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-muted-foreground" aria-label="Afficher/masquer la barre latérale">
+          <Menu size={18} />
+        </Button>
+      </SimpleTooltip>
 
       <span className="text-base font-bold text-foreground hidden sm:block sm:mr-2">Calendrier</span>
 
@@ -41,12 +44,16 @@ export function Header() {
         Auj.
       </Button>
 
-      <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground" aria-label="Période précédente">
-        <ChevronLeft size={18} />
-      </Button>
-      <Button variant="ghost" size="icon" onClick={() => navigate(1)} className="text-muted-foreground" aria-label="Période suivante">
-        <ChevronRight size={18} />
-      </Button>
+      <SimpleTooltip label="Période précédente">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground" aria-label="Période précédente">
+          <ChevronLeft size={18} />
+        </Button>
+      </SimpleTooltip>
+      <SimpleTooltip label="Période suivante">
+        <Button variant="ghost" size="icon" onClick={() => navigate(1)} className="text-muted-foreground" aria-label="Période suivante">
+          <ChevronRight size={18} />
+        </Button>
+      </SimpleTooltip>
 
       <h1 className="text-xs sm:text-sm font-semibold text-foreground capitalize ml-1 flex-1 truncate">{title()}</h1>
 
@@ -58,7 +65,7 @@ export function Header() {
             variant="ghost"
             onClick={() => setView(v.id)}
             className={cn(
-              "rounded-none px-2 sm:px-3 py-1.5 h-auto text-xs font-medium",
+              "rounded-none px-2 sm:px-3 py-2.5 h-auto text-xs font-medium",
               view === v.id
                 ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"

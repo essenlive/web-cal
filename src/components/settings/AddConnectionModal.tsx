@@ -17,6 +17,7 @@ import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { ColorPicker } from "./ColorPicker";
 import { PanelHeader } from "./PanelHeader";
 import { RuleEditRow } from "./RuleEditRow";
 import { AddItemButton } from "./DrawerItemRow";
@@ -76,33 +77,6 @@ function Field({
         <p id={`err-${label}`} className="text-xs text-destructive mt-1">{error}</p>
       )}
       {hint && !error && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
-    </div>
-  );
-}
-
-// ── Color swatch picker ───────────────────────────────────────────────────────
-
-function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
-  return (
-    <div>
-      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Couleur</label>
-      <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Couleur de la connexion">
-        {PALETTE.map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="radio"
-            aria-checked={value === c}
-            aria-pressed={value === c}
-            onClick={() => onChange(c)}
-            className="size-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-primary/50"
-            style={{
-              backgroundColor: c,
-              borderColor: value === c ? "var(--foreground)" : "transparent",
-            }}
-          />
-        ))}
-      </div>
     </div>
   );
 }
@@ -289,7 +263,11 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
 
   return (
     <>
-      <PanelHeader title={title} onBack={onClose} />
+      <PanelHeader
+        title={title}
+        onBack={onClose}
+        description="Renseignez les informations de connexion pour ajouter cette source à votre calendrier."
+      />
 
           {/* WebCal form — the only option for new connections */}
           {type === "webcal" && (
@@ -317,7 +295,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                   <li><strong className="text-foreground">Microsoft / Outlook :</strong> Paramètres → Calendriers partagés → Publier un calendrier → lien ICS</li>
                 </ul>
               </details>
-              <ColorPicker value={color} onChange={setColor} />
+              <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
               {connection && <SourceRuleSection connection={connection} />}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
@@ -394,7 +372,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 onChange={setCdPass}
                 error={errors.cdPass}
               />
-              <ColorPicker value={color} onChange={setColor} />
+              <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
               {connection && <SourceRuleSection connection={connection} />}
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
@@ -449,7 +427,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 onChange={setName}
                 error={errors.name}
               />
-              <ColorPicker value={color} onChange={setColor} />
+              <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
               {connection && <SourceRuleSection connection={connection} />}
               <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
                 {onDelete && (

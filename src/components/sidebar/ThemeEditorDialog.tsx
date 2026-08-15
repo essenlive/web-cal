@@ -10,7 +10,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { ActionButton } from "../ui/action-button";
+import { ColorPicker } from "../settings/ColorPicker";
 import { PanelHeader } from "../settings/PanelHeader";
 import { useThemeStore } from "../../store";
 import {
@@ -104,21 +107,22 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
 
   return (
     <>
-      <PanelHeader title={theme ? "Modifier le thème" : "Nouveau thème"} onBack={onClose} />
+      <PanelHeader
+        title={theme ? "Modifier le thème" : "Nouveau thème"}
+        onBack={onClose}
+        description="Personnalisez le mode clair/sombre, la couleur d'accent, la police et l'arrondi."
+      />
 
       <div className="space-y-4 px-4 pb-4">
             {/* Name */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nom</label>
-              <input
+              <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nom du thème"
                 autoFocus
-                className={cn(
-                  "w-full rounded-xl border bg-background px-3 py-2 text-sm outline-hidden focus:ring-2",
-                  isDuplicate ? "border-destructive focus:ring-destructive/30" : "border-border focus:ring-primary/30"
-                )}
+                className={cn("rounded-xl px-3 py-2 h-auto text-sm", isDuplicate && "border-destructive")}
               />
               {isDuplicate && trimmed.length > 0 && (
                 <p className="text-xs text-destructive mt-1">Ce nom est déjà utilisé.</p>
@@ -148,39 +152,19 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
             </div>
 
             {/* Accent */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Couleur d'accent</label>
-              <div className="flex items-center gap-2 flex-wrap">
-                {THEME_ACCENT_PRESETS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setAccent(c)}
-                    className="size-6 rounded-full border-2 transition-transform hover:scale-110"
-                    style={{ backgroundColor: c, borderColor: accent === c ? "var(--foreground)" : "transparent" }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={accent}
-                  onChange={(e) => setAccent(e.target.value)}
-                  className="size-6 rounded cursor-pointer border border-border"
-                  aria-label="Couleur personnalisée"
-                />
-              </div>
-            </div>
+            <ColorPicker value={accent} onChange={setAccent} colors={THEME_ACCENT_PRESETS} label="Couleur d'accent" />
 
             {/* Font */}
             <div className="relative">
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Police</label>
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   value={fontQuery}
                   onChange={(e) => { setFontQuery(e.target.value); setFontOpen(true); }}
                   onFocus={() => setFontOpen(true)}
                   onBlur={() => setTimeout(() => setFontOpen(false), 150)}
                   placeholder="Rechercher une police…"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-hidden focus:ring-2 focus:ring-primary/30"
+                  className="rounded-xl px-3 py-2 h-auto text-sm"
                 />
                 <span
                   className="shrink-0 text-lg text-muted-foreground w-9 text-center"
@@ -292,15 +276,10 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
                   </ActionButton>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!canSave}
-                className="px-3 py-2 rounded-lg text-sm bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90"
-              >
-                <Check size={14} className="inline mr-1.5" />
+              <Button type="button" onClick={handleSave} disabled={!canSave} className="gap-1.5">
+                <Check size={14} />
                 {theme ? "Enregistrer" : "Créer"}
-              </button>
+              </Button>
             </div>
           </div>
     </>

@@ -14,6 +14,7 @@
  * The proxy must forward Authorization headers to the upstream server.
  */
 
+import { toast } from "sonner";
 import type { DataProvider } from "./data-provider";
 import type { CalendarEvent } from "../types";
 
@@ -217,6 +218,9 @@ export class CalDAVProvider implements DataProvider {
           }
         } catch (err) {
           console.warn(`[CalDAVProvider] Failed to fetch ${cal.name}:`, err);
+          toast.error(`Échec du chargement de « ${cal.name} ».`, {
+            description: err instanceof Error ? err.message : undefined,
+          });
         }
       })
     );

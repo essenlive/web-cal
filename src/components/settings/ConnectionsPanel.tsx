@@ -11,10 +11,11 @@ import { useConnectionStore } from "../../store";
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { ItemBadge } from "../sidebar/ItemRow";
-import { statusColor } from "../sidebar/Sidebar";
+import { statusColor, statusLabel } from "../sidebar/Sidebar";
 import { AddConnectionModal } from "./AddConnectionModal";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader } from "./PanelHeader";
+import { SimpleTooltip } from "../ui/tooltip";
 import type { Connection } from "../../types";
 
 export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
@@ -58,7 +59,11 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
             key={c.id}
             badge={<ItemBadge color={c.color}>{c.name.trim().charAt(0).toUpperCase()}</ItemBadge>}
             name={c.name}
-            state={<span className={`size-1.5 rounded-full shrink-0 ${statusColor(statusMap[c.id] ?? "unchecked")}`} />}
+            state={
+              <SimpleTooltip label={statusLabel(statusMap[c.id] ?? "unchecked")}>
+                <span className={`size-1.5 rounded-full shrink-0 ${statusColor(statusMap[c.id] ?? "unchecked")}`} />
+              </SimpleTooltip>
+            }
             onEdit={() => { setEditingConn(c); setFormOpen(true); }}
             onDelete={() => removeConnection(c.id)}
             dragProps={getDragProps(index)}

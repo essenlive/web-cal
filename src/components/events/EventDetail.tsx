@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { format } from "date-fns";
 import { MapPin, StickyNote, ListOrdered } from "lucide-react";
 import { useEventTypeStore, useUIStore, useRuleStore, useEventsStore, useConnectionStore } from "../../store";
 import { resolveEventType } from "./EventChip";
 import { findMatchingRule, describeMatch } from "../../lib/rules";
 import { getIconEl } from "../../lib/icons";
-import { RuleModal } from "../settings/RuleModal";
 import {
   Dialog,
   DialogContent,
@@ -22,11 +20,10 @@ export interface EventDetailProps {
 /** Read-only event view — sources are read-only, so there is no edit/save/delete here (FR-016). */
 export function EventDetail({ event, onClose }: EventDetailProps) {
   const { getType } = useEventTypeStore();
-  const { dateFormatEU } = useUIStore();
-  const { rules } = useRuleStore();
+  const { dateFormatEU, openDrawer } = useUIStore();
+  const { rules, addRule } = useRuleStore();
   const { events } = useEventsStore();
   const { connections } = useConnectionStore();
-  const [ruleModal, setRuleModal] = useState<{ matchValue: string } | null>(null);
 
   const type = resolveEventType(event, getType, rules);
   const matchedRule = findMatchingRule(event, rules);
@@ -45,14 +42,6 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md rounded-2xl p-0 gap-0">
-        {ruleModal ? (
-          <RuleModal
-            initialMatchType="name"
-            initialMatchValue={ruleModal.matchValue}
-            onClose={() => setRuleModal(null)}
-          />
-        ) : (
-          <>
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle className="text-base font-semibold flex items-center gap-2">
             <span
@@ -103,15 +92,17 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
             <span className="text-xs text-muted-foreground">Create a rule from this event:</span>
             <button
               type="button"
-              onClick={() => setRuleModal({ matchValue: event.title })}
+              onClick={() => {
+                addRule({ matchType: "name", matchValue: event.title, displayTypeId: type.id });
+                onClose();
+                openDrawer("rules");
+              }}
               className="text-xs font-medium text-primary hover:underline"
             >
               by title
             </button>
           </div>
         </div>
-          </>
-        )}
       </DialogContent>
     </Dialog>
   );

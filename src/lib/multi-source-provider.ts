@@ -13,6 +13,7 @@
  */
 
 import { isWithinInterval, parseISO } from "date-fns";
+import { toast } from "sonner";
 import type { DataProvider } from "./data-provider";
 import type { CalendarEvent, Connection, ConnectionStatus } from "../types";
 import { WebCalProvider } from "./webcal-provider";
@@ -111,6 +112,9 @@ export class MultiSourceProvider implements DataProvider {
         const conn = this.connections[idx];
         if (conn) this.onStatusChange(conn.id, "error");
         console.warn("[MultiSourceProvider] Connection failed:", result.reason);
+        toast.error(`Échec de connexion à « ${conn?.name ?? "une source"} ».`, {
+          description: result.reason instanceof Error ? result.reason.message : undefined,
+        });
       }
     }
 

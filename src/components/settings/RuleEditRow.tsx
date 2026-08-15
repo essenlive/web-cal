@@ -15,6 +15,7 @@ import { useState } from "react";
 import { AlertTriangle, ArrowRight, CaseSensitive, ChevronDown, GripVertical, Link2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { Tooltip, TooltipTrigger, TooltipContent, SimpleTooltip } from "../ui/tooltip";
 import { ItemBadge } from "../sidebar/ItemRow";
 import type { DragProps } from "../sidebar/Sidebar";
 import { DeleteButton } from "./DrawerItemRow";
@@ -45,16 +46,21 @@ export function RuleDropdown<T extends string>({ value, options, onChange, rende
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          className={cn("flex shrink-0 items-center gap-0.5 rounded-full p-0.5 hover:bg-background/60 min-w-0", className)}
-        >
-          <ChevronDown size={10} className="shrink-0 text-muted-foreground" />
-          {renderTrigger(value)}
-        </button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={label}
+              className={cn("flex shrink-0 items-center gap-0.5 rounded-full p-0.5 hover:bg-background/60 min-w-0", className)}
+            >
+              <ChevronDown size={10} className="shrink-0 text-muted-foreground" />
+              {renderTrigger(value)}
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <PopoverContent className="w-48 max-h-64 overflow-y-auto p-1" align="start">
         <div className="flex flex-col gap-0.5">
           {options.map((opt) => (
@@ -98,8 +104,26 @@ export function RuleEditRow({ rule, onDelete, dragProps, lockMatch, lockDisplayT
   }
 
   return (
-    <div {...dragProps} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-2 py-1.5">
-      {dragProps && <GripVertical size={14} className="shrink-0 text-muted-foreground/40 cursor-grab" />}
+    <div
+      ref={dragProps?.ref}
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg bg-muted/50 px-2 py-1.5 transition-colors",
+        dragProps?.dragging && "opacity-50",
+        dragProps?.over && "ring-2 ring-primary/50"
+      )}
+    >
+      {dragProps && (
+        <SimpleTooltip label="Réordonner">
+          <button
+            type="button"
+            onPointerDown={dragProps.onHandlePointerDown}
+            aria-label="Réordonner"
+            className="shrink-0 -m-1.5 touch-none select-none p-1.5 text-muted-foreground/40 cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical size={14} />
+          </button>
+        </SimpleTooltip>
+      )}
 
       {lockMatch ? (
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">

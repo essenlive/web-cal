@@ -14,16 +14,14 @@ import { PRESET_COLORS } from "../settings/EventTypeModal";
 import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore } from "../../store";
 import { capturePresetState, presetMatchesState } from "../../lib/presets";
 import type { Preset } from "../../types";
-import type { DragProps } from "./Sidebar";
 
-export function PresetRow({ preset, index, active, onApply, onEdit, onUpdate, dragProps }: {
+export function PresetRow({ preset, index, active, onApply, onEdit, onUpdate }: {
   preset: Preset;
   index: number;
   active: boolean;
   onApply: () => void;
   onEdit: () => void;
   onUpdate: () => void;
-  dragProps?: DragProps;
 }) {
   return (
     <ItemRow
@@ -31,7 +29,6 @@ export function PresetRow({ preset, index, active, onApply, onEdit, onUpdate, dr
       name={preset.name}
       selected={active}
       onSelect={onApply}
-      dragProps={dragProps}
       actions={[
         { icon: <RefreshCw size={12} />, label: "Mettre à jour avec l'état actuel", onClick: onUpdate },
         { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
