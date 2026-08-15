@@ -29,6 +29,21 @@ function IconButton({ icon, label, onClick }: { icon: ReactNode; label: string; 
   );
 }
 
+export function DeleteButton({ onDelete, label = "Supprimer" }: { onDelete: () => void; label?: string }) {
+  return (
+    <ActionButton
+      variant="secondary"
+      onAction={onDelete}
+      aria-label={label}
+      confirmLabel="Confirmer la suppression"
+      confirmChildren={<Check size={12} />}
+      className="size-6 shrink-0 rounded-full p-0 text-muted-foreground hover:text-destructive data-[status=armed]:text-white [&_svg]:size-3"
+    >
+      <Trash2 size={12} />
+    </ActionButton>
+  );
+}
+
 export function DrawerItemRow({ badge, name, tag, state, onEdit, onDelete, deleteDisabledReason, dragProps }: {
   badge: ReactNode;
   name: string;
@@ -47,18 +62,7 @@ export function DrawerItemRow({ badge, name, tag, state, onEdit, onDelete, delet
       {state}
       {tag}
       {onEdit && <IconButton icon={<Pencil size={12} />} label="Modifier" onClick={onEdit} />}
-      {onDelete && (
-        <ActionButton
-          variant="secondary"
-          onAction={onDelete}
-          aria-label="Supprimer"
-          confirmLabel="Confirmer la suppression"
-          confirmChildren={<Check size={12} />}
-          className="size-6 shrink-0 rounded-full p-0 text-muted-foreground hover:text-destructive data-[status=armed]:text-white [&_svg]:size-3"
-        >
-          <Trash2 size={12} />
-        </ActionButton>
-      )}
+      {onDelete && <DeleteButton onDelete={onDelete} />}
       {!onDelete && deleteDisabledReason && (
         <span
           title={deleteDisabledReason}

@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import type { CalendarEvent, RuleMatchType } from "../../types";
+import type { CalendarEvent } from "../../types";
 
 export interface EventDetailProps {
   event: CalendarEvent;
@@ -26,7 +26,7 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
   const { rules } = useRuleStore();
   const { events } = useEventsStore();
   const { connections } = useConnectionStore();
-  const [ruleModal, setRuleModal] = useState<{ matchType: Exclude<RuleMatchType, "all">; matchValue: string } | null>(null);
+  const [ruleModal, setRuleModal] = useState<{ matchValue: string } | null>(null);
 
   const type = resolveEventType(event, getType, rules);
   const matchedRule = findMatchingRule(event, rules);
@@ -47,7 +47,7 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
       <DialogContent className="max-w-md rounded-2xl p-0 gap-0">
         {ruleModal ? (
           <RuleModal
-            initialMatchType={ruleModal.matchType}
+            initialMatchType="name"
             initialMatchValue={ruleModal.matchValue}
             onClose={() => setRuleModal(null)}
           />
@@ -103,17 +103,10 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
             <span className="text-xs text-muted-foreground">Create a rule from this event:</span>
             <button
               type="button"
-              onClick={() => setRuleModal({ matchType: "name", matchValue: event.title })}
+              onClick={() => setRuleModal({ matchValue: event.title })}
               className="text-xs font-medium text-primary hover:underline"
             >
               by title
-            </button>
-            <button
-              type="button"
-              onClick={() => setRuleModal({ matchType: "event", matchValue: event.id })}
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              just this event
             </button>
           </div>
         </div>

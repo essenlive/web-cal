@@ -18,6 +18,7 @@ export function matchesRule(event: CalendarEvent, rule: Rule): boolean {
     case "source":
       return event.calendarId === rule.matchValue;
     case "name":
+      if (!rule.matchValue) return false;
       try {
         return new RegExp(rule.matchValue, "i").test(event.title);
       } catch {

@@ -3,19 +3,18 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Settings, Keyboard, Eye, EyeOff, Pencil, Sun, Moon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Keyboard, ListOrdered, Eye, EyeOff, Pencil, Sun, Moon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import { useUIStore, useConnectionStore, useEventTypeStore, useRuleStore, useEventsStore, useThemeStore } from "../../store";
+import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap } from "../../context/DataProviderContext";
 import { getIconEl } from "../settings/EventTypeModal";
 import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
 import { PresetSelector } from "./PresetSelector";
-import { describeMatch } from "../../lib/rules";
 import { getAllThemes, orderThemes, isBuiltinTheme } from "../../lib/theme";
-import type { Connection, ConnectionStatus, EventType, Rule, Theme } from "../../types";
+import type { Connection, ConnectionStatus, EventType, Theme } from "../../types";
 
 /** Native HTML5 drag handlers for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
 export interface DragProps {
@@ -74,24 +73,6 @@ export function TypeRow({ type, onEdit, onToggleHidden, dragProps }: {
   );
 }
 
-// ── Compact rule row ──────────────────────────────────────────────────────────
-
-export function RuleRow({ rule, description, displayType, onEdit, onToggleEnabled }: {
-  rule: Rule; description: string; displayType: EventType | undefined; onEdit: () => void; onToggleEnabled: () => void;
-}) {
-  return (
-    <ItemRow
-      badge={<ItemBadge color={displayType?.color ?? "#6366f1"}>{displayType && getIconEl(displayType.icon, 10, "#fff")}</ItemBadge>}
-      name={description}
-      muted={!rule.enabled}
-      actions={[
-        { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
-        { icon: rule.enabled ? <Eye size={12} /> : <EyeOff size={12} />, label: rule.enabled ? "Désactiver" : "Activer", onClick: onToggleEnabled },
-      ]}
-    />
-  );
-}
-
 // ── Compact theme row ─────────────────────────────────────────────────────────
 
 export function ThemeRow({ theme, active, onSelect, onEdit, dragProps }: {
@@ -116,9 +97,7 @@ export function Sidebar() {
 
   const { connections, updateConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
-  const { types, updateType, getType } = useEventTypeStore();
-  const { rules, toggleRule } = useRuleStore();
-  const { events } = useEventsStore();
+  const { types, updateType } = useEventTypeStore();
   const { customThemes, themeOrder, selectedThemeId, selectTheme } = useThemeStore();
 
   if (!sidebarOpen) return null;
@@ -217,19 +196,16 @@ export function Sidebar() {
 
       <div className="border-t border-border" />
 
-      {/* Rules preview */}
-      <Section id="rules" label="Règles" onOpen={() => openDrawer("rules")} onAdd={() => openNewItemDrawer("rules")}>
-        {rules.filter((r) => r.matchType !== "all").map((r) => (
-          <RuleRow
-            key={r.id}
-            rule={r}
-            description={describeMatch(r, (id) => events.find((e) => e.id === id)?.title, (id) => connections.find((c) => c.id === id)?.name)}
-            displayType={getType(r.displayTypeId)}
-            onEdit={() => openDrawer("rules", r.id)}
-            onToggleEnabled={() => toggleRule(r.id)}
-          />
-        ))}
-      </Section>
+      {/* Rules — flat entry point, editing happens entirely inside the drawer now */}
+      <div className="px-3 py-3">
+        <button
+          onClick={() => openDrawer("rules")}
+          className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 hover:bg-muted text-xs text-foreground"
+        >
+          <ListOrdered size={14} className="text-muted-foreground" />
+          Règles
+        </button>
+      </div>
 
       <div className="border-t border-border" />
 
