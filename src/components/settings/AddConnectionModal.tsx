@@ -19,9 +19,8 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { ColorPicker } from "./ColorPicker";
 import { PanelHeader, PanelFooter } from "./PanelHeader";
-import { RuleEditRow } from "./RuleEditRow";
-import { AddItemButton } from "./DrawerItemRow";
-import { useRuleStore, useEventTypeStore } from "../../store";
+import { DisplayTypeSelect, useSourceRule } from "./RuleEditRow";
+import { useConnectionStore, useRuleStore } from "../../store";
 import type { CalDAVConnection, Connection, DemoConnection, WebCalConnection } from "../../types";
 import { CalDAVProvider } from "../../lib/caldav-provider";
 
@@ -139,12 +138,11 @@ function AdvancedSection({ proxyUrl, onProxyChange }: { proxyUrl: string; onProx
   );
 }
 
-// ── Rules for this source — at most one (matchType "source", matchValue = connection.id) ──
+// ── Rules for this source — always exactly one, undeletable (matchType "source", matchValue = connection id) ──
 
-function SourceRuleSection({ connection }: { connection: Connection }) {
-  const { rules, addRule, removeRule } = useRuleStore();
-  const { getDefaultType } = useEventTypeStore();
-  const rule = rules.find((r) => r.matchType === "source" && r.matchValue === connection.id);
+function SourceRuleSection({ connectionId }: { connectionId: string }) {
+  const rule = useSourceRule(connectionId);
+  const { updateRule } = useRuleStore();
 
   return (
     <div>
@@ -152,13 +150,8 @@ function SourceRuleSection({ connection }: { connection: Connection }) {
       <p className="text-xs text-muted-foreground mb-2">
         Applique un type d&apos;affichage à tous les événements de cette source.
       </p>
-      {rule ? (
-        <RuleEditRow rule={rule} onDelete={() => removeRule(rule.id)} lockMatch />
-      ) : (
-        <AddItemButton
-          label="Ajouter une règle"
-          onClick={() => addRule({ matchType: "source", matchValue: connection.id, displayTypeId: getDefaultType().id })}
-        />
+      {rule && (
+        <DisplayTypeSelect value={rule.displayTypeId} onChange={(id) => updateRule({ ...rule, displayTypeId: id })} />
       )}
     </div>
   );
@@ -167,7 +160,7 @@ function SourceRuleSection({ connection }: { connection: Connection }) {
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface AddConnectionModalProps {
-  onAdd: (conn: Omit<Connection, "id">) => void;
+  onAdd: (conn: Omit<Connection, "id"> & { id?: string }) => void;
   /**
    * Colors already used by existing connections.
    * The modal auto-selects the first palette colour not present in this list,
@@ -194,6 +187,11 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
   // "demo" is never created here either — it only ever comes pre-seeded (see
   // useConnectionStore) and can only be edited (name/colour) or deleted.
   const type: "webcal" | "caldav" | "demo" = connection?.type ?? "webcal";
+  // Reserved upfront (even for a not-yet-saved connection) so the Règles
+  // section below can link its one rule to it immediately.
+  const [connId] = useState(() => connection?.id ?? crypto.randomUUID());
+  const { connections } = useConnectionStore();
+  const { removeRulesForConnection } = useRuleStore();
 
   // Shared fields
   const [name, setName]       = useState(connection?.name ?? "");
@@ -260,7 +258,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
         type: "webcal", name: name.trim(), url: wcUrl.trim(), color, proxyUrl: proxy,
       };
       if (editing) onUpdate?.({ ...conn, id: connection!.id });
-      else onAdd(conn);
+      else onAdd({ ...conn, id: connId });
     } else if (type === "caldav") {
       const conn: Omit<CalDAVConnection, "id"> = {
         type: "caldav",
@@ -277,6 +275,14 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
       const conn: DemoConnection = { type: "demo", id: connection!.id, name: name.trim(), color, hidden: connection!.hidden };
       onUpdate?.(conn);
     }
+    handleClose();
+  }
+
+  // If the connection was never actually saved (Cancel/back out of a fresh
+  // "Nouvelle source"), drop the rule reserved against it — otherwise it'd
+  // linger pointing at a source that doesn't exist.
+  function handleClose() {
+    if (!connections.some((c) => c.id === connId)) removeRulesForConnection(connId);
     onClose();
   }
 
@@ -294,7 +300,7 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
     <>
       <PanelHeader
         title={title}
-        onBack={onClose}
+        onBack={handleClose}
         description="Renseignez les informations de connexion pour ajouter cette source à votre calendrier."
       />
 
@@ -326,12 +332,12 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 </ul>
               </details>
               <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
-              {connection && <SourceRuleSection connection={connection} />}
+              <SourceRuleSection connectionId={connId} />
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
               <PanelFooter
                 onDelete={editing ? onDelete : undefined}
-                onCancel={onClose}
+                onCancel={handleClose}
                 onSave={handleAdd}
                 saveDisabled={!canAdd}
                 saveLabel={editing ? "Enregistrer" : "Ajouter la source"}
@@ -373,10 +379,10 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 error={errors.cdPass}
               />
               <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
-              {connection && <SourceRuleSection connection={connection} />}
+              <SourceRuleSection connectionId={connId} />
               <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
 
-              <PanelFooter onDelete={onDelete} onCancel={onClose} onSave={handleAdd} saveDisabled={!canAdd} saveLabel="Enregistrer" />
+              <PanelFooter onDelete={onDelete} onCancel={handleClose} onSave={handleAdd} saveDisabled={!canAdd} saveLabel="Enregistrer" />
             </div>
           )}
 
@@ -393,8 +399,8 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 error={errors.name}
               />
               <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
-              {connection && <SourceRuleSection connection={connection} />}
-              <PanelFooter onDelete={onDelete} onCancel={onClose} onSave={handleAdd} saveDisabled={!canAdd} saveLabel="Enregistrer" />
+              <SourceRuleSection connectionId={connId} />
+              <PanelFooter onDelete={onDelete} onCancel={handleClose} onSave={handleAdd} saveDisabled={!canAdd} saveLabel="Enregistrer" />
             </div>
           )}
     </>

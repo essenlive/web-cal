@@ -74,7 +74,8 @@ const DEMO_CONNECTION: Connection = { type: "demo", id: "demo", name: "Démo", c
 
 interface ConnectionStore {
   connections: Connection[];
-  addConnection: (conn: Omit<Connection, "id">) => void;
+  /** Honors a caller-supplied `id` (e.g. a form that reserved one upfront to link draft rules to it) — mints one otherwise. */
+  addConnection: (conn: Omit<Connection, "id"> & { id?: string }) => void;
   removeConnection: (id: string) => void;
   updateConnection: (conn: Connection) => void;
   /** Array order is display order. Moves `id` to `toIndex`. */
@@ -87,7 +88,7 @@ export const useConnectionStore = create<ConnectionStore>()(
       connections: [DEMO_CONNECTION],
       addConnection: (conn) =>
         set((s) => ({
-          connections: [...s.connections, { ...conn, id: crypto.randomUUID() } as Connection],
+          connections: [...s.connections, { ...conn, id: conn.id ?? crypto.randomUUID() } as Connection],
         })),
       removeConnection: (id) => {
         set((s) => ({ connections: s.connections.filter((c) => c.id !== id) }));
@@ -191,7 +192,8 @@ function migrateType(t: any): EventType {
 
 interface EventTypeStore {
   types: EventType[];
-  addType: (t: Omit<EventType, "id">) => void;
+  /** Honors a caller-supplied `id` (e.g. a form that reserved one upfront to link draft rules to it) — mints one otherwise. */
+  addType: (t: Omit<EventType, "id"> & { id?: string }) => void;
   updateType: (t: EventType) => void;
   /** No-op if `id` is the default type — make another type default first. */
   removeType: (id: string) => void;
@@ -208,7 +210,7 @@ export const useEventTypeStore = create<EventTypeStore>()(
   persist(
     (set, get) => ({
       types: DEFAULT_EVENT_TYPES,
-      addType: (t) => set((s) => ({ types: [...s.types, { ...t, id: crypto.randomUUID() }] })),
+      addType: (t) => set((s) => ({ types: [...s.types, { ...t, id: t.id ?? crypto.randomUUID() }] })),
       updateType: (t) => set((s) => ({ types: s.types.map((x) => (x.id === t.id ? t : x)) })),
       removeType: (id) => {
         if (get().getType(id)?.isDefault) return;

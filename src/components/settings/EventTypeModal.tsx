@@ -8,7 +8,7 @@ import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { ColorPicker } from "./ColorPicker";
 import { PanelHeader, PanelFooter, InlineLink } from "./PanelHeader";
-import { RuleEditRow } from "./RuleEditRow";
+import { RuleEditRow, SourcesMultiSelect } from "./RuleEditRow";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { ItemBadge } from "../sidebar/ItemRow";
 import { useUIStore, useRuleStore, useEventTypeStore, useEventsStore, useConnectionStore } from "../../store";
@@ -53,7 +53,7 @@ const avatarDot = (color: string, icon: string) => (
  * order among same-type rules stays intuitive while still repositioning
  * correctly against every other type's rules in the real priority list.
  */
-function useFilteredRuleDragReorder(allRules: Rule[], filtered: Rule[], reorder: (id: string, toIndex: number) => void) {
+export function useFilteredRuleDragReorder(allRules: Rule[], filtered: Rule[], reorder: (id: string, toIndex: number) => void) {
   return useDragReorder(filtered, (r) => r.id, (id, toLocalIndex) => {
     const globalIndex = allRules.findIndex((r) => r.id === filtered[toLocalIndex].id);
     reorder(id, globalIndex);
@@ -113,14 +113,19 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const [allDayStyle, setAllDayStyle] = useState<DisplayStyle>(type?.allDayStyle ?? "block");
   const [timedStyle,  setTimedStyle]  = useState<DisplayStyle>(type?.timedStyle  ?? "block");
   const [isDefault,   setIsDefault]   = useState(type?.isDefault ?? false);
+  // Reserved upfront (even for a not-yet-saved type) so the Règles section below
+  // can link rules to it immediately instead of waiting for a first save.
+  const [typeId] = useState(() => type?.id ?? crypto.randomUUID());
 
   const { openDrawer } = useUIStore();
-  const { rules, addRule, removeRule, reorderRule } = useRuleStore();
-  const { getDefaultType } = useEventTypeStore();
+  const { rules, addRule, removeRule, updateRule, reorderRule } = useRuleStore();
+  const { getDefaultType, types } = useEventTypeStore();
   const { events } = useEventsStore();
   const { connections } = useConnectionStore();
-  const linkedRules = type ? rules.filter((r) => r.displayTypeId === type.id && r.matchType !== "all") : [];
-  const { getDragProps } = useFilteredRuleDragReorder(rules, linkedRules, reorderRule);
+  const linkedRules = rules.filter((r) => r.displayTypeId === typeId && r.matchType !== "all");
+  const textRules = linkedRules.filter((r) => r.matchType === "name");
+  const legacyRules = linkedRules.filter((r) => r.matchType === "event");
+  const { getDragProps } = useFilteredRuleDragReorder(rules, textRules, reorderRule);
   const defaultType = getDefaultType();
 
   const trimmed = label.trim();
@@ -129,7 +134,22 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
     .some((l) => l.toLowerCase() === trimmed.toLowerCase());
 
   function handleSave() {
-    onSave({ id: type?.id, label: trimmed, color, icon, allDayStyle, timedStyle, isDefault });
+    onSave({ id: typeId, label: trimmed, color, icon, allDayStyle, timedStyle, isDefault });
+    handleClose();
+  }
+
+  // If the type was never actually saved (Cancel/back out of a fresh "Nouveau
+  // type"), undo anything linked against the reserved id — text/event rules
+  // were created fresh for this draft, so delete them outright; a source's
+  // rule always has to point *somewhere*, so reassigning it here instead
+  // reverts it to the default type rather than leaving it dangling.
+  function handleClose() {
+    if (!types.some((t) => t.id === typeId)) {
+      linkedRules.forEach((r) => {
+        if (r.matchType === "source") updateRule({ ...r, displayTypeId: defaultType.id });
+        else removeRule(r.id);
+      });
+    }
     onClose();
   }
 
@@ -137,7 +157,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
     <>
       <PanelHeader
         title={type ? "Modifier le type" : "Nouveau type"}
-        onBack={onClose}
+        onBack={handleClose}
         description="Choisissez un nom, une couleur, une icône et un style d'affichage pour les événements journée entière et horaires."
       />
 
@@ -224,40 +244,55 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
             </div>
           </div>
 
-          {type && (
-            <div>
-              <label className="text-sm font-semibold text-foreground mb-1 block">Règles</label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Les règles s&apos;appliquent par ordre de priorités de haut en bas. Si aucune règle ne s&apos;applique,
-                le style par défaut est actuellement —{" "}
-                <InlineLink onClick={() => openDrawer("eventType", defaultType.id)}>{defaultType.label}</InlineLink>.
-              </p>
-              <div className="space-y-1.5">
-                {linkedRules.map((r, index) =>
-                  r.matchType === "source" || r.matchType === "name" ? (
+          <div>
+            <label className="text-sm font-semibold text-foreground mb-1 block">Règles</label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Les règles s&apos;appliquent par ordre de priorités de haut en bas. Si aucune règle ne s&apos;applique,
+              le style par défaut est actuellement —{" "}
+              <InlineLink onClick={() => openDrawer("eventType", defaultType.id)}>{defaultType.label}</InlineLink>.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1.5">Textes</h4>
+                <div className="space-y-1.5">
+                  {textRules.map((r, index) => (
                     <RuleEditRow key={r.id} rule={r} onDelete={() => removeRule(r.id)} dragProps={getDragProps(index)} lockDisplayType />
-                  ) : (
-                    <DrawerItemRow
-                      key={r.id}
-                      badge={<ItemBadge color={type.color}>{getIconEl(type.icon, 10, "#fff")}</ItemBadge>}
-                      name={describeMatch(r, (id) => events.find((e) => e.id === id)?.title, (id) => connections.find((c) => c.id === id)?.name)}
-                      tag={
-                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          Événement
-                        </span>
-                      }
-                      onDelete={() => removeRule(r.id)}
-                      dragProps={getDragProps(index)}
-                    />
-                  )
-                )}
-                <AddItemButton
-                  label="Nouvelle règle"
-                  onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: type.id })}
-                />
+                  ))}
+                  <AddItemButton
+                    label="Nouvelle règle"
+                    onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: typeId })}
+                  />
+                </div>
               </div>
+
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1.5">Sources</h4>
+                <SourcesMultiSelect typeId={typeId} />
+              </div>
+
+              {legacyRules.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-1.5">Autres</h4>
+                  <div className="space-y-1.5">
+                    {legacyRules.map((r) => (
+                      <DrawerItemRow
+                        key={r.id}
+                        badge={<ItemBadge color={color}>{getIconEl(icon, 10, "#fff")}</ItemBadge>}
+                        name={describeMatch(r, (id) => events.find((e) => e.id === id)?.title, (id) => connections.find((c) => c.id === id)?.name)}
+                        tag={
+                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Événement
+                          </span>
+                        }
+                        onDelete={() => removeRule(r.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {type && (
             <div>
@@ -277,7 +312,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
           <PanelFooter
             onDelete={onDelete}
             deleteDisabledReason={deleteDisabledReason}
-            onCancel={onClose}
+            onCancel={handleClose}
             onSave={handleSave}
             saveDisabled={!trimmed || isDuplicate}
             saveLabel={type ? "Enregistrer" : "Créer"}

@@ -37,9 +37,9 @@ export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?:
         type={editingType ?? undefined}
         existingLabels={types.map((t) => t.label)}
         onSave={(t) => {
-          if (t.id) {
+          if (editingType) {
             updateType(t as EventType);
-            if (t.isDefault) setDefaultType(t.id);
+            if (t.isDefault) setDefaultType(t.id!);
           } else {
             addType(t);
           }
