@@ -10,6 +10,8 @@ type Status = "idle" | "armed" | "pending" | "success" | "error";
 export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   /** Runs when triggered. May return a promise — while it's pending the button shows `pendingChildren`. */
   onAction: () => void | Promise<void>;
+  /** Not meant to be passed directly — Radix's `TooltipTrigger asChild` injects this when wrapping the button. Composed into the internal click handler so it doesn't get clobbered by the `{...props}` spread. */
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   /** Require an extra click to arm (destructive variant) before `onAction` runs. Default true, for destructive actions. */
   confirm?: boolean;
   /** Content shown once armed (only reachable when `confirm`). Defaults to `children`. */
