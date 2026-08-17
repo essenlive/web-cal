@@ -3,7 +3,7 @@
  * Used from the sidebar's compact event-type preview.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { ColorPicker } from "./ColorPicker";
@@ -14,7 +14,7 @@ import { ItemBadge } from "../sidebar/ItemRow";
 import { useUIStore, useRuleStore, useEventTypeStore, useEventsStore, useConnectionStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { describeMatch } from "../../lib/rules";
-import { getIconEl } from "../../lib/icons";
+import { getIconEl, ALL_ICON_NAMES } from "../../lib/icons";
 import type { DisplayStyle, EventType, Rule } from "../../types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -35,11 +35,15 @@ export const PRESET_COLORS = [
   "#f59e0b","#10b981","#14b8a6","#06b6d4","#64748b",
 ];
 
-const ICON_OPTIONS = [
+/** Icons rendered before any search — a small curated default set (full list is searchable below). */
+const DEFAULT_ICONS = [
   "Users","AlertCircle","Layers","Brain","FileText","Heart","Calendar",
   "Clock","Star","Zap","Coffee","BookOpen","Video","Phone","Mail",
   "Home","Globe","Code","Briefcase","Target",
 ];
+
+/** Cap on rendered icon buttons — ALL_ICON_NAMES has ~1750 entries; search narrows it down. */
+const MAX_ICON_RESULTS = 60;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -142,6 +146,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const [label,       setLabel]       = useState(type?.label       ?? "");
   const [color,       setColor]       = useState(type?.color       ?? PRESET_COLORS[0]);
   const [icon,        setIcon]        = useState(type?.icon        ?? "Calendar");
+  const [iconQuery,   setIconQuery]   = useState("");
   const [badgeLetter, setBadgeLetter] = useState(type?.badgeLetter ?? false);
   const [allDayStyle, setAllDayStyle] = useState<DisplayStyle>(type?.allDayStyle ?? "block");
   const [timedStyle,  setTimedStyle]  = useState<DisplayStyle>(type?.timedStyle  ?? "block");
@@ -160,6 +165,12 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const legacyRules = linkedRules.filter((r) => r.matchType === "event");
   const { getDragProps } = useFilteredRuleDragReorder(rules, textRules, reorderRule);
   const defaultType = getDefaultType();
+
+  const iconResults = useMemo(() => {
+    const q = iconQuery.trim().toLowerCase();
+    const source = q ? ALL_ICON_NAMES.filter((n) => n.toLowerCase().includes(q)) : DEFAULT_ICONS;
+    return source.slice(0, MAX_ICON_RESULTS);
+  }, [iconQuery]);
 
   const trimmed = label.trim();
   const isDuplicate = existingLabels
@@ -212,16 +223,26 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Icône</label>
-            <div className="flex flex-wrap gap-1.5">
-              {ICON_OPTIONS.map((i) => (
+            <Input
+              value={iconQuery}
+              onChange={(e) => setIconQuery(e.target.value)}
+              placeholder="Rechercher une icône…"
+              className="rounded-xl px-3 py-2 h-auto text-sm mb-1.5"
+            />
+            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto content-start">
+              {iconResults.map((i) => (
                 <button
                   key={i}
                   onClick={() => setIcon(i)}
-                  className={cn("p-1.5 rounded-lg border transition-all", icon === i ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}
+                  title={i}
+                  className={cn("p-1.5 rounded-lg border transition-all shrink-0", icon === i ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}
                 >
                   {getIconEl(i, 14)}
                 </button>
               ))}
+              {iconResults.length === 0 && (
+                <p className="text-xs text-muted-foreground py-1">Aucune icône trouvée.</p>
+              )}
             </div>
             <label className="flex items-center gap-2 text-xs text-foreground mt-2 cursor-pointer select-none">
               <input
