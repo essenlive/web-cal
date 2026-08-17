@@ -1,15 +1,14 @@
-import { useMemo, useCallback, useState, useRef } from "react";
+import { useMemo, useCallback, useState } from "react";
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   eachDayOfInterval, isSameDay, isSameMonth, startOfDay, format,
 } from "date-fns";
-import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore, useConnectionStore } from "../../store";
-import { EventChip, resolveEventType, resolveStyle, isEventHidden } from "../events/EventChip";
-import type { CalendarEvent, EventType, Rule } from "../../types";
+import { EventChip, resolveEventType, resolveStyle, isEventHidden, getBadgeContent } from "../events/EventChip";
+import type { CalendarEvent, DisplayStyle, EventType, Rule } from "../../types";
 
 const DAY_LABELS_MON = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."];
 const DAY_LABELS_SUN = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
@@ -66,7 +65,6 @@ function AvatarBadge({
   onEdit: (e: CalendarEvent) => void;
 }) {
   const color = type?.color ?? "#6366f1";
-  const Icon = type?.icon ? (Icons as any)[type.icon] : null;
   return (
     <div
       title={event.title}
@@ -75,7 +73,7 @@ function AvatarBadge({
       className="size-5 sm:size-6 rounded-full flex items-center justify-center cursor-pointer shrink-0
                  shadow-xs transition-all hover:scale-110 active:scale-95"
     >
-      {Icon && <Icon size={9} color="#fff" />}
+      {getBadgeContent(type, event.title, 9)}
     </div>
   );
 }
@@ -125,15 +123,22 @@ function OverflowPopover({
 
 // ── DayCell ───────────────────────────────────────────────────────────────────
 
+/** One event resolved to a whole-cell-exclusive style ("text" | "background" | "border-top" | "border-bottom"). */
+interface CellStyleEntry {
+  event: CalendarEvent;
+  style: DisplayStyle;
+  type: EventType;
+}
+
 interface DayCellProps {
   day: Date;
   isToday: boolean;
   isCurrentMonth: boolean;
   timedBlockEvents: CalendarEvent[];
-  tlAvatars: CalendarEvent[];
+  trAvatars: CalendarEvent[];
   blAvatars: CalendarEvent[];
   brAvatars: CalendarEvent[];
-  dayStyleEvents: CalendarEvent[];
+  cellStyleEvents: CellStyleEntry[];
   onEventClick: (e: CalendarEvent) => void;
   getType: (id: string) => EventType | undefined;
   rules: Rule[];
@@ -141,109 +146,82 @@ interface DayCellProps {
 
 function DayCell({
   day, isToday, isCurrentMonth,
-  timedBlockEvents, tlAvatars, blAvatars, brAvatars, dayStyleEvents,
+  timedBlockEvents, trAvatars, blAvatars, brAvatars, cellStyleEvents,
   onEventClick, getType, rules,
 }: DayCellProps) {
   const [avatarModal, setAvatarModal] = useState<{ events: CalendarEvent[]; corner: string } | null>(null);
-  const [dayStylePopoverOpen, setDayStylePopoverOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const openDayStylePopover = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setDayStylePopoverOpen(true);
-  };
-  const scheduleCloseDayStylePopover = () => {
-    closeTimer.current = setTimeout(() => setDayStylePopoverOpen(false), 150);
-  };
+  const [cellModalOpen, setCellModalOpen] = useState(false);
 
   const visibleBlock = timedBlockEvents.slice(0, MAX_VISIBLE_BLOCK);
   const hiddenBlock = timedBlockEvents.slice(MAX_VISIBLE_BLOCK);
 
-  const bgColor =
-    isCurrentMonth && dayStyleEvents.length === 1
-      ? (resolveEventType(dayStyleEvents[0], getType, rules)?.color ?? "#6366f1") + "18"
-      : undefined;
+  // "First event in the day's list wins the render" for each whole-cell-exclusive slot.
+  const labelWinner = cellStyleEvents.find((c) => c.style === "text" || c.style === "background");
+  const borderTopWinner = cellStyleEvents.find((c) => c.style === "border-top");
+  const borderBottomWinner = cellStyleEvents.find((c) => c.style === "border-bottom");
+  const allCellEvents = cellStyleEvents.map((c) => c.event);
 
-  const bgClass = isCurrentMonth && dayStyleEvents.length > 1 ? "bg-muted/30" : "";
+  const bgColor =
+    isCurrentMonth && labelWinner?.style === "background" ? labelWinner.type.color + "18" : undefined;
+
+  const numberClass = cn(
+    "transition-colors",
+    isToday
+      ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none shrink-0"
+      : cn(
+          "text-xs font-medium leading-none shrink-0",
+          allCellEvents.length > 0 && "underline underline-offset-2 decoration-dotted",
+          isCurrentMonth ? "text-foreground hover:text-primary" : "text-muted-foreground/40",
+        )
+  );
+
+  const handleNumberClick = (ev: React.MouseEvent) => {
+    ev.stopPropagation();
+    if (allCellEvents.length > 1) setCellModalOpen(true);
+    else if (allCellEvents.length === 1) onEventClick(allCellEvents[0]);
+  };
 
   return (
     <div
       className={cn(
         "relative border-b border-r border-border overflow-hidden",
         !isCurrentMonth && "bg-muted/15",
-        bgClass,
       )}
       style={bgColor ? { backgroundColor: bgColor } : undefined}
     >
-      {/* Date number */}
-      <div className="flex justify-end pt-1 pr-1.5 pb-0.5 shrink-0">
-        {dayStyleEvents.length > 1 ? (
-          <Popover open={dayStylePopoverOpen} onOpenChange={setDayStylePopoverOpen}>
-            <PopoverTrigger asChild>
-              <button
-                className={cn(
-                  "transition-colors",
-                  isToday
-                    ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none"
-                    : cn(
-                        "text-xs font-medium leading-none underline underline-offset-2 decoration-dotted",
-                        isCurrentMonth ? "text-foreground hover:text-primary" : "text-muted-foreground/40",
-                      )
-                )}
-                onMouseEnter={openDayStylePopover}
-                onMouseLeave={scheduleCloseDayStylePopover}
-                onClick={(ev) => { ev.stopPropagation(); setDayStylePopoverOpen((o) => !o); }}
-              >
-                {format(day, "d")}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-auto min-w-[180px] max-w-[240px] max-h-[280px] overflow-y-auto rounded-xl p-2 flex flex-col gap-1"
-              sideOffset={4}
-              onOpenAutoFocus={(e) => e.preventDefault()}
-              onMouseEnter={openDayStylePopover}
-              onMouseLeave={scheduleCloseDayStylePopover}
-            >
-              {dayStyleEvents.map((e) => (
-                <EventChip
-                  key={e.id}
-                  event={e}
-                  eventType={resolveEventType(e, getType, rules)}
-                  onClick={() => { setDayStylePopoverOpen(false); onEventClick(e); }}
-                  view="month"
-                  listMode
-                />
-              ))}
-            </PopoverContent>
-          </Popover>
-        ) : dayStyleEvents.length === 1 ? (
-          <button
-            className={cn(
-              "transition-colors",
-              isToday
-                ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none"
-                : cn(
-                    "text-xs font-medium leading-none underline underline-offset-2 decoration-dotted",
-                    isCurrentMonth ? "text-foreground hover:text-primary" : "text-muted-foreground/40",
-                  )
-            )}
-            onClick={(ev) => { ev.stopPropagation(); onEventClick(dayStyleEvents[0]); }}
+      {borderTopWinner && (
+        <div className="absolute inset-x-0 top-0 h-0.75" style={{ backgroundColor: borderTopWinner.type.color }} />
+      )}
+      {borderBottomWinner && (
+        <div className="absolute inset-x-0 bottom-0 h-0.75" style={{ backgroundColor: borderBottomWinner.type.color }} />
+      )}
+
+      {/* Date number + label (background/text style name) */}
+      <div className="flex items-center gap-1 pt-1 pl-1.5 pr-1.5 pb-0.5 shrink-0 min-w-0">
+        <button className={numberClass} onClick={handleNumberClick} disabled={allCellEvents.length === 0}>
+          {format(day, "d")}
+        </button>
+        {labelWinner && (
+          <span
+            className="text-[10px] font-medium truncate min-w-0"
+            style={{ color: labelWinner.type.color }}
           >
-            {format(day, "d")}
-          </button>
-        ) : isToday ? (
-          <span className="inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary
-                           text-primary-foreground text-[10px] font-bold leading-none">
-            {format(day, "d")}
-          </span>
-        ) : (
-          <span className={cn(
-            "text-xs font-medium leading-none",
-            isCurrentMonth ? "text-foreground" : "text-muted-foreground/40",
-          )}>
-            {format(day, "d")}
+            {labelWinner.event.title}
           </span>
         )}
       </div>
+
+      {cellModalOpen && (
+        <EventListModal
+          open={true}
+          onClose={() => setCellModalOpen(false)}
+          title={format(day, "d MMMM yyyy")}
+          events={allCellEvents}
+          onEventClick={onEventClick}
+          getType={getType}
+          rules={rules}
+        />
+      )}
 
       {/* Timed block event chips */}
       <div className="flex flex-col gap-[2px] px-1 pb-0.5 min-w-0">
@@ -268,24 +246,24 @@ function DayCell({
         )}
       </div>
 
-      {/* Avatar badges — top-left */}
-      {tlAvatars.length > 0 && (
+      {/* Avatar badges — top-right */}
+      {trAvatars.length > 0 && (
         <div
-          className="absolute top-1 left-1 flex flex-wrap gap-0.5"
+          className="absolute top-1 right-1 flex flex-wrap gap-0.5"
           style={{ maxWidth: "55%", pointerEvents: "none" }}
         >
-          {tlAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
+          {trAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
             <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType, rules)} onEdit={onEventClick} />
           ))}
-          {tlAvatars.length > MAX_VISIBLE_AVATARS && (
+          {trAvatars.length > MAX_VISIBLE_AVATARS && (
             <button
-              onClick={(ev) => { ev.stopPropagation(); setAvatarModal({ events: tlAvatars, corner: "tl" }); }}
+              onClick={(ev) => { ev.stopPropagation(); setAvatarModal({ events: trAvatars, corner: "tr" }); }}
               style={{ pointerEvents: "auto" }}
               className="size-5 sm:size-6 rounded-full bg-muted flex items-center justify-center
                          text-[10px] font-semibold text-muted-foreground shrink-0 cursor-pointer
                          hover:bg-muted/80 transition-colors shadow-xs"
             >
-              +{tlAvatars.length - MAX_VISIBLE_AVATARS}
+              +{trAvatars.length - MAX_VISIBLE_AVATARS}
             </button>
           )}
         </div>
@@ -426,19 +404,19 @@ export function MonthView({ onEventClick }: Props) {
             const isCurrentMonth = isSameMonth(day, currentDate);
 
             const timedBlockEvents: CalendarEvent[] = [];
-            const tlAvatars: CalendarEvent[] = [];
+            const trAvatars: CalendarEvent[] = [];
             const blAvatars: CalendarEvent[] = [];
             const brAvatars: CalendarEvent[] = [];
-            const dayStyleEvents: CalendarEvent[] = [];
+            const cellStyleEvents: CellStyleEntry[] = [];
 
             for (const e of dayEvents) {
               const type = resolveEventType(e, getType, rules);
               const s = resolveStyle(type, "month", e.allDay);
               if (s === "block") timedBlockEvents.push(e);
-              else if (s === "avatar-tl") tlAvatars.push(e);
+              else if (s === "avatar-tr") trAvatars.push(e);
               else if (s === "avatar-bl") blAvatars.push(e);
               else if (s === "avatar-br") brAvatars.push(e);
-              else if (s === "day") dayStyleEvents.push(e);
+              else cellStyleEvents.push({ event: e, style: s, type });
             }
 
             return (
@@ -448,10 +426,10 @@ export function MonthView({ onEventClick }: Props) {
                 isToday={isToday}
                 isCurrentMonth={isCurrentMonth}
                 timedBlockEvents={timedBlockEvents}
-                tlAvatars={tlAvatars}
+                trAvatars={trAvatars}
                 blAvatars={blAvatars}
                 brAvatars={brAvatars}
-                dayStyleEvents={dayStyleEvents}
+                cellStyleEvents={cellStyleEvents}
                 onEventClick={onEventClick}
                 getType={getType}
                 rules={rules}

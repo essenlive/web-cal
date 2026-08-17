@@ -24,6 +24,17 @@ function getIcon(name: string | undefined, size: number, color?: string) {
 }
 
 /**
+ * Content shown inside an avatar-* badge circle: the event's first letter when
+ * the type opts into `badgeLetter`, otherwise the type's icon (or nothing).
+ */
+export function getBadgeContent(type: EventType | undefined, title: string, size: number, color = "#fff") {
+  if (type?.badgeLetter) {
+    return <span style={{ color, fontSize: size, lineHeight: 1, fontWeight: 600 }}>{title.charAt(0).toUpperCase()}</span>;
+  }
+  return getIcon(type?.icon, size, color);
+}
+
+/**
  * Returns the effective EventType for an event by resolving the rules engine only —
  * the first enabled rule matching this event, in priority order. The catch-all rule
  * always resolves to the default type; any other rule whose target type has since
@@ -56,14 +67,14 @@ export function isEventHidden(
   return !!type?.hidden;
 }
 
-/** Timed events use the type's timedStyle. All-day events use the type's allDayStyle. */
+/** Timed events use the type's timedStyle. All-day events use the type's allDayStyle. Both are fully configurable. */
 export function resolveStyle(
   type: EventType | undefined,
   _view: CalendarView,
   allDay: boolean
 ): DisplayStyle {
   if (!allDay) return type?.timedStyle ?? "block";
-  return type?.allDayStyle ?? "day";
+  return type?.allDayStyle ?? "background";
 }
 
 export function EventChip({ event, eventType, onClick, compact = false, view = "month", listMode = false }: EventChipProps) {
@@ -74,8 +85,8 @@ export function EventChip({ event, eventType, onClick, compact = false, view = "
   const stopProp = (fn?: (e?: React.MouseEvent) => void) =>
     (e: React.MouseEvent) => { e.stopPropagation(); fn?.(e); };
 
-  // ── Avatar badge (circular icon) ──────────────────────────────────────────
-  if (style === "avatar-tl" || style === "avatar-bl" || style === "avatar-br") {
+  // ── Avatar badge (circular icon or letter) ────────────────────────────────
+  if (style === "avatar-tr" || style === "avatar-bl" || style === "avatar-br") {
     return (
       <SimpleTooltip label={event.title}>
         <div
@@ -84,14 +95,14 @@ export function EventChip({ event, eventType, onClick, compact = false, view = "
                      transition-all hover:scale-110 active:scale-95 hover:brightness-90 shadow-xs"
           style={{ backgroundColor: color }}
         >
-          {getIcon(icon, 11, "#fff")}
+          {getBadgeContent(eventType, event.title, 11)}
         </div>
       </SimpleTooltip>
     );
   }
 
-  // ── Day style — returns null, rendering handled by parent cell ────────────
-  if (style === "day") {
+  // ── Whole-cell styles — return null, rendering handled by parent cell ─────
+  if (style === "text" || style === "background" || style === "border-top" || style === "border-bottom") {
     return null;
   }
 

@@ -161,31 +161,38 @@ export const useConnectionStore = create<ConnectionStore>()(
 // ── Event Types Store ─────────────────────────────────────────────────────────
 
 const DEFAULT_EVENT_TYPES: EventType[] = [
-  { id: "meeting",    label: "Classique",  color: "#3b82f6", icon: "Users",       allDayStyle: "day",       timedStyle: "block", isDefault: true },
-  { id: "deadline",   label: "Deadline",   color: "#ef4444", icon: "AlertCircle", allDayStyle: "day",       timedStyle: "block" },
-  { id: "workshop",   label: "Workshop",   color: "#8b5cf6", icon: "Layers",      allDayStyle: "day",       timedStyle: "block" },
-  { id: "focus-time", label: "Focus time", color: "#10b981", icon: "Brain",       allDayStyle: "avatar-tl", timedStyle: "block" },
-  { id: "admin",      label: "Admin",      color: "#f59e0b", icon: "FileText",    allDayStyle: "avatar-bl", timedStyle: "block" },
-  { id: "social",     label: "Social",     color: "#ec4899", icon: "Heart",       allDayStyle: "avatar-br", timedStyle: "block" },
+  { id: "meeting",    label: "Classique",  color: "#3b82f6", icon: "Users",       allDayStyle: "background", timedStyle: "block", isDefault: true },
+  { id: "deadline",   label: "Deadline",   color: "#ef4444", icon: "AlertCircle", allDayStyle: "background", timedStyle: "block" },
+  { id: "workshop",   label: "Workshop",   color: "#8b5cf6", icon: "Layers",      allDayStyle: "background", timedStyle: "block" },
+  { id: "focus-time", label: "Focus time", color: "#10b981", icon: "Brain",       allDayStyle: "avatar-tr",  timedStyle: "block" },
+  { id: "admin",      label: "Admin",      color: "#f59e0b", icon: "FileText",    allDayStyle: "avatar-bl",  timedStyle: "block" },
+  { id: "social",     label: "Social",     color: "#ec4899", icon: "Heart",       allDayStyle: "avatar-br",  timedStyle: "block" },
 ];
 
 /** Migrate persisted EventType from any old format to current shape. */
 function migrateType(t: any): EventType {
   const styleMap: Record<string, DisplayStyle> = {
-    pill: "avatar-tl", card: "block", block: "block", outline: "avatar-tl",
-    "avatar-tl": "avatar-tl", "avatar-bl": "avatar-bl", "avatar-br": "avatar-br", day: "day",
+    pill: "avatar-tr", card: "block", block: "block", outline: "avatar-tr",
+    "avatar-tl": "avatar-tr", "avatar-tr": "avatar-tr", "avatar-bl": "avatar-bl", "avatar-br": "avatar-br",
+    day: "background", background: "background",
+    text: "text", "border-top": "border-top", "border-bottom": "border-bottom",
   };
 
   if (typeof t.allDayStyle === "string") {
-    // Already has allDayStyle — ensure timedStyle is present (added in v2)
-    return { ...t, timedStyle: t.timedStyle ?? "block" } as EventType;
+    // Already has allDayStyle — ensure timedStyle is present (added in v2), and remap any
+    // pre-rework style values (avatar-tl → avatar-tr, day → background).
+    return {
+      ...t,
+      allDayStyle: styleMap[t.allDayStyle] ?? "background",
+      timedStyle: styleMap[t.timedStyle ?? "block"] ?? "block",
+    } as EventType;
   }
 
   // Legacy format: extract best candidate from old per-view styles or legacy `style` field
   const old = t.styles?.month?.allDay ?? t.styles?.month?.timed ?? t.style ?? "day";
   return {
     id: t.id, label: t.label, color: t.color, icon: t.icon,
-    allDayStyle: styleMap[old] ?? "day",
+    allDayStyle: styleMap[old] ?? "background",
     timedStyle: "block",
   };
 }

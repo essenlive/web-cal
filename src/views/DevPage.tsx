@@ -42,7 +42,7 @@ function generateOverflowEvents(): CalendarEvent[] {
       setMinutes(setHours(tue, 10 + i), 0)));
   }
 
-  // 5 allDay focus-time on Tuesday → avatar-tl overflow (>3)
+  // 5 allDay focus-time on Tuesday → avatar-tr overflow (>3)
   for (let i = 0; i < 5; i++) {
     events.push(mkEv(id(), `Focus ${i + 1}`, "focus-time", tue, addDays(tue, 1), true));
   }
@@ -187,7 +187,7 @@ function ShowcasePanel() {
     })), [types]);
 
   const avatarTypes = types.filter((t) => t.allDayStyle.startsWith("avatar"));
-  const dayTypes    = types.filter((t) => t.allDayStyle === "day");
+  const dayTypes    = types.filter((t) => t.allDayStyle === "background");
 
   const overflowEvents = sampleTimed.slice(0, 5);
 
@@ -231,7 +231,7 @@ function ShowcasePanel() {
           })}
         </div>
         <p className="text-[9px] text-muted-foreground mt-1.5">
-          ↖ {avatarTypes.find(t => t.allDayStyle === "avatar-tl")?.label ?? "—"} ·
+          ↗ {avatarTypes.find(t => t.allDayStyle === "avatar-tr")?.label ?? "—"} ·
           ↙ {avatarTypes.find(t => t.allDayStyle === "avatar-bl")?.label ?? "—"} ·
           ↘ {avatarTypes.find(t => t.allDayStyle === "avatar-br")?.label ?? "—"}
         </p>

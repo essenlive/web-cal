@@ -90,8 +90,8 @@ export function AgendaView() {
               {dayEvents.map((e) => {
                 const type = resolveEventType(e, getType, rules);
                 const agendaStyle = resolveStyle(type, "agenda", e.allDay);
-                // For 'day' style in agenda: color the left border of the row
-                const isDayStyle  = agendaStyle === "day";
+                // For 'background' style in agenda: color the left border of the row
+                const isDayStyle  = agendaStyle === "background";
                 const rowColor    = isDayStyle ? type?.color : undefined;
                 return (
                   <div

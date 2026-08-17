@@ -1,21 +1,36 @@
 /**
  * Event position/display style within a calendar cell or time block.
  *
- * avatar-tl  — small icon badge, top-left corner of the cell
- * avatar-bl  — small icon badge, bottom-left corner
- * avatar-br  — small icon badge, bottom-right corner
- * block      — full-width chip with title (classic behaviour)
- * day        — colours the background/border of the whole day cell
+ * text          — event name shown next to the day number, no fill
+ * avatar-tr     — small icon/letter badge, top-right corner of the cell
+ * avatar-bl     — small icon/letter badge, bottom-left corner
+ * avatar-br     — small icon/letter badge, bottom-right corner
+ * block         — full-width chip with title (classic behaviour)
+ * background    — tints the whole cell and shows the name next to the number
+ * border-top    — colored line along the top edge of the cell
+ * border-bottom — colored line along the bottom edge of the cell
  *
- * Timed events always render as "block". This style applies to all-day events.
+ * text/background/border-top/border-bottom are mutually exclusive per cell: when
+ * several events on the same day want the same one of these, the first event in
+ * the day's event list wins the render (see MonthView's cellStyleEvents).
  */
-export type DisplayStyle = "avatar-tl" | "avatar-bl" | "avatar-br" | "block" | "day";
+export type DisplayStyle =
+  | "text"
+  | "avatar-tr"
+  | "avatar-bl"
+  | "avatar-br"
+  | "block"
+  | "background"
+  | "border-top"
+  | "border-bottom";
 
 export interface EventType {
   id: string;
   label: string;
   color: string;
   icon: string;
+  /** When true, avatar-* badge styles show the event title's first letter instead of the icon. */
+  badgeLetter?: boolean;
   /** How all-day events are displayed. */
   allDayStyle: DisplayStyle;
   /** How timed (scheduled) events are displayed. Defaults to "block". */

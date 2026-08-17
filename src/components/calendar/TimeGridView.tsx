@@ -210,16 +210,16 @@ export function TimeGridView({ days, onEventClick }: Props) {
             {days.map((day) => {
               const dayAllDay = getAllDayEventsForDay(events, day);
 
-              // Find first day-style event to color the strip background
+              // Find first background-style event to color the strip background
               const dayStyleEvent = dayAllDay.find(
-                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) === "day",
+                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) === "background",
               );
               const stripBg = dayStyleEvent
                 ? (resolveEventType(dayStyleEvent, getType, rules)?.color ?? "#6366f1") + "18"
                 : undefined;
 
               const chipEvents = dayAllDay.filter(
-                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) !== "day",
+                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) !== "background",
               );
 
               return (
