@@ -19,15 +19,13 @@ export function Section({ id, label, onOpen, onAdd, children }: { id: string; la
   return (
     <div className="px-3 py-3">
       <div className="flex items-center gap-1 px-2 mb-1">
-        <SimpleTooltip label={collapsed ? `Développer ${label}` : `Réduire ${label}`}>
-          <button
-            onClick={() => toggleSection(id)}
-            aria-label={collapsed ? `Développer ${label}` : `Réduire ${label}`}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-          >
-            {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-          </button>
-        </SimpleTooltip>
+        <button
+          onClick={() => toggleSection(id)}
+          aria-label={collapsed ? `Développer ${label}` : `Réduire ${label}`}
+          className="text-muted-foreground hover:text-foreground shrink-0"
+        >
+          {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+        </button>
         <button
           onClick={onOpen}
           className="flex-1 min-w-0 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wide truncate"
