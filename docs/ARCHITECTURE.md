@@ -19,10 +19,12 @@ src/
   components/
     calendar/          # CalendarGrid (view switcher), MonthView, TimeGridView, AgendaView
     events/            # EventChip (rendering + style/visibility resolution), EventDetail (read-only popup)
-    settings/          # AddConnectionModal, EventTypeModal, RuleModal — all edit-in-modal,
-                       # each with its own delete (click-to-confirm) button when editing
-    sidebar/           # Header, Sidebar (mini calendar, sources, types, rules entry point,
-                       # theme selector, settings link), ThemeSelector, ThemeEditorDialog
+    settings/          # SettingsDrawer (shared shell), AddConnectionModal, EventTypeModal,
+                       # RuleEditRow, PanelHeader — all edit-in-drawer, each with its own
+                       # delete (click-to-confirm) button when editing
+    sidebar/           # Header, Sidebar (mini calendar, presets, sources, types, theme —
+                       # all uniform sections — plus a footer with rules/settings/shortcuts),
+                       # ThemeEditorDialog
     ui/                # shadcn/ui "new-york" primitives (button, dialog, input, switch, combobox…)
   context/            # DataProviderContext — wires connections to the active DataProvider
   lib/                # data-provider.ts (interface), mock/webcal/caldav providers,
@@ -41,6 +43,8 @@ src/
 | [Display rules engine](#display-rules-engine) | [003-display-type-rules-engine](../specs/003-display-type-rules-engine/spec.md) | Ordered rules resolve which display type an event renders with. |
 | [Quick hide](#quick-hide) | [004-quick-hide](../specs/004-quick-hide/spec.md) | Toggle visibility of a source or type without deleting it. |
 | [Global theming](#global-theming) | [005-global-theming](../specs/005-global-theming/spec.md) | Named themes (base mode + accent color) replace the old light/dark toggle. |
+| Presets | [006-view-presets](../specs/006-view-presets/spec.md) | Saved combinations of source/type visibility, switchable from the sidebar. |
+| [Settings map](#settings-map) | [007-settings-side-drawer](../specs/007-settings-side-drawer/spec.md) | Every settings surface (Sources/Types/Règles/Thème/Réglages) shares one side drawer. |
 
 ---
 
@@ -67,19 +71,23 @@ Whenever `currentDate` changes (i.e. the visible calendar range moves), an effec
 
 ## Display types
 
-An `EventType` ([types/index.ts](../src/types/index.ts)) defines a **color**, **icon**, and two independent `DisplayStyle`s — one for all-day events (`allDayStyle`), one for timed events (`timedStyle`):
+An `EventType` ([types/index.ts](../src/types/index.ts)) defines a **color**, **icon**, an optional **`badgeLetter`** flag, and two independent `DisplayStyle`s — one for all-day events (`allDayStyle`), one for timed events (`timedStyle`):
 
 | Style | Rendering |
 | --- | --- |
 | `block` | Full-width filled chip with icon + title (classic) |
-| `avatar-tl` / `avatar-bl` / `avatar-br` | Small circular icon badge, pinned to a corner of the day cell |
-| `day` | Tints the whole day cell's background/border; `EventChip` itself renders nothing — the parent view (`MonthView`/`TimeGridView`) reads the resolved style separately to paint the cell |
+| `avatar-tr` / `avatar-bl` / `avatar-br` | Small circular badge — the icon, or the event's first letter when `badgeLetter` is set — pinned to a corner of the day cell (top-right, bottom-left, bottom-right) |
+| `text` | Event title shown next to the day number, no fill |
+| `background` | Tints the whole day cell **and** shows the title next to the number (same label slot as `text`) |
+| `border-top` / `border-bottom` | Thin colored line along the cell's top/bottom edge |
 
-`EventChip`'s `listMode` prop overrides this: aggregation surfaces (the overflow popovers/modals in `MonthView`) always need a titled row per event, so they pass `listMode` to force the `block` rendering regardless of the event's resolved `avatar-*`/`day` style — otherwise a cell with only `day`-style events would list as empty rows.
+`text`/`background`/`border-top`/`border-bottom` are whole-cell-exclusive: `EventChip` renders nothing for these (returns `null`) — `MonthView`'s `DayCell` resolves each of the four slots separately per day. When more than one of that day's events wants the same slot, **the first event in the day's list wins the render** (`cellStyleEvents`, built while bucketing each day's events in [MonthView.tsx](../src/components/calendar/MonthView.tsx)); clicking the day number then opens the same multi-event picker (`EventListModal`) used for badge/block overflow, listing every event that resolved to one of those four styles that day.
+
+`EventChip`'s `listMode` prop overrides all of the above: aggregation surfaces (overflow popovers, the multi-event modal) always need a titled row per event, so they pass `listMode` to force `block` rendering regardless of the event's resolved style — otherwise a cell with only `background`-style events would list as empty rows.
 
 Exactly one type has `isDefault: true` at all times — it's the fallback used when no rule matches (see below) and can't be deleted until another type is made default first ([store/index.ts](../src/store/index.ts) `useEventTypeStore`).
 
-Types are managed from the sidebar's **Types** section (`EventTypeModal`), not the Settings page. Editing an existing type shows which rules currently resolve to it ("Règles liées") and a delete (click-to-confirm) button, disabled while it's the default type.
+Types are managed from the sidebar's **Types** section (`EventTypeModal`). The icon picker searches the full `lucide-react` icon set (~1750 icons, deduped from its export aliases at module load — [lib/icons.tsx](../src/lib/icons.tsx) `ALL_ICON_NAMES`) instead of a fixed shortlist; results are capped at 60 rendered buttons per query. Editing an existing type shows its linked rules inline — a "Textes" list (add/reorder/delete name-pattern rules) and a "Sources" list — plus a delete (click-to-confirm) button, disabled while it's the default type.
 
 ---
 
@@ -91,16 +99,16 @@ A `Rule` matches by:
 
 | `matchType` | `matchValue` is… |
 | --- | --- |
-| `event` | a specific `CalendarEvent.id` |
+| `event` | a specific `CalendarEvent.id` — legacy; the "just this event" quick action that created these was retired, existing ones still resolve and show read-only under "Autres" |
 | `name` | a text/regex pattern tested against the event title |
-| `source` | a `Connection.id` |
+| `source` | a `Connection.id` — every connection gets exactly one, auto-created the first time it's rendered ([`useSourceRule`](../src/components/settings/RuleEditRow.tsx)) |
 | `all` | unused — the catch-all rule, matches every event |
 
 **Resolution** ([components/events/EventChip.tsx:`resolveEventType`](../src/components/events/EventChip.tsx) → [lib/rules.ts:`findMatchingRule`](../src/lib/rules.ts)): rules are walked in array order (array order **is** priority), skipping any that are disabled; the first match wins. The catch-all rule always matches — `useRuleStore` seeds one on first load and re-seeds it on rehydrate if missing — so there is always a fallback. Resolving to the catch-all rule, or to any other rule whose target type has since been deleted (a "broken" rule), both fall back to the current **default `EventType`** (`useEventTypeStore.getDefaultType()`), not to a fixed `displayTypeId` on the rule itself. The catch-all rule can't be deleted, disabled, reordered, or retargeted — change which type it resolves to by making a different type the default instead.
 
 New rules are inserted at the top of their own tier (event > name > source > catch-all), newest-first within a tier, via `tierOf()` in [store/index.ts](../src/store/index.ts). Rules can also be reordered by hand (drag, or the up/down buttons) within the non-catch-all block, and dragging/removing a connection cleans up any `source` rules that pointed at it.
 
-Rules are managed from **Règles d'affichage**, a modal opened from the sidebar (beneath the Types list) rather than a page — `RulesModal` in [views/RulesPage.tsx](../src/views/RulesPage.tsx). Shortcuts into rule creation exist from the event detail popup ("by title" / "just this event") and from a connection's edit modal ("Create a rule for this source").
+Rules are managed from **Règles**, a drawer panel (`RulesPanel` in [views/RulesPage.tsx](../src/views/RulesPage.tsx)) reachable from its own sidebar footer icon — the same shared drawer as every other section (see [Settings map](#settings-map)) — split into "Textes" (name-pattern rules, freely addable/reorderable/deletable) and "Sources" (one fixed rule per connection). The same rules are also editable inline wherever they're relevant: a type's edit drawer lists and creates the name-pattern rules that target it, a connection's edit drawer shows its fixed source rule, and the event detail popup has a "create a rule from this event's title" shortcut.
 
 ---
 
@@ -116,13 +124,13 @@ Hiding every source and every type at once is allowed unconditionally (no confir
 
 ## Global theming
 
-A `Theme` ([types/index.ts](../src/types/index.ts)) is a name + base `mode` (`light`/`dark`) + a single accent hex color. Two built-ins (`"light"`, `"dark"`, [lib/theme.ts](../src/lib/theme.ts) `BUILTIN_THEMES`) are never persisted, editable, or deletable; user-created themes live in `useThemeStore.customThemes` ([store/index.ts](../src/store/index.ts)).
+A `Theme` ([types/index.ts](../src/types/index.ts)) is a name + base `mode` (`light`/`dark`) + accent hex color, plus optional `fontFamily` (a Google Fonts family name, e.g. `"Roboto"`), `radius` (a CSS length), and `background`/`card`/`border`/`muted` base-color overrides. The two built-ins (`"light"`, `"dark"`, [lib/theme.ts](../src/lib/theme.ts) `BUILTIN_THEMES`) live in `useThemeStore.customThemes` alongside every user-created theme ([store/index.ts](../src/store/index.ts)) and are equally editable, renamable, and deletable — nothing is special-cased read-only.
 
-**Applying a theme** ([app/providers.tsx](../src/app/providers.tsx)): on mount and whenever the selection changes, an effect toggles the `.dark` class on `<html>` per the theme's `mode`, then calls `resolveThemeCssVars()` to override `--primary`/`--primary-foreground`/`--accent`/`--accent-foreground`/`--ring` (defined in [globals.css](../src/app/globals.css)). Only hue+saturation come from the picked accent; lightness stays fixed per mode at the app's existing hand-tuned values, so custom accents don't wreck contrast.
+**Applying a theme** ([app/providers.tsx](../src/app/providers.tsx)): on mount and whenever the selection changes, an effect toggles the `.dark` class on `<html>` per the theme's `mode`, then calls `resolveThemeCssVars()` to override `--primary`/`--primary-foreground`/`--accent`/`--accent-foreground`/`--ring`, `--font-sans`, `--radius`, and the base surface tokens (`--background`/`--card`/`--border`/`--muted`, all defined in [globals.css](../src/app/globals.css)) — unset base colors fall back to `DEFAULT_BASE_COLORS[mode]`. Only hue+saturation come from the picked accent; lightness stays fixed per mode at the app's existing hand-tuned values, so custom accents don't wreck contrast. `radius` is chosen from a small preset scale (None/Subtle/Full) in `ThemeEditorDialog`, applied consistently everywhere `rounded-*` is used. `fontFamily` is loaded via a Google Fonts `<link>` injected at selection time; themes saved before this field existed may hold a full CSS font-family stack instead of a bare family name — see `rawFamilyName()` in [lib/theme.ts](../src/lib/theme.ts).
 
 **Migration**: existing users had a `darkMode: boolean` under `proton-cal:ui`. On first load after upgrade, if no theme selection exists yet, `useThemeStore` reads that legacy value once (read-only — `useUIStore`/`proton-cal:ui` are left untouched) and maps `true → "dark"`, `false/absent → "light"`.
 
-Managed via `ThemeSelector` ([components/sidebar/ThemeSelector.tsx](../src/components/sidebar/ThemeSelector.tsx)), a popover in the sidebar footer listing every theme with inline create/edit (`ThemeEditorDialog`); built-ins can be selected but not edited or deleted.
+Managed via the sidebar's **Thème** section ([Settings map](#settings-map)): every theme is listed and selectable inline; editing (including the two built-ins) opens `ThemeEditorDialog` ([components/sidebar/ThemeEditorDialog.tsx](../src/components/sidebar/ThemeEditorDialog.tsx)), which also offers duplicate. Custom `background`/`card`/`border`/`muted` overrides live behind a collapsed "Avancé" toggle.
 
 ---
 
@@ -141,7 +149,7 @@ Everything lives in the browser. There is no server-side database — the Next.j
 | `useConnectionStore` | `webcal:connections` | Yes, in full | CalDAV passwords are stored **in plaintext** in this key ([types/index.ts](../src/types/index.ts)) — there's no encryption layer. On first load it migrates any legacy `webcal:backend` config into a connection, then deletes that old key. Removing a connection also deletes any `source`-type rules that targeted it. A `hidden` flag (see [Quick hide](#quick-hide)) lives on each connection. |
 | `useEventTypeStore` | `proton-cal:event-types` | Yes, in full | Runs `migrateType()` on rehydrate to upgrade older `EventType` shapes, and ensures exactly one type has `isDefault: true` (migrating from the old "catch-all rule's target" convention if needed). A type can't be deleted while it's the default — make another type default first. A `hidden` flag lives on each type. |
 | `useRuleStore` | `webcal:rules` | Yes, in full | Ordered list of `Rule`s; array order is match priority. Always contains exactly one `matchType: "all"` catch-all rule, seeded on first load and re-seeded on rehydrate if missing. |
-| `useThemeStore` | `proton-cal:themes` | Yes, in full (`partialize`) | `customThemes`, `selectedThemeId`, and a one-time migration guard. Built-in themes are never stored here. |
+| `useThemeStore` | `proton-cal:themes` | Yes, in full (`partialize`) | `customThemes` (seeded with the two built-ins, then holds every theme from then on — all equally editable), `selectedThemeId`, `themeOrder`, and one-time migration guards. |
 | `useUIStore` | `proton-cal:ui` | Partial (`partialize`) | Only `view`, `weekStartsOnMonday`, `use24h`, `dateFormatEU` are persisted. `currentDate` and `sidebarOpen` reset every load. The legacy `darkMode` field is gone from this store — it's superseded by `useThemeStore`, and is only ever read once, raw, for the migration above. |
 | `useBackendStore` | `webcal:backend` | Yes | **Deprecated** — kept only so `useConnectionStore`'s one-time migration has something to read, then it's deleted. |
 | `useEventsStore` | — | **No** | Events are never persisted directly; they're always refetched from the active `DataProvider` on load and on date-range change. |
@@ -153,8 +161,11 @@ Everything lives in the browser. There is no server-side database — the Next.j
 
 ## Settings map
 
-- **Data Sources** — sidebar **Sources** section: add ICS/WebCal connections, edit any existing connection including legacy CalDAV ones (`AddConnectionModal`), see live per-connection status, hide/show, delete, shortcut to create a source-matching rule. CalDAV is no longer offered for new connections — see [types/index.ts](../src/types/index.ts) `CalDAVConnection` — but `CalDAVProvider` keeps serving any already-persisted one.
-- **Types d'événements** — sidebar **Types** section, see [Display types](#display-types).
-- **Règles d'affichage** — sidebar modal, see [Display rules engine](#display-rules-engine).
-- **Thème** — `ThemeSelector` popover in the sidebar footer, see [Global theming](#global-theming).
-- **`/settings` page** — holds only **Préférences**: week start (Monday/Sunday), 24h clock, date format (DD/MM/YYYY or MM/DD/YYYY).
+Everything below opens in one shared side drawer (`SettingsDrawer`, [components/settings/SettingsDrawer.tsx](../src/components/settings/SettingsDrawer.tsx)) whose content swaps on `useUIStore().activeDrawer` — there are no separate settings pages or modals.
+
+- **Presets** — sidebar **Presets** section (`PresetSelector`): saved source/type-visibility combinations, see [006-view-presets](../specs/006-view-presets/spec.md).
+- **Sources** — sidebar **Sources** section: add ICS/WebCal connections, edit any existing connection including legacy CalDAV ones (`AddConnectionModal`), see live per-connection status, hide/show, delete. CalDAV is no longer offered for new connections — see [types/index.ts](../src/types/index.ts) `CalDAVConnection` — but `CalDAVProvider` keeps serving any already-persisted one.
+- **Types** — sidebar **Types** section, see [Display types](#display-types).
+- **Règles** — sidebar footer icon (next to Réglages), see [Display rules engine](#display-rules-engine).
+- **Thème** — sidebar **Thème** section: every theme, including the two built-ins, is listed and selectable inline; editing opens the same drawer. See [Global theming](#global-theming).
+- **Réglages** — sidebar footer button: week start (Monday/Sunday), 24h clock, date format (DD/MM/YYYY or MM/DD/YYYY), settings export/import, and a full reset (`PreferencesPanel` in [views/SettingsPage.tsx](../src/views/SettingsPage.tsx)). `/settings` is kept only as a redirect (`src/app/settings/page.tsx`) that opens this panel then bounces to `/`.
