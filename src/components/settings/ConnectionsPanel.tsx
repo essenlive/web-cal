@@ -7,20 +7,24 @@
  */
 
 import { useState } from "react";
+import { format } from "date-fns";
+import { RefreshCw } from "lucide-react";
 import { useConnectionStore } from "../../store";
-import { useConnectionStatusMap } from "../../context/DataProviderContext";
+import { useConnectionStatusMap, useSourceSync } from "../../context/DataProviderContext";
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { ItemBadge } from "../sidebar/ItemRow";
 import { statusColor, statusLabel } from "../sidebar/Sidebar";
 import { AddConnectionModal } from "./AddConnectionModal";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader } from "./PanelHeader";
+import { ActionButton } from "../ui/action-button";
 import { SimpleTooltip } from "../ui/tooltip";
 import type { Connection } from "../../types";
 
 export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { connections, addConnection, updateConnection, removeConnection, reorderConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
+  const { refresh, lastUpdated } = useSourceSync();
   const { getDragProps } = useDragReorder(connections, (c) => c.id, reorderConnection);
 
   const initialConn = initialEditId ? connections.find((c) => c.id === initialEditId) ?? null : null;
@@ -50,7 +54,27 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
     <>
       <PanelHeader
         title="Sources"
-        description="Les sources sont des liens webcal. Pour l'instant, les sources sont en lecture seule. Vous pouvez ajouter vos propres liens ou des liens de calendrier publics (jours fériés...)."
+        description={
+          <>
+            Les sources sont des liens webcal. Pour l&apos;instant, les sources sont en lecture seule. Vous pouvez ajouter vos propres liens ou des liens de calendrier publics (jours fériés...).
+            <br />
+            {lastUpdated ? `Actualisé à ${format(lastUpdated, "HH:mm")}.` : "Chargement…"}
+          </>
+        }
+        action={
+          <SimpleTooltip label="Actualiser les sources">
+            <ActionButton
+              variant="ghost"
+              size="icon"
+              confirm={false}
+              onAction={refresh}
+              aria-label="Actualiser les sources"
+              className="shrink-0"
+            >
+              <RefreshCw size={16} />
+            </ActionButton>
+          </SimpleTooltip>
+        }
       />
       <div className="space-y-1.5 px-4 pb-4">
         {connections.length === 0 && <p className="text-xs text-muted-foreground">Aucune source.</p>}

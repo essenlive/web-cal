@@ -3,13 +3,14 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Settings, Keyboard, ListOrdered, Eye, EyeOff, Pencil, Sun, Moon } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Settings, Keyboard, ListOrdered, Eye, EyeOff, Pencil, Sun, Moon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import { ActionButton } from "../ui/action-button";
 import { SimpleTooltip } from "../ui/tooltip";
 import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
-import { useConnectionStatusMap } from "../../context/DataProviderContext";
+import { useConnectionStatusMap, useSourceSync } from "../../context/DataProviderContext";
 import { getIconEl } from "../../lib/icons";
 import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
@@ -109,6 +110,7 @@ export function Sidebar() {
 
   const { connections, updateConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
+  const { refresh, lastUpdated } = useSourceSync();
   const { types, updateType } = useEventTypeStore();
   const { customThemes, themeOrder, selectedThemeId, selectTheme } = useThemeStore();
 
@@ -177,7 +179,26 @@ export function Sidebar() {
       <div className="border-t border-border" />
 
       {/* Data sources preview */}
-      <Section id="connections" label="Sources" onOpen={() => openDrawer("connection")} onAdd={() => openNewItemDrawer("connection")}>
+      <Section
+        id="connections"
+        label="Sources"
+        onOpen={() => openDrawer("connection")}
+        onAdd={() => openNewItemDrawer("connection")}
+        extra={
+          <SimpleTooltip label={lastUpdated ? `Actualiser (dernière actualisation à ${format(lastUpdated, "HH:mm")})` : "Actualiser"}>
+            <ActionButton
+              variant="ghost"
+              size="icon"
+              confirm={false}
+              onAction={refresh}
+              aria-label="Actualiser les sources"
+              className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
+            >
+              <RefreshCw size={12} />
+            </ActionButton>
+          </SimpleTooltip>
+        }
+      >
         {connections.length === 0 && (
           <p className="px-2 text-xs text-muted-foreground">Aucune source.</p>
         )}

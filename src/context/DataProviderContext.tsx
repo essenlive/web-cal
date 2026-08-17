@@ -15,12 +15,31 @@ import type { ConnectionStatusMap } from "../types";
 
 const DataCtx = createContext<DataProvider | null>(null);
 const StatusCtx = createContext<ConnectionStatusMap>({});
+const SyncCtx = createContext<{ refresh: () => Promise<void>; lastUpdated: Date | null }>({
+  refresh: async () => {},
+  lastUpdated: null,
+});
+
+/**
+ * True once useConnectionStore has read its persisted localStorage value.
+ * Next.js SSR (and the client's first paint, to match server HTML) has no
+ * localStorage, so `connections` briefly holds the store's hard-coded default
+ * — fetching against it would flash the seeded demo events before the real
+ * sources load. Callers should wait for this before fetching.
+ */
+function useConnectionsHydrated() {
+  const [hydrated, setHydrated] = useState(() => useConnectionStore.persist.hasHydrated());
+  useEffect(() => useConnectionStore.persist.onFinishHydration(() => setHydrated(true)), []);
+  return hydrated;
+}
 
 export function DataProviderContext({ children }: { children: ReactNode }) {
   const { connections } = useConnectionStore();
   const { setEvents } = useEventsStore();
   const { currentDate } = useUIStore();
   const [statusMap, setStatusMap] = useState<ConnectionStatusMap>({});
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const hydrated = useConnectionsHydrated();
 
   const handleStatusChange = useCallback((id: string, status: ConnectionStatusMap[string]) => {
     setStatusMap((prev) => ({ ...prev, [id]: status }));
@@ -39,16 +58,36 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     [connectionKey, handleStatusChange]
   );
 
-  useEffect(() => {
+  // Re-fetches from every source (no caching layer in front of getEvents, so
+  // this always hits the network) — shared by the auto-refetch effect below
+  // and by the manual refresh button.
+  const refresh = useCallback(async () => {
     const start = subMonths(currentDate, 1);
     const end = addMonths(currentDate, 2);
-    provider.getEvents(start, end).then(setEvents).catch(console.error);
+    const events = await provider.getEvents(start, end);
+    setEvents(events);
+    setLastUpdated(new Date());
   }, [provider, currentDate, setEvents]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    const start = subMonths(currentDate, 1);
+    const end = addMonths(currentDate, 2);
+    provider
+      .getEvents(start, end)
+      .then((events) => {
+        setEvents(events);
+        setLastUpdated(new Date());
+      })
+      .catch(console.error);
+  }, [provider, currentDate, setEvents, hydrated]);
+
   return (
-    <StatusCtx.Provider value={statusMap}>
-      <DataCtx.Provider value={provider}>{children}</DataCtx.Provider>
-    </StatusCtx.Provider>
+    <SyncCtx.Provider value={{ refresh, lastUpdated }}>
+      <StatusCtx.Provider value={statusMap}>
+        <DataCtx.Provider value={provider}>{children}</DataCtx.Provider>
+      </StatusCtx.Provider>
+    </SyncCtx.Provider>
   );
 }
 
@@ -61,4 +100,9 @@ export function useDataProvider(): DataProvider {
 /** Returns live connection status map. Updates on every fetch attempt. */
 export function useConnectionStatusMap(): ConnectionStatusMap {
   return useContext(StatusCtx);
+}
+
+/** Manual re-fetch of every source, plus when that last succeeded. */
+export function useSourceSync(): { refresh: () => Promise<void>; lastUpdated: Date | null } {
+  return useContext(SyncCtx);
 }

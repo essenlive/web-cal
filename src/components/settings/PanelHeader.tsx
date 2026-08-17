@@ -25,9 +25,11 @@ export interface PanelHeaderProps {
   onBack?: () => void;
   /** List panels: explains the section, with InlineLink cross-references to related sections. */
   description?: ReactNode;
+  /** List panels: trailing control on the title row (e.g. a refresh button). */
+  action?: ReactNode;
 }
 
-export function PanelHeader({ title, onBack, description }: PanelHeaderProps) {
+export function PanelHeader({ title, onBack, description, action }: PanelHeaderProps) {
   return (
     <DrawerHeader className="space-y-2">
       <div className="flex items-center gap-1 min-w-0">
@@ -40,7 +42,8 @@ export function PanelHeader({ title, onBack, description }: PanelHeaderProps) {
             <ChevronLeft size={16} />
           </button>
         )}
-        <DrawerTitle className="truncate">{title}</DrawerTitle>
+        <DrawerTitle className="truncate flex-1">{title}</DrawerTitle>
+        {action}
       </div>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
     </DrawerHeader>
