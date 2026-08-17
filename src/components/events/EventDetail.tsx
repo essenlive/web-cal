@@ -1,9 +1,10 @@
 import { format } from "date-fns";
-import { MapPin, StickyNote, ListOrdered } from "lucide-react";
+import { MapPin, StickyNote, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useEventTypeStore, useUIStore, useRuleStore, useEventsStore, useConnectionStore } from "../../store";
 import { resolveEventType } from "./EventChip";
 import { findMatchingRule, describeMatch } from "../../lib/rules";
 import { getIconEl } from "../../lib/icons";
+import { ItemBadge } from "../sidebar/ItemRow";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,6 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
 
   const type = resolveEventType(event, getType, rules);
   const matchedRule = findMatchingRule(event, rules);
-  const priority = rules.indexOf(matchedRule) + 1;
   const isDefault = matchedRule.matchType === "all";
   const ruleDescription = describeMatch(
     matchedRule,
@@ -75,33 +75,40 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
             </div>
           )}
 
-          {/* Applied rule + priority (FR-024) */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            <ListOrdered size={13} className="shrink-0" />
-            {isDefault ? (
-              <span>Stylé par la règle par défaut (aucune règle spécifique ne correspond).</span>
-            ) : (
+          {/* Applied rule + resolved type (FR-024) */}
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <ListOrdered size={13} className="shrink-0" />
               <span>
-                Stylé par la règle n°{priority} : <span className="font-medium text-foreground">{ruleDescription}</span>
+                Règle correspondante : {isDefault ? "aucune (style par défaut)" : ruleDescription}
               </span>
-            )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span>Stylé via :</span>
+              <button
+                type="button"
+                onClick={() => { onClose(); openDrawer("eventType", type.id); }}
+                className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground hover:text-primary"
+              >
+                <ItemBadge color={type.color}>{getIconEl(type.icon, 10, "#fff")}</ItemBadge>
+                <span className="truncate">{type.label}</span>
+                <Pencil size={11} className="shrink-0" />
+              </button>
+            </div>
           </div>
 
           {/* Create a rule from this event */}
-          <div className="flex items-center gap-3 flex-wrap pt-1">
-            <span className="text-xs text-muted-foreground">Créer une règle à partir de cet événement :</span>
-            <button
-              type="button"
-              onClick={() => {
-                addRule({ matchType: "name", matchValue: event.title, displayTypeId: type.id });
-                onClose();
-                openDrawer("rules");
-              }}
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              par titre
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              addRule({ matchType: "name", matchValue: event.title, displayTypeId: type.id });
+              onClose();
+              openDrawer("rules");
+            }}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            <Plus size={12} /> Créer une règle
+          </button>
         </div>
       </DialogContent>
     </Dialog>
