@@ -62,17 +62,3 @@ export function useDataProvider(): DataProvider {
 export function useConnectionStatusMap(): ConnectionStatusMap {
   return useContext(StatusCtx);
 }
-
-// ── No-op provider for the dev preview page ───────────────────────────────────
-
-const devProvider: DataProvider = {
-  getEvents: async () => [],
-};
-
-export function DevDataProviderContext({ children }: { children: ReactNode }) {
-  return (
-    <StatusCtx.Provider value={{}}>
-      <DataCtx.Provider value={devProvider}>{children}</DataCtx.Provider>
-    </StatusCtx.Provider>
-  );
-}
