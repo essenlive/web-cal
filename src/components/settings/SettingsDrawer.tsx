@@ -22,7 +22,7 @@ export function SettingsDrawer() {
 
   return (
     <Drawer direction="right" open={activeDrawer !== null} onOpenChange={(v) => { if (!v) closeDrawer(); }}>
-      <DrawerContent className="overflow-y-auto" aria-describedby={undefined}>
+      <DrawerContent className="overflow-y-auto overscroll-contain" aria-describedby={undefined}>
         {activeDrawer?.panel === "connection" && <ConnectionsPanel initialEditId={activeDrawer.editId} openCreate={activeDrawer.create} />}
 
         {activeDrawer?.panel === "eventType" && <EventTypesPanel initialEditId={activeDrawer.editId} openCreate={activeDrawer.create} />}
