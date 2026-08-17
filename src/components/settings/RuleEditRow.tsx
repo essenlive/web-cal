@@ -114,7 +114,7 @@ function DisplayTypeChip({ type }: { type: EventType | undefined }) {
   );
 }
 
-export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockValue, lockDisplayType }: {
+export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockValue, lockDisplayType, lockedType }: {
   rule: Rule;
   onDuplicate?: () => void;
   /** Omit to make the row undeletable (e.g. the one fixed rule for a source). */
@@ -124,13 +124,20 @@ export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockValue,
   lockValue?: boolean;
   /** The display type is implied by context (e.g. "this type's edit form") — render it as a plain badge instead of a dropdown. */
   lockDisplayType?: boolean;
+  /**
+   * Preview to use for the lockDisplayType badge instead of looking `rule.displayTypeId`
+   * up in the store — needed when the rule targets a type that's being created and
+   * hasn't been saved yet (its id doesn't resolve via getType until then), so the
+   * caller passes its own in-progress form state instead.
+   */
+  lockedType?: EventType;
 }) {
   const { updateRule } = useRuleStore();
   const { types, getType } = useEventTypeStore();
   const { connections } = useConnectionStore();
 
   const matchType = rule.matchType as EditableMatchType;
-  const displayType = getType(rule.displayTypeId);
+  const displayType = lockedType ?? getType(rule.displayTypeId);
   const connection = matchType === "source" ? connections.find((c) => c.id === rule.matchValue) : undefined;
 
   function patch(p: Partial<Rule>) {

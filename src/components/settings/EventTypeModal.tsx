@@ -160,6 +160,10 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const { getDefaultType, types } = useEventTypeStore();
   const { events } = useEventsStore();
   const { connections } = useConnectionStore();
+  // In-progress form state as an EventType, so rules linked to this type preview it
+  // correctly even before it's saved (getType(typeId) can't resolve it until then).
+  const previewType: EventType = { id: typeId, label, color, icon, badgeLetter, allDayStyle, timedStyle, isDefault };
+
   const linkedRules = rules.filter((r) => r.displayTypeId === typeId && r.matchType !== "all");
   const textRules = linkedRules.filter((r) => r.matchType === "name");
   const legacyRules = linkedRules.filter((r) => r.matchType === "event");
@@ -320,7 +324,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
                 <h4 className="text-xs font-medium text-muted-foreground mb-1.5">Textes</h4>
                 <div className="space-y-1.5">
                   {textRules.map((r, index) => (
-                    <RuleEditRow key={r.id} rule={r} onDelete={() => removeRule(r.id)} dragProps={getDragProps(index)} lockDisplayType />
+                    <RuleEditRow key={r.id} rule={r} onDelete={() => removeRule(r.id)} dragProps={getDragProps(index)} lockDisplayType lockedType={previewType} />
                   ))}
                   <AddItemButton
                     label="Nouvelle règle"
