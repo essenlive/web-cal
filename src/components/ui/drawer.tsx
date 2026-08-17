@@ -56,6 +56,13 @@ function DrawerContent({
       <DrawerOverlay />
       <DrawerPrimitive.Content
         data-slot="drawer-content"
+        // vaul's own shouldDrag() unconditionally returns true for direction "right"/"left"
+        // (it skips the scrollable-ancestor check it does for top/bottom), so *any* touch-drag
+        // inside a left/right drawer — including a vertical scroll attempt — gets captured as a
+        // dismiss gesture instead of a scroll. data-vaul-no-drag is vaul's documented escape
+        // hatch (checked before that direction branch) to opt out of drag entirely; this app
+        // already relies on the explicit close button below for left/right, never swipe-to-close.
+        data-vaul-no-drag
         className={cn(
           "group/drawer-content fixed z-50 flex h-auto flex-col overflow-x-hidden bg-background",
           "data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-lg data-[vaul-drawer-direction=top]:border-b",
