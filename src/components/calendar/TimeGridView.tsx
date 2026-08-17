@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore, useConnectionStore } from "../../store";
 import { resolveEventType, resolveStyle, isEventHidden } from "../events/EventChip";
@@ -94,7 +95,7 @@ function TimeEventBlock({
   use24h: boolean;
 }) {
   const color = type?.color ?? "#6366f1";
-  const Icon = type?.icon ? (Icons as any)[type.icon] : null;
+  const Icon = type?.icon ? (Icons as unknown as Record<string, LucideIcon>)[type.icon] : null;
   const timeFormat = use24h ? "HH:mm" : "h:mm a";
 
   return (

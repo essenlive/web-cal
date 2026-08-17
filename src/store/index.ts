@@ -143,8 +143,15 @@ const DEFAULT_EVENT_TYPES: EventType[] = [
   { id: "social",     label: "Social",     color: "#ec4899", icon: "Heart",       allDayStyle: "avatar-br",  timedStyle: "block" },
 ];
 
+/** Loose shape covering every field migrateType() reads, across all persisted EventType versions. */
+interface LegacyEventType extends Record<string, unknown> {
+  id?: string; label?: string; color?: string; icon?: string;
+  allDayStyle?: string; timedStyle?: string; style?: string;
+  styles?: { month?: { allDay?: string; timed?: string } };
+}
+
 /** Migrate persisted EventType from any old format to current shape. */
-function migrateType(t: any): EventType {
+function migrateType(t: LegacyEventType): EventType {
   const styleMap: Record<string, DisplayStyle> = {
     pill: "avatar-tr", card: "block", block: "block", outline: "avatar-tr",
     "avatar-tl": "avatar-tr", "avatar-tr": "avatar-tr", "avatar-bl": "avatar-bl", "avatar-br": "avatar-br",
@@ -168,7 +175,7 @@ function migrateType(t: any): EventType {
     id: t.id, label: t.label, color: t.color, icon: t.icon,
     allDayStyle: styleMap[old] ?? "background",
     timedStyle: "block",
-  };
+  } as EventType;
 }
 
 interface EventTypeStore {
@@ -215,7 +222,9 @@ export const useEventTypeStore = create<EventTypeStore>()(
       storage,
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        state.types = state.types.map(migrateType);
+        // Cast: rehydrated state is typed EventType[], but at runtime it may be JSON from
+        // any older persisted shape — that's exactly what migrateType() normalizes.
+        state.types = (state.types as unknown as LegacyEventType[]).map(migrateType);
         if (!state.types.some((t) => t.isDefault)) {
           const id = legacyDefaultTypeId(state.types);
           state.types = state.types.map((t) => ({ ...t, isDefault: t.id === id }));

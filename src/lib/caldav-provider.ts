@@ -70,11 +70,6 @@ async function davRequest(
 
 // ── XML helpers ───────────────────────────────────────────────────────────────
 
-function xmlText(xml: string, tag: string): string {
-  const m = xml.match(new RegExp(`<[^>]*${tag}[^>]*>([^<]*)<`));
-  return m ? m[1].trim() : "";
-}
-
 function parseMultiStatus(xml: string): Array<{ href: string; ics: string; etag: string }> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, "application/xml");

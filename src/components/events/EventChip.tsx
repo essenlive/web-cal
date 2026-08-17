@@ -1,4 +1,5 @@
 import * as Icons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { findMatchingRule } from "../../lib/rules";
 import { useEventTypeStore } from "../../store";
@@ -19,7 +20,7 @@ interface EventChipProps {
 
 function getIcon(name: string | undefined, size: number, color?: string) {
   if (!name) return null;
-  const Icon = (Icons as any)[name];
+  const Icon = (Icons as unknown as Record<string, LucideIcon>)[name];
   return Icon ? <Icon size={size} color={color} /> : null;
 }
 
