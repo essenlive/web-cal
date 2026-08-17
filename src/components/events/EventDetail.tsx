@@ -79,17 +79,17 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <ListOrdered size={13} className="shrink-0" />
             {isDefault ? (
-              <span>Styled by the default rule (no specific rule matched).</span>
+              <span>Stylé par la règle par défaut (aucune règle spécifique ne correspond).</span>
             ) : (
               <span>
-                Styled by rule #{priority}: <span className="font-medium text-foreground">{ruleDescription}</span>
+                Stylé par la règle n°{priority} : <span className="font-medium text-foreground">{ruleDescription}</span>
               </span>
             )}
           </div>
 
           {/* Create a rule from this event */}
           <div className="flex items-center gap-3 flex-wrap pt-1">
-            <span className="text-xs text-muted-foreground">Create a rule from this event:</span>
+            <span className="text-xs text-muted-foreground">Créer une règle à partir de cet événement :</span>
             <button
               type="button"
               onClick={() => {
@@ -99,7 +99,7 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
               }}
               className="text-xs font-medium text-primary hover:underline"
             >
-              by title
+              par titre
             </button>
           </div>
         </div>

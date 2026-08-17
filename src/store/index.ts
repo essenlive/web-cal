@@ -13,7 +13,10 @@ const noopStorage: StateStorage = {
 };
 const storage = createJSONStorage(() => (typeof window !== "undefined" ? localStorage : noopStorage));
 
-// ── Backend Store ──────────────────────────────────────────────────────────────
+// ── Legacy backend config shape ───────────────────────────────────────────────
+// Kept only so useConnectionStore's one-time migration (below) can parse a
+// pre-existing "webcal:backend" localStorage blob; there is no live store for
+// it anymore. WebCalSource stays exported — WebCalProvider still uses it.
 export type BackendType = "mock" | "webcal" | "caldav";
 
 export interface WebCalSource {
@@ -23,43 +26,14 @@ export interface WebCalSource {
   color: string;
 }
 
-export interface BackendConfig {
+interface BackendConfig {
   type: BackendType;
-  // CalDAV — any server: Proton, Nextcloud, Google Calendar, Fastmail…
-  caldavUrl: string;       // e.g. https://calendar.proton.me/dav
+  caldavUrl: string;
   caldavUsername: string;
-  caldavPassword: string;  // app-password / token
-  caldavProxyUrl: string;  // optional CORS proxy prefix (e.g. https://corsproxy.io/?)
-  // WebCal — read-only ICS URL subscriptions
+  caldavPassword: string;
+  caldavProxyUrl: string;
   webcalSources: WebCalSource[];
 }
-
-const DEFAULT_BACKEND: BackendConfig = {
-  type: "mock",
-  caldavUrl: "",
-  caldavUsername: "",
-  caldavPassword: "",
-  caldavProxyUrl: "",
-  webcalSources: [],
-};
-
-interface BackendStore {
-  config: BackendConfig;
-  updateConfig: (patch: Partial<BackendConfig>) => void;
-  resetConfig: () => void;
-}
-
-/** @deprecated Use useConnectionStore instead. */
-export const useBackendStore = create<BackendStore>()(
-  persist(
-    (set) => ({
-      config: DEFAULT_BACKEND,
-      updateConfig: (patch) => set((s) => ({ config: { ...s.config, ...patch } })),
-      resetConfig: () => set({ config: DEFAULT_BACKEND }),
-    }),
-    { name: "webcal:backend", storage }
-  )
-);
 
 // ── Connection Store ──────────────────────────────────────────────────────────
 
