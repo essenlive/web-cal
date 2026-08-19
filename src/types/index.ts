@@ -205,4 +205,6 @@ export interface Preset {
   connections: Record<string, boolean>;
   /** EventType.id → hidden state at save/update time. Absent id = not covered by this preset. */
   eventTypes: Record<string, boolean>;
+  /** Theme.id active at save/update time. Absent on presets created before this field existed — applying/matching then ignores theme entirely. */
+  themeId?: string;
 }

@@ -4,7 +4,7 @@ import { Header } from "../components/sidebar/Header";
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
 import { SettingsDrawer } from "../components/settings/SettingsDrawer";
-import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore } from "../store";
+import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../store";
 import { stepDate } from "../lib/utils";
 import { presetMatchesState } from "../lib/presets";
 import type { CalendarView } from "../types";
@@ -21,7 +21,10 @@ export function CalendarPage() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
-      if (document.querySelector('[role="dialog"]')) return;
+      // [data-state="open"], not just [role="dialog"]: a just-closed drawer/dialog stays
+      // mounted in the DOM for its exit animation (Radix/vaul Presence), which would
+      // otherwise silently swallow shortcuts pressed right after closing it.
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
 
       const { view, currentDate, setCurrentDate, setView } = useUIStore.getState();
       const key = e.key.toLowerCase();
@@ -41,7 +44,8 @@ export function CalendarPage() {
           if (!preset) return;
           const { connections } = useConnectionStore.getState();
           const { types } = useEventTypeStore.getState();
-          const active = presetMatchesState(preset, connections, types);
+          const { selectedThemeId } = useThemeStore.getState();
+          const active = presetMatchesState(preset, connections, types, selectedThemeId);
           if (active) presetStore.clearPreset();
           else presetStore.applyPreset(preset.id);
         }
@@ -84,7 +88,8 @@ export function CalendarPage() {
       const { presets } = usePresetStore.getState();
       const { connections } = useConnectionStore.getState();
       const { types } = useEventTypeStore.getState();
-      const active = presets.find((p) => presetMatchesState(p, connections, types));
+      const { selectedThemeId } = useThemeStore.getState();
+      const active = presets.find((p) => presetMatchesState(p, connections, types, selectedThemeId));
 
       const next = new URLSearchParams();
       next.set("view", view);
@@ -93,7 +98,7 @@ export function CalendarPage() {
       window.history.replaceState(null, "", `${window.location.pathname}?${next}`);
     }
     syncUrl();
-    const unsubs = [useUIStore, usePresetStore, useConnectionStore, useEventTypeStore].map((s) =>
+    const unsubs = [useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore].map((s) =>
       s.subscribe(syncUrl)
     );
     return () => unsubs.forEach((unsub) => unsub());

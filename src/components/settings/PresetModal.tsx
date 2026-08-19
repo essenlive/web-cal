@@ -16,8 +16,9 @@ import { Label } from "../ui/label";
 import { PanelHeader, PanelFooter } from "./PanelHeader";
 import { ColorPicker } from "./ColorPicker";
 import { PRESET_COLORS } from "./EventTypeModal";
-import { usePresetStore, useConnectionStore, useEventTypeStore } from "../../store";
+import { usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
 import { capturePresetState } from "../../lib/presets";
+import { getActiveTheme } from "../../lib/theme";
 import type { Preset } from "../../types";
 
 export interface PresetModalProps {
@@ -33,6 +34,8 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
   const { presets, addPreset, updatePreset } = usePresetStore();
   const { connections } = useConnectionStore();
   const { types } = useEventTypeStore();
+  const { customThemes, selectedThemeId } = useThemeStore();
+  const activeTheme = getActiveTheme(customThemes, selectedThemeId);
 
   const [name, setName] = useState(preset?.name ?? "");
   const [description, setDescription] = useState(preset?.description ?? "");
@@ -59,7 +62,7 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
       <PanelHeader
         title={preset ? "Modifier le preset" : "Nouveau preset"}
         onBack={onClose}
-        description="Nommez ce preset — il enregistre l'état actuel des sources et types visibles/masqués."
+        description="Nommez ce preset — il enregistre l'état actuel des sources et types visibles/masqués, ainsi que le thème actif."
       />
 
       <div className="space-y-4 px-4 pb-4">
@@ -90,10 +93,18 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
 
         <ColorPicker value={color} onChange={setColor} colors={PRESET_COLORS} />
 
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: activeTheme.accent }}
+          />
+          Thème actuel : {activeTheme.name}
+        </div>
+
         {preset && (
           <button
             type="button"
-            onClick={() => updatePreset({ ...preset, ...capturePresetState(connections, types) })}
+            onClick={() => updatePreset({ ...preset, ...capturePresetState(connections, types, selectedThemeId) })}
             className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
           >
             <RefreshCw size={12} />
