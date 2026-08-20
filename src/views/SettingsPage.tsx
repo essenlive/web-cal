@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Download, Upload, RotateCcw } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -7,7 +7,15 @@ import { Button } from "../components/ui/button";
 import { ActionButton } from "../components/ui/action-button";
 import { PanelHeader } from "../components/settings/PanelHeader";
 import { useUIStore } from "../store";
-import { downloadSettingsExport, importSettingsFile, resetSettings } from "../lib/settings-export";
+import { downloadSettingsExport, importSettingsFile, resetSettings, type ExportSection } from "../lib/settings-export";
+
+const EXPORT_SECTION_LABELS: { key: ExportSection; label: string }[] = [
+  { key: "presets", label: "Presets" },
+  { key: "sources", label: "Sources" },
+  { key: "rulesAndStyles", label: "Règles et styles" },
+  { key: "themes", label: "Thèmes" },
+  { key: "general", label: "Réglages généraux" },
+];
 
 function ToggleRow({ title, description, checked, onCheckedChange }: {
   title: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void;
@@ -52,9 +60,21 @@ export function PreferencesPanel() {
     dateFormatEU, setDateFormatEU,
   } = useUIStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exportSections, setExportSections] = useState<Set<ExportSection>>(
+    new Set(EXPORT_SECTION_LABELS.map((s) => s.key))
+  );
+
+  function toggleExportSection(key: ExportSection) {
+    setExportSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   function handleExport() {
-    downloadSettingsExport();
+    downloadSettingsExport(Array.from(exportSections));
     toast.success("Paramètres exportés");
   }
 
@@ -100,15 +120,29 @@ export function PreferencesPanel() {
       </p>
 
       <div className="space-y-1.5 px-4 pb-4">
-        <ActionCard
-          title="Exporter"
-          description="Exporte toute la configuration dans un fichier .json : presets, sources, types, règles, thèmes et réglages."
-        >
+        <div className="rounded-lg border border-border bg-card px-3 py-3">
+          <div className="text-sm font-medium text-foreground">Exporter</div>
+          <div className="text-xs text-muted-foreground">
+            Choisissez les sections à inclure dans le fichier .json exporté.
+          </div>
+          <div className="my-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+            {EXPORT_SECTION_LABELS.map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-1.5 text-xs text-foreground">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 rounded border-border accent-primary"
+                  checked={exportSections.has(key)}
+                  onChange={() => toggleExportSection(key)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
           <Button size="sm" className="gap-1.5" onClick={handleExport}>
             <Download size={13} />
             Exporter
           </Button>
-        </ActionCard>
+        </div>
 
         <ActionCard
           tone="amber"

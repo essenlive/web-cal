@@ -5,14 +5,17 @@
  * defining a parallel schema.
  */
 
-const SETTINGS_KEYS = [
-  "webcal:connections",
-  "proton-cal:event-types",
-  "webcal:rules",
-  "webcal:presets",
-  "proton-cal:ui",
-  "proton-cal:themes",
-] as const;
+export const EXPORT_SECTIONS = {
+  presets: ["webcal:presets"],
+  sources: ["webcal:connections"],
+  rulesAndStyles: ["webcal:rules", "proton-cal:event-types"],
+  themes: ["proton-cal:themes"],
+  general: ["proton-cal:ui"],
+} as const;
+
+export type ExportSection = keyof typeof EXPORT_SECTIONS;
+
+const SETTINGS_KEYS = Object.values(EXPORT_SECTIONS).flat();
 
 interface SettingsExport {
   version: 1;
@@ -20,10 +23,14 @@ interface SettingsExport {
   data: Partial<Record<(typeof SETTINGS_KEYS)[number], unknown>>;
 }
 
-/** Reads the raw persisted blobs into one exportable object. */
-export function buildSettingsExport(read: (key: string) => string | null): SettingsExport {
+/** Reads the raw persisted blobs for the selected sections into one exportable object. */
+export function buildSettingsExport(
+  read: (key: string) => string | null,
+  sections: readonly ExportSection[] = Object.keys(EXPORT_SECTIONS) as ExportSection[]
+): SettingsExport {
+  const keys = sections.flatMap((s) => EXPORT_SECTIONS[s]);
   const data: SettingsExport["data"] = {};
-  for (const key of SETTINGS_KEYS) {
+  for (const key of keys) {
     const raw = read(key);
     if (raw) data[key] = JSON.parse(raw);
   }
@@ -44,8 +51,12 @@ export function parseSettingsImport(text: string): Array<[string, string]> {
   return writes;
 }
 
-export function downloadSettingsExport(): void {
-  const json = JSON.stringify(buildSettingsExport((key) => localStorage.getItem(key)), null, 2);
+export function downloadSettingsExport(sections?: readonly ExportSection[]): void {
+  const json = JSON.stringify(
+    buildSettingsExport((key) => localStorage.getItem(key), sections),
+    null,
+    2
+  );
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
