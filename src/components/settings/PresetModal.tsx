@@ -1,24 +1,19 @@
 "use client";
 
 /**
- * PresetModal — create/edit a preset's name + description. Visibility state
- * (which connections/event types are hidden) is captured at creation time and,
- * for an existing preset, only re-synced via the explicit "Mettre à jour avec
- * l'état actuel" action — renaming/re-describing a preset never silently
- * changes what it applies.
+ * PresetModal — create/edit a preset's name, description, and color.
+ * Visibility state (which connections/event types are hidden) and the active
+ * theme are captured at creation time and never silently changed afterward.
  */
 
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { PanelHeader, PanelFooter } from "./PanelHeader";
 import { ColorPicker } from "./ColorPicker";
 import { PRESET_COLORS } from "./EventTypeModal";
-import { usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
-import { capturePresetState } from "../../lib/presets";
-import { getActiveTheme } from "../../lib/theme";
+import { usePresetStore } from "../../store";
 import type { Preset } from "../../types";
 
 export interface PresetModalProps {
@@ -32,10 +27,6 @@ export interface PresetModalProps {
 
 export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
   const { presets, addPreset, updatePreset } = usePresetStore();
-  const { connections } = useConnectionStore();
-  const { types } = useEventTypeStore();
-  const { customThemes, selectedThemeId } = useThemeStore();
-  const activeTheme = getActiveTheme(customThemes, selectedThemeId);
 
   const [name, setName] = useState(preset?.name ?? "");
   const [description, setDescription] = useState(preset?.description ?? "");
@@ -92,25 +83,6 @@ export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
         </div>
 
         <ColorPicker value={color} onChange={setColor} colors={PRESET_COLORS} />
-
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span
-            className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: activeTheme.accent }}
-          />
-          Thème actuel : {activeTheme.name}
-        </div>
-
-        {preset && (
-          <button
-            type="button"
-            onClick={() => updatePreset({ ...preset, ...capturePresetState(connections, types, selectedThemeId) })}
-            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-          >
-            <RefreshCw size={12} />
-            Mettre à jour avec l&apos;état actuel
-          </button>
-        )}
 
         <PanelFooter
           onDelete={preset ? onDelete : undefined}
