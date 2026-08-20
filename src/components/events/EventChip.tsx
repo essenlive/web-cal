@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -78,7 +79,7 @@ export function resolveStyle(
   return type?.allDayStyle ?? "background";
 }
 
-export function EventChip({ event, eventType, onClick, compact = false, view = "month", listMode = false }: EventChipProps) {
+export const EventChip = memo(function EventChip({ event, eventType, onClick, compact = false, view = "month", listMode = false }: EventChipProps) {
   const color = eventType?.color ?? "#6366f1";
   const icon  = eventType?.icon;
   const style = listMode ? "block" : resolveStyle(eventType, view, event.allDay);
@@ -123,4 +124,4 @@ export function EventChip({ event, eventType, onClick, compact = false, view = "
       </div>
     </div>
   );
-}
+});

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { cn, stepDate } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { useUIStore } from "../../store";
+import { SyncIndicator } from "./SyncIndicator";
 import type { CalendarView } from "../../types";
 
 const VIEWS: { id: CalendarView; label: string }[] = [
@@ -47,6 +48,8 @@ export function Header() {
       <Button variant="ghost" size="icon" onClick={() => navigate(1)} className="text-muted-foreground" aria-label="Période suivante">
         <ChevronRight size={18} />
       </Button>
+
+      <SyncIndicator />
 
       <h1 className="text-xs sm:text-sm font-semibold text-foreground capitalize ml-1 flex-1 truncate">{title()}</h1>
 

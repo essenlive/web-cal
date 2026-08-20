@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore, useConnectionStore } from "../../store";
-import { resolveEventType, resolveStyle, isEventHidden } from "../events/EventChip";
+import { useUIStore } from "../../store";
+import { useResolvedEvents } from "../../hooks/useResolvedEvents";
+import type { ResolvedEvent } from "../../hooks/useResolvedEvents";
+import { resolveStyle } from "../events/EventChip";
 import { EventChip } from "../events/EventChip";
 import type { CalendarEvent, EventType } from "../../types";
 
@@ -86,7 +88,7 @@ function getAllDayEventsForDay(events: CalendarEvent[], day: Date): CalendarEven
 
 // ── Timed event block ─────────────────────────────────────────────────────────
 
-function TimeEventBlock({
+const TimeEventBlock = memo(function TimeEventBlock({
   event, type, height, use24h,
 }: {
   event: CalendarEvent;
@@ -120,7 +122,7 @@ function TimeEventBlock({
       </div>
     </div>
   );
-}
+});
 
 // ── TimeGridView ──────────────────────────────────────────────────────────────
 
@@ -130,23 +132,9 @@ interface Props {
 }
 
 export function TimeGridView({ days, onEventClick }: Props) {
-  const { events: allEvents } = useEventsStore();
-  const { getType, types } = useEventTypeStore();
+  const { visibleEvents: events, resolved } = useResolvedEvents();
   const { use24h } = useUIStore();
-  const { rules } = useRuleStore();
-  const { connections } = useConnectionStore();
-  const getConnection = useCallback(
-    (calendarId: string) => connections.find((c) => c.id === calendarId),
-    [connections],
-  );
-  // `types`/`connections` are listed explicitly because `getType`/`getConnection`
-  // are stable function references whose *output* changes without their identity
-  // changing — omitting them would leave this memo stale after a hide/show toggle.
-  const events = useMemo(
-    () => allEvents.filter((e) => !isEventHidden(e, getType, getConnection, rules)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allEvents, getType, getConnection, rules, types, connections],
-  );
+  const typeOf = (e: CalendarEvent): ResolvedEvent["type"] | undefined => resolved.get(e.id)?.type;
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
 
@@ -213,14 +201,14 @@ export function TimeGridView({ days, onEventClick }: Props) {
 
               // Find first background-style event to color the strip background
               const dayStyleEvent = dayAllDay.find(
-                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) === "background",
+                (e) => resolveStyle(typeOf(e), "week", e.allDay) === "background",
               );
               const stripBg = dayStyleEvent
-                ? (resolveEventType(dayStyleEvent, getType, rules)?.color ?? "#6366f1") + "18"
+                ? (typeOf(dayStyleEvent)?.color ?? "#6366f1") + "18"
                 : undefined;
 
               const chipEvents = dayAllDay.filter(
-                (e) => resolveStyle(resolveEventType(e, getType, rules), "week", e.allDay) !== "background",
+                (e) => resolveStyle(typeOf(e), "week", e.allDay) !== "background",
               );
 
               return (
@@ -233,7 +221,7 @@ export function TimeGridView({ days, onEventClick }: Props) {
                     <EventChip
                       key={e.id}
                       event={e}
-                      eventType={resolveEventType(e, getType, rules)}
+                      eventType={typeOf(e)}
                       onClick={() => onEventClick(e)}
                       view="week"
                       compact
@@ -320,7 +308,7 @@ export function TimeGridView({ days, onEventClick }: Props) {
                         >
                           <TimeEventBlock
                             event={event}
-                            type={resolveEventType(event, getType, rules)}
+                            type={typeOf(event)}
                             height={Math.max(height, HOUR_HEIGHT / 2)}
                             use24h={use24h}
                           />

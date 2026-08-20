@@ -1,14 +1,16 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useState, memo } from "react";
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
-  eachDayOfInterval, isSameDay, isSameMonth, startOfDay, format,
+  eachDayOfInterval, isSameDay, isSameMonth, startOfDay, addDays, format,
 } from "date-fns";
 import { cn } from "../../lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
-import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore, useConnectionStore } from "../../store";
-import { EventChip, resolveEventType, resolveStyle, isEventHidden, getBadgeContent } from "../events/EventChip";
-import type { CalendarEvent, DisplayStyle, EventType, Rule } from "../../types";
+import { useUIStore } from "../../store";
+import { useResolvedEvents } from "../../hooks/useResolvedEvents";
+import { EventChip, resolveStyle, getBadgeContent } from "../events/EventChip";
+import type { CalendarEvent, DisplayStyle, EventType } from "../../types";
+import type { ResolvedEvent } from "../../hooks/useResolvedEvents";
 
 const DAY_LABELS_MON = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."];
 const DAY_LABELS_SUN = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
@@ -16,18 +18,19 @@ const DAY_LABELS_SUN = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
 const MAX_VISIBLE_BLOCK = 3;
 const MAX_VISIBLE_AVATARS = 3;
 
+const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
+
 // ── EventListModal ────────────────────────────────────────────────────────────
 
 function EventListModal({
-  open, onClose, title, events, onEventClick, getType, rules,
+  open, onClose, title, events, onEventClick, resolved,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   events: CalendarEvent[];
   onEventClick: (e: CalendarEvent) => void;
-  getType: (id: string) => EventType | undefined;
-  rules: Rule[];
+  resolved: Map<string, ResolvedEvent>;
 }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -43,7 +46,7 @@ function EventListModal({
             <EventChip
               key={e.id}
               event={e}
-              eventType={resolveEventType(e, getType, rules)}
+              eventType={resolved.get(e.id)?.type}
               onClick={() => { onClose(); onEventClick(e); }}
               view="month"
               listMode
@@ -57,7 +60,7 @@ function EventListModal({
 
 // ── AvatarBadge ───────────────────────────────────────────────────────────────
 
-function AvatarBadge({
+const AvatarBadge = memo(function AvatarBadge({
   event, type, onEdit,
 }: {
   event: CalendarEvent;
@@ -76,18 +79,17 @@ function AvatarBadge({
       {getBadgeContent(type, event.title, 9)}
     </div>
   );
-}
+});
 
 // ── OverflowPopover (timed events) ────────────────────────────────────────────
 
-function OverflowPopover({
-  events, count, onEventClick, getType, rules,
+const OverflowPopover = memo(function OverflowPopover({
+  events, count, onEventClick, resolved,
 }: {
   events: CalendarEvent[];
   count: number;
   onEventClick: (e: CalendarEvent) => void;
-  getType: (id: string) => EventType | undefined;
-  rules: Rule[];
+  resolved: Map<string, ResolvedEvent>;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -111,7 +113,7 @@ function OverflowPopover({
           <EventChip
             key={e.id}
             event={e}
-            eventType={resolveEventType(e, getType, rules)}
+            eventType={resolved.get(e.id)?.type}
             onClick={() => { setOpen(false); onEventClick(e); }}
             view="month"
           />
@@ -119,7 +121,7 @@ function OverflowPopover({
       </PopoverContent>
     </Popover>
   );
-}
+});
 
 // ── DayCell ───────────────────────────────────────────────────────────────────
 
@@ -140,14 +142,13 @@ interface DayCellProps {
   brAvatars: CalendarEvent[];
   cellStyleEvents: CellStyleEntry[];
   onEventClick: (e: CalendarEvent) => void;
-  getType: (id: string) => EventType | undefined;
-  rules: Rule[];
+  resolved: Map<string, ResolvedEvent>;
 }
 
-function DayCell({
+const DayCell = memo(function DayCell({
   day, isToday, isCurrentMonth,
   timedBlockEvents, trAvatars, blAvatars, brAvatars, cellStyleEvents,
-  onEventClick, getType, rules,
+  onEventClick, resolved,
 }: DayCellProps) {
   const [avatarModal, setAvatarModal] = useState<{ events: CalendarEvent[]; corner: string } | null>(null);
   const [cellModalOpen, setCellModalOpen] = useState(false);
@@ -218,8 +219,7 @@ function DayCell({
           title={format(day, "d MMMM yyyy")}
           events={allCellEvents}
           onEventClick={onEventClick}
-          getType={getType}
-          rules={rules}
+          resolved={resolved}
         />
       )}
 
@@ -229,7 +229,7 @@ function DayCell({
           <EventChip
             key={e.id}
             event={e}
-            eventType={resolveEventType(e, getType, rules)}
+            eventType={resolved.get(e.id)?.type}
             onClick={(ev) => { ev?.stopPropagation(); onEventClick(e); }}
             compact
             view="month"
@@ -240,8 +240,7 @@ function DayCell({
             events={hiddenBlock}
             count={hiddenBlock.length}
             onEventClick={onEventClick}
-            getType={getType}
-            rules={rules}
+            resolved={resolved}
           />
         )}
       </div>
@@ -253,7 +252,7 @@ function DayCell({
           style={{ maxWidth: "55%", pointerEvents: "none" }}
         >
           {trAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
-            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType, rules)} onEdit={onEventClick} />
+            <AvatarBadge key={e.id} event={e} type={resolved.get(e.id)?.type} onEdit={onEventClick} />
           ))}
           {trAvatars.length > MAX_VISIBLE_AVATARS && (
             <button
@@ -273,7 +272,7 @@ function DayCell({
       {blAvatars.length > 0 && (
         <div className="absolute bottom-1 left-1 flex flex-wrap gap-0.5">
           {blAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
-            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType, rules)} onEdit={onEventClick} />
+            <AvatarBadge key={e.id} event={e} type={resolved.get(e.id)?.type} onEdit={onEventClick} />
           ))}
           {blAvatars.length > MAX_VISIBLE_AVATARS && (
             <button
@@ -292,7 +291,7 @@ function DayCell({
       {brAvatars.length > 0 && (
         <div className="absolute bottom-1 right-1 flex flex-wrap gap-0.5">
           {brAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
-            <AvatarBadge key={e.id} event={e} type={resolveEventType(e, getType, rules)} onEdit={onEventClick} />
+            <AvatarBadge key={e.id} event={e} type={resolved.get(e.id)?.type} onEdit={onEventClick} />
           ))}
           {brAvatars.length > MAX_VISIBLE_AVATARS && (
             <button
@@ -315,14 +314,13 @@ function DayCell({
           title={format(day, "d MMMM yyyy")}
           events={avatarModal.events}
           onEventClick={onEventClick}
-          getType={getType}
-          rules={rules}
+          resolved={resolved}
         />
       )}
 
     </div>
   );
-}
+});
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -333,23 +331,8 @@ interface Props {
 // ── MonthView ─────────────────────────────────────────────────────────────────
 
 export function MonthView({ onEventClick }: Props) {
-  const { events: allEvents } = useEventsStore();
-  const { getType, types } = useEventTypeStore();
+  const { visibleEvents: events, resolved } = useResolvedEvents();
   const { currentDate, weekStartsOnMonday } = useUIStore();
-  const { rules } = useRuleStore();
-  const { connections } = useConnectionStore();
-  const getConnection = useCallback(
-    (calendarId: string) => connections.find((c) => c.id === calendarId),
-    [connections],
-  );
-  // `types`/`connections` are listed explicitly because `getType`/`getConnection`
-  // are stable function references whose *output* changes without their identity
-  // changing — omitting them would leave this memo stale after a hide/show toggle.
-  const events = useMemo(
-    () => allEvents.filter((e) => !isEventHidden(e, getType, getConnection, rules)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allEvents, getType, getConnection, rules, types, connections],
-  );
 
   const weekStartsOn = weekStartsOnMonday ? 1 : 0;
   const today = startOfDay(new Date());
@@ -363,17 +346,37 @@ export function MonthView({ onEventClick }: Props) {
     return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [currentDate, weekStartsOn]);
 
-  const getEventsForDay = useCallback((date: Date) => {
-    const d = startOfDay(date);
-    return events.filter((e) => {
-      const eStart = startOfDay(new Date(e.start));
+  // Buckets every visible event by the day(s) it occupies, once per (events, days)
+  // change, instead of each of the 42 day cells linearly re-scanning the full event
+  // list on every render — see specs/008-events-perf-caching/research.md Decision G.
+  // All-day spans are clipped to the visible grid (days[0]..last) so a multi-year
+  // event can't blow up the bucketing loop.
+  const dayBuckets = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    if (days.length === 0) return map;
+    const gridStart = days[0];
+    const gridEndExclusive = addDays(days[days.length - 1], 1);
+    const push = (key: string, e: CalendarEvent) => {
+      const arr = map.get(key);
+      if (arr) arr.push(e); else map.set(key, [e]);
+    };
+    for (const e of events) {
       if (e.allDay) {
+        const eStart = startOfDay(new Date(e.start));
         const eEnd = startOfDay(new Date(e.end));
-        return d >= eStart && d < eEnd;
+        let d = eStart < gridStart ? gridStart : eStart;
+        const clippedEnd = eEnd > gridEndExclusive ? gridEndExclusive : eEnd;
+        while (d < clippedEnd) {
+          push(dayKey(d), e);
+          d = addDays(d, 1);
+        }
+      } else {
+        const eStart = startOfDay(new Date(e.start));
+        if (eStart >= gridStart && eStart < gridEndExclusive) push(dayKey(eStart), e);
       }
-      return d.getTime() === eStart.getTime();
-    });
-  }, [events]);
+    }
+    return map;
+  }, [events, days]);
 
   const weeks = useMemo<Date[][]>(() => {
     const result: Date[][] = [];
@@ -399,7 +402,7 @@ export function MonthView({ onEventClick }: Props) {
       {weeks.map((weekDays, wi) => (
         <div key={wi} className="flex-1 grid grid-cols-7 min-h-0">
           {weekDays.map((day) => {
-            const dayEvents = getEventsForDay(day);
+            const dayEvents = dayBuckets.get(dayKey(day)) ?? [];
             const isToday = isSameDay(day, today);
             const isCurrentMonth = isSameMonth(day, currentDate);
 
@@ -410,13 +413,13 @@ export function MonthView({ onEventClick }: Props) {
             const cellStyleEvents: CellStyleEntry[] = [];
 
             for (const e of dayEvents) {
-              const type = resolveEventType(e, getType, rules);
+              const type = resolved.get(e.id)?.type;
               const s = resolveStyle(type, "month", e.allDay);
               if (s === "block") timedBlockEvents.push(e);
               else if (s === "avatar-tr") trAvatars.push(e);
               else if (s === "avatar-bl") blAvatars.push(e);
               else if (s === "avatar-br") brAvatars.push(e);
-              else cellStyleEvents.push({ event: e, style: s, type });
+              else if (type) cellStyleEvents.push({ event: e, style: s, type });
             }
 
             return (
@@ -431,8 +434,7 @@ export function MonthView({ onEventClick }: Props) {
                 brAvatars={brAvatars}
                 cellStyleEvents={cellStyleEvents}
                 onEventClick={onEventClick}
-                getType={getType}
-                rules={rules}
+                resolved={resolved}
               />
             );
           })}

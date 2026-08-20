@@ -31,7 +31,7 @@ const demoProvider: DataProvider = {
 };
 
 /** Build a sub-provider from a connection config. */
-function makeProvider(conn: Connection): DataProvider {
+export function makeProvider(conn: Connection): DataProvider {
   switch (conn.type) {
     case "webcal":
       return new WebCalProvider(
@@ -62,12 +62,41 @@ function makeProvider(conn: Connection): DataProvider {
  * (see specs/003-display-type-rules-engine/research.md Decision 2).
  * resolveEventType() now applies it as a lower-priority fallback instead.
  */
-function applyConnectionMeta(events: CalendarEvent[], conn: Connection): CalendarEvent[] {
+export function applyConnectionMeta(events: CalendarEvent[], conn: Connection): CalendarEvent[] {
   return events.map((e) => ({
     ...e,
     id: conn.type === "caldav" ? `${conn.id}::${e.id}` : e.id,
     calendarId: conn.type === "demo" ? conn.id : e.calendarId,
   }));
+}
+
+/**
+ * Fetch one connection's events for [start, end), reporting status and toasting on
+ * failure exactly as MultiSourceProvider.getEvents always did — extracted so the
+ * events-performance cache (DataProviderContext, see specs/008-events-perf-caching)
+ * can drive per-connection gap-fetches without duplicating this error/status handling.
+ * Never rejects: returns `null` on failure instead, after reporting "error" status
+ * and toasting, so callers can `Promise.all` safely.
+ */
+export async function fetchConnectionEvents(
+  conn: Connection,
+  start: Date,
+  end: Date,
+  onStatusChange: (id: string, status: ConnectionStatus) => void,
+): Promise<CalendarEvent[] | null> {
+  onStatusChange(conn.id, "loading");
+  try {
+    const events = await makeProvider(conn).getEvents(start, end);
+    onStatusChange(conn.id, "active");
+    return applyConnectionMeta(events, conn);
+  } catch (err) {
+    onStatusChange(conn.id, "error");
+    console.warn("[MultiSourceProvider] Connection failed:", err);
+    toast.error(`Échec de connexion à « ${conn.name} ».`, {
+      description: err instanceof Error ? err.message : undefined,
+    });
+    return null;
+  }
 }
 
 export class MultiSourceProvider implements DataProvider {
@@ -84,40 +113,9 @@ export class MultiSourceProvider implements DataProvider {
 
   async getEvents(start: Date, end: Date): Promise<CalendarEvent[]> {
     if (this.connections.length === 0) return [];
-
-    // Signal loading for all connections upfront.
-    for (const conn of this.connections) {
-      this.onStatusChange(conn.id, "loading");
-    }
-
-    const results = await Promise.allSettled(
-      this.connections.map((conn) =>
-        makeProvider(conn)
-          .getEvents(start, end)
-          .then((events) => ({ conn, events }))
-      )
+    const results = await Promise.all(
+      this.connections.map((conn) => fetchConnectionEvents(conn, start, end, this.onStatusChange))
     );
-
-    const merged: CalendarEvent[] = [];
-
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        const { conn, events } = result.value;
-        this.onStatusChange(conn.id, "active");
-        merged.push(...applyConnectionMeta(events, conn));
-      } else {
-        // Find which connection failed by matching the rejection order.
-        // Promise.allSettled preserves input order.
-        const idx = results.indexOf(result);
-        const conn = this.connections[idx];
-        if (conn) this.onStatusChange(conn.id, "error");
-        console.warn("[MultiSourceProvider] Connection failed:", result.reason);
-        toast.error(`Échec de connexion à « ${conn?.name ?? "une source"} ».`, {
-          description: result.reason instanceof Error ? result.reason.message : undefined,
-        });
-      }
-    }
-
-    return merged;
+    return results.flatMap((events) => events ?? []);
   }
 }

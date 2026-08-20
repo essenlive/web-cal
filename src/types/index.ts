@@ -122,6 +122,14 @@ export type ConnectionStatus = "unchecked" | "loading" | "active" | "error";
 /** Keyed by Connection.id — tracks live health of each connection. */
 export type ConnectionStatusMap = Record<string, ConnectionStatus>;
 
+/**
+ * App-wide derived sync state shown by the global SyncIndicator — never a
+ * separate source of truth, always computed from ConnectionStatusMap plus
+ * whether a background staleness refresh is in flight. See
+ * specs/008-events-perf-caching/research.md Decision I.
+ */
+export type SyncState = "idle" | "syncing" | "error";
+
 /** Read-only ICS/WebCal subscription. */
 export interface WebCalConnection {
   type: "webcal";

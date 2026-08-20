@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format, isToday, isTomorrow, parseISO, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEventsStore, useEventTypeStore, useUIStore, useRuleStore, useConnectionStore } from "../../store";
-import { EventChip, resolveStyle, resolveEventType, isEventHidden } from "../events/EventChip";
+import { useUIStore } from "../../store";
+import { useResolvedEvents } from "../../hooks/useResolvedEvents";
+import { EventChip, resolveStyle } from "../events/EventChip";
 import { EventDetail } from "../events/EventDetail";
 import type { CalendarEvent } from "../../types";
 
@@ -16,50 +17,52 @@ function dayLabel(day: Date): string {
 }
 
 export function AgendaView() {
-  const { events: allEvents } = useEventsStore();
-  const { getType } = useEventTypeStore();
+  const { visibleEvents: events, resolved } = useResolvedEvents();
   const { currentDate, use24h, dateFormatEU } = useUIStore();
-  const { rules } = useRuleStore();
-  const { connections } = useConnectionStore();
-  const getConnection = (calendarId: string) => connections.find((c) => c.id === calendarId);
-  const events = allEvents.filter((e) => !isEventHidden(e, getType, getConnection, rules));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
-  // Expand all-day events across every day they span; group by day
-  const grouped: Record<string, CalendarEvent[]> = {};
-  const cutoff = startOfDay(currentDate);
+  // Expand all-day events across every day they span; group by day. Memoized per
+  // (events, currentDate) instead of recomputed from scratch on every render — see
+  // specs/008-events-perf-caching/research.md Decision G (same rationale as
+  // MonthView's day-bucketing, applied here since this grouping wasn't memoized at all).
+  const { grouped, sortedKeys } = useMemo(() => {
+    const groupedMap: Record<string, CalendarEvent[]> = {};
+    const cutoff = startOfDay(currentDate);
 
-  for (const e of events) {
-    if (e.allDay) {
-      const eStart = startOfDay(parseISO(e.start));
-      const eEnd   = startOfDay(parseISO(e.end));
-      let d = eStart < cutoff ? cutoff : eStart;
-      while (d < eEnd) {
-        const key = format(d, "yyyy-MM-dd");
-        if (!grouped[key]) grouped[key] = [];
-        // Only push once per day (avoid duplicate if event already in list)
-        if (!grouped[key].find((x) => x.id === e.id)) grouped[key].push(e);
-        d = new Date(d.getTime() + 86400000);
-        if (d.getTime() - cutoff.getTime() > 60 * 86400000) break; // cap at 60 days
+    for (const e of events) {
+      if (e.allDay) {
+        const eStart = startOfDay(parseISO(e.start));
+        const eEnd   = startOfDay(parseISO(e.end));
+        let d = eStart < cutoff ? cutoff : eStart;
+        while (d < eEnd) {
+          const key = format(d, "yyyy-MM-dd");
+          if (!groupedMap[key]) groupedMap[key] = [];
+          // Only push once per day (avoid duplicate if event already in list)
+          if (!groupedMap[key].find((x) => x.id === e.id)) groupedMap[key].push(e);
+          d = new Date(d.getTime() + 86400000);
+          if (d.getTime() - cutoff.getTime() > 60 * 86400000) break; // cap at 60 days
+        }
+      } else {
+        const s = parseISO(e.start);
+        if (s < cutoff) continue;
+        const key = format(s, "yyyy-MM-dd");
+        if (!groupedMap[key]) groupedMap[key] = [];
+        groupedMap[key].push(e);
       }
-    } else {
-      const s = parseISO(e.start);
-      if (s < cutoff) continue;
-      const key = format(s, "yyyy-MM-dd");
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(e);
     }
-  }
 
-  // Sort within each day, then cap total days shown
-  const sortedKeys = Object.keys(grouped).sort().slice(0, 60);
-  for (const key of sortedKeys) {
-    grouped[key].sort((a, b) => {
-      if (a.allDay && !b.allDay) return -1;
-      if (!a.allDay && b.allDay) return 1;
-      return parseISO(a.start).getTime() - parseISO(b.start).getTime();
-    });
-  }
+    // Sort within each day, then cap total days shown
+    const keys = Object.keys(groupedMap).sort().slice(0, 60);
+    for (const key of keys) {
+      groupedMap[key].sort((a, b) => {
+        if (a.allDay && !b.allDay) return -1;
+        if (!a.allDay && b.allDay) return 1;
+        return parseISO(a.start).getTime() - parseISO(b.start).getTime();
+      });
+    }
+
+    return { grouped: groupedMap, sortedKeys: keys };
+  }, [events, currentDate]);
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
@@ -88,7 +91,7 @@ export function AgendaView() {
             </div>
             <div className="space-y-2">
               {dayEvents.map((e) => {
-                const type = resolveEventType(e, getType, rules);
+                const type = resolved.get(e.id)?.type;
                 const agendaStyle = resolveStyle(type, "agenda", e.allDay);
                 // For 'background' style in agenda: color the left border of the row
                 const isDayStyle  = agendaStyle === "background";

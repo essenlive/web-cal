@@ -457,6 +457,9 @@ export const usePresetStore = create<PresetStore>()(
 // ── Events Store ──────────────────────────────────────────────────────────────
 interface EventsStore {
   events: CalendarEvent[];
+  /** False until setEvents runs once this session — drives the first-load skeleton
+   *  (see specs/008-events-perf-caching, CalendarSkeleton). Never persisted. */
+  hasLoadedOnce: boolean;
   setEvents: (e: CalendarEvent[]) => void;
   upsertEvent: (e: CalendarEvent) => void;
   removeEvent: (id: string) => void;
@@ -464,7 +467,8 @@ interface EventsStore {
 
 export const useEventsStore = create<EventsStore>()((set) => ({
   events: [],
-  setEvents: (events) => set({ events }),
+  hasLoadedOnce: false,
+  setEvents: (events) => set({ events, hasLoadedOnce: true }),
   upsertEvent: (e) =>
     set((s) => {
       const exists = s.events.find((x) => x.id === e.id);

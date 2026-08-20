@@ -10,6 +10,28 @@ export function isValidPattern(pattern: string): boolean {
   }
 }
 
+// Compiled RegExp cache for `name`-type rules, keyed by rule id — rebuilt (see
+// compiledPatternFor below) only when a rule's id/matchValue pair isn't already
+// cached, instead of re-parsing the same pattern on every matchesRule() call for
+// every event on every render. See specs/008-events-perf-caching/research.md
+// Decision F. Keyed by `${rule.id}:${rule.matchValue}` so an edited pattern (same
+// id, new matchValue) recompiles instead of serving a stale RegExp.
+const compiledPatternCache = new Map<string, RegExp | null>();
+
+function compiledPatternFor(rule: Rule): RegExp | null {
+  const cacheKey = `${rule.id}:${rule.matchValue}`;
+  const cached = compiledPatternCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  let compiled: RegExp | null;
+  try {
+    compiled = new RegExp(rule.matchValue, "i");
+  } catch {
+    compiled = null;
+  }
+  compiledPatternCache.set(cacheKey, compiled);
+  return compiled;
+}
+
 /** Whether `event` matches `rule`, per its matchType. The catch-all ("all") always matches. */
 export function matchesRule(event: CalendarEvent, rule: Rule): boolean {
   switch (rule.matchType) {
@@ -17,13 +39,11 @@ export function matchesRule(event: CalendarEvent, rule: Rule): boolean {
       return event.id === rule.matchValue;
     case "source":
       return event.calendarId === rule.matchValue;
-    case "name":
+    case "name": {
       if (!rule.matchValue) return false;
-      try {
-        return new RegExp(rule.matchValue, "i").test(event.title);
-      } catch {
-        return false;
-      }
+      const pattern = compiledPatternFor(rule);
+      return pattern ? pattern.test(event.title) : false;
+    }
     case "all":
       return true;
   }
