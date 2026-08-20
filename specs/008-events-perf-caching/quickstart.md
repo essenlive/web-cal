@@ -1,0 +1,31 @@
+# Quickstart: Events Performance & Sync Feedback
+
+## For developers
+
+1. **The cache lives in `DataProviderContext`**, backed by pure functions in `src/lib/event-cache.ts` (`ConnectionCacheEntry` per connection — see `data-model.md`). Nothing outside `DataProviderContext` should ever touch cache internals directly; other code consumes the result via `useEventsStore` (unchanged) and the sync state via `useSourceSync()`/`useConnectionStatusMap()` (both existing hooks, extended not replaced).
+2. **Never call a provider's `getEvents()` for a range that's already covered.** Always go through the cache's gap computation (`event-cache.ts`) first — that's what makes navigation instant (Decision B). If you need to force a real re-fetch (e.g. the manual refresh button), bump `fetchSeq` and clear `coveredRanges` for that connection rather than adding a second, parallel fetch path.
+3. **A fetch result is only ever applied if its captured `fetchSeq` still matches the live one** (Decision D) — this is the *only* mechanism that prevents a superseded/stale fetch from clobbering newer data. Don't add `AbortController` plumbing on top of it; that was deliberately rejected (research.md Decision D) to avoid touching the `DataProvider` interface.
+4. **Editing a connection must change its `fetchKey`** (`id + type + url + proxyUrl + username + password`), not just be visible in the connections list — this is what fixes the pre-existing "editing a connection's URL doesn't actually refetch from the new URL" bug (research.md Decision E) and is required for FR-005. If you add a new connection field that affects what gets fetched, it MUST be added to `fetchKey` too, or edits to it will silently keep serving cached data from the old config.
+5. **Rules resolution goes through `useResolvedEvents()`** (`src/hooks/useResolvedEvents.ts`), not ad hoc `resolveEventType()`/`isEventHidden()` calls in view components. If you add a fourth calendar view, it consumes this same hook — don't re-implement per-event resolution in it.
+6. **Day-bucketing is a single `Map` build per `events` change**, not a per-cell filter — see `MonthView`'s new bucketing `useMemo` (Decision G) as the reference implementation for any new grid-shaped view.
+7. **The global `SyncIndicator` derives its state; it never receives, holds, or is passed sync state as a prop from a parent that could get out of sync with the sidebar's per-connection dots** — both read from the same `useConnectionStatusMap()`/`useSourceSync()` source of truth (Decision I).
+
+## For QA / manual verification
+
+Run through this after `npm run dev`, using a mix of the seeded demo source and at least one real `.ics` feed (or a slow/rate-limited one, to make loading states visible):
+
+1. **Instant cached navigation (SC-001)**: load the app, wait for the first fetch to finish, then click "next month" a few times and "previous month" back to a month you've already visited. Confirm: no loading indicator, no visible delay, no network request in the browser devtools Network tab for that repeat visit.
+2. **Delta fetch on new range (SC-002)**: from a freshly loaded app, jump forward several months (past the initially-fetched window) in the devtools Network tab open. Confirm only one new request per source fires (not a duplicate of the original window), and only the calendar area for the new dates shows any loading affordance.
+3. **View switching reuses cache**: switch between month/week/day/agenda for dates already loaded — confirm no new fetch and no delay on any switch.
+4. **Stale background refresh (SC-004)**: temporarily lower the staleness TTL for testing (or wait out the real 5-minute window) with the app open and idle, then navigate slightly (e.g. one day forward and back) to trigger revisit-based staleness refresh. Confirm the currently-displayed events never disappear or flash empty while the background refresh runs, and the sidebar's "last updated" timestamp advances once it completes.
+5. **Manual refresh still works**: click the existing sidebar refresh button — confirm it re-fetches immediately regardless of staleness, and updates "last updated".
+6. **Connection edit invalidates cache (FR-005, and the bug fix in research.md Decision E)**: edit an existing connection's URL to point at a different valid feed, save, and confirm the calendar now shows that new feed's events (not the old cached ones) without needing a full page reload.
+7. **Global sync indicator (SC-003)**: with the app idle and all sources fine, confirm the header shows no "syncing"/"error" state. Trigger a refresh and confirm a syncing state appears without opening the sidebar. Point a connection at an invalid URL and refresh — confirm an error state appears in the header, and the existing per-connection error dot/toast still fire exactly as before.
+8. **First-load skeleton (SC-005)**: hard-reload the app (clear any in-memory cache by reloading the tab) and confirm a skeleton calendar grid is visible immediately, replaced cleanly by real events once the first fetch completes — no flash of an empty/unstyled grid.
+9. **Rapid navigation doesn't corrupt data (edge case)**: click "next month" rapidly 10+ times in a row, then stop. Confirm the calendar settles on the correct final month's events (not a stale intermediate month's data that arrived late).
+10. **No display regressions (FR-014, SC-007)**: spot-check each display style (`block`, `avatar-*`, `text`, `background`, `border-top`/`border-bottom`), a hidden source, a hidden type, a custom theme, and a multi-source merge — all exactly as documented in `docs/ARCHITECTURE.md`, unchanged by this feature.
+11. **Local-only UI interactions stay isolated (SC-006)**: open a day's overflow popover in month view — confirm this doesn't visibly re-render/flicker unrelated day cells (can be eyeballed, or checked via React DevTools' render highlighting).
+
+## Known pre-existing condition (not introduced by this feature)
+
+`npm test` has no script configured in this repository (no test framework present). This plan does not add one — see `plan.md`'s Complexity Tracking section. `npm run lint` and `tsc -b`/`npm run build` remain the enforced quality gates for this feature, alongside the manual pass above.

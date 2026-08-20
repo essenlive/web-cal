@@ -1,12 +1,14 @@
 # web-cal Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-07-22
+Auto-generated from all feature plans. Last updated: 2026-08-20
 
 ## Active Technologies
 - TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, lucide-react — no new dependency (no Radix needed; see research.md Decision 3) (006-view-presets)
 - localStorage via Zustand `persist` middleware — new key `webcal:presets`, alongside existing `proton-cal:ui`, `proton-cal:event-types`, `proton-cal:themes`, `webcal:connections`, `webcal:rules` (006-view-presets)
 - TypeScript ~5.9.3, React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, `@radix-ui/react-dialog` (existing dependency, reused to build a `Sheet` primitive), lucide-react — no new dependency (007-settings-side-drawer)
 - localStorage via Zustand `persist` middleware — no new persisted key; the drawer's "which panel is open" state is transient UI state added to the existing `useUIStore` and excluded from its `partialize`, same pattern already used there for other non-persisted fields (007-settings-side-drawer)
+- TypeScript ~5.9.3, React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11 (existing stores only — no new store added, see research.md Decision A), date-fns 4.1.0 (interval/range math), lucide-react (spinner/error icons for `SyncIndicator`) — no new dependency (008-events-perf-caching)
+- No new persisted key. The event cache, sync state, and resolved-event map are all session-only/in-memory (see spec.md Assumptions and data-model.md) — `useEventsStore` gains one new non-persisted field (`hasLoadedOnce`), consistent with that store already being unpersisted. (008-events-perf-caching)
 
 - TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, Radix UI (`@radix-ui/react-popover`, `@radix-ui/react-dialog` — both already dependencies), lucide-react (005-global-theming)
 - localStorage via Zustand `persist` middleware — new key `proton-cal:themes`, alongside existing `proton-cal:ui`, `proton-cal:event-types`, `webcal:connections` (005-global-theming)
@@ -41,10 +43,9 @@ npm run dev && npm run build && npm run lint
 TypeScript ~6.0.3: Follow standard conventions
 
 ## Recent Changes
+- 008-events-perf-caching: Added TypeScript ~5.9.3, React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11 (existing stores only — no new store added, see research.md Decision A), date-fns 4.1.0 (interval/range math), lucide-react (spinner/error icons for `SyncIndicator`) — no new dependency
 - Dependency update: Next.js 15→16, Tailwind CSS 3→4 (config moved from `tailwind.config.js` into `src/app/globals.css` as `@theme`), TypeScript 5.9→6.0, lucide-react 0→1, eslint 9→10, plus in-range patch/minor bumps across the rest. See [TODO.md](TODO.md) for what was deliberately skipped and why.
 - 007-settings-side-drawer: Added TypeScript ~5.9.3, React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, `@radix-ui/react-dialog` (existing dependency, reused to build a `Sheet` primitive), lucide-react — no new dependency
-- 006-view-presets: Added TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, lucide-react — no new dependency (no Radix needed; see research.md Decision 3)
-- 005-global-theming: Added TypeScript ~5.9.3 / React 19.2.0 + Next.js 15.5 (App Router), Zustand 5.0.11, Tailwind CSS 3.4, Radix UI (`@radix-ui/react-popover`, `@radix-ui/react-dialog` — both already dependencies), lucide-react
 
 <!-- MANUAL ADDITIONS START -->
 
