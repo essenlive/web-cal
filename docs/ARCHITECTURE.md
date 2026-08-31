@@ -11,10 +11,9 @@ src/
   app/                # Next.js App Router — routes only, no logic
     page.tsx           # / — calendar
     settings/page.tsx  # /settings — Préférences only (Sources/Types/Rules/Theme live in the sidebar)
-    dev/page.tsx       # /dev — component/scenario playground
     api/proxy/route.ts # same-origin CalDAV/WebCal fetch relay
     layout.tsx, providers.tsx, globals.css
-  views/              # Route-level components (CalendarPage, SettingsPage, DevPage, RulesPage)
+  views/              # Route-level components (CalendarPage, SettingsPage, RulesPage)
                        # NOT named "pages" — Next.js reserves that directory name
   components/
     calendar/          # CalendarGrid (view switcher), MonthView, TimeGridView, AgendaView
@@ -51,14 +50,11 @@ src/
 
 ## Event sync
 
-**Provider selection** ([context/DataProviderContext.tsx](../src/context/DataProviderContext.tsx)): on every change to the connections list, `DataProviderContext` builds one `DataProvider`:
-
-- **Zero connections** → `MockDataProvider` — seeded demo events, read/write, persisted under a plain `localStorage` key (not Zustand).
-- **One or more connections** → `MultiSourceProvider`, which wraps all of them.
+**Provider selection** ([context/DataProviderContext.tsx](../src/context/DataProviderContext.tsx)): `DataProviderContext` always builds one `MultiSourceProvider` ([lib/multi-source-provider.ts](../src/lib/multi-source-provider.ts)) wrapping every connection in `useConnectionStore`. There's no separate zero-connections branch — a fresh install's `useConnectionStore` is seeded with one `DEMO_CONNECTION` (`type: "demo"`, [store/index.ts](../src/store/index.ts)), a normal, visible, deletable connection like any other. Its events come from `generateSeedEvents()` ([lib/mock-seed.ts](../src/lib/mock-seed.ts)) via a local, offline `demoProvider` that `makeProvider()` returns for `type: "demo"`, filtered client-side to the requested range — read-only, like every other connection. This replaced an earlier `MockDataProvider` that silently faked data behind an *empty* sources list; the demo connection is a real, deletable row instead.
 
 Whenever `currentDate` changes (i.e. the visible calendar range moves), an effect requests a `[currentDate − 1 month, currentDate + 2 months]` window through the [event cache](#event-caching--sync-feedback) and writes the result into `useEventsStore` (in-memory, not persisted — see [Persistence](#persistence-localstorage)).
 
-**Fan-out** ([lib/multi-source-provider.ts](../src/lib/multi-source-provider.ts)): each connection's own provider (`WebCalProvider` or `CalDAVProvider`) is fetched in parallel via `fetchConnectionEvents()`, so one broken connection never blocks the others — it catches per-connection, reports `"error"` status, toasts, and resolves `null` rather than rejecting, so callers (`MultiSourceProvider.getEvents()`, and the event cache's own per-connection gap-fetch loop) can always `Promise.all` safely. Per-connection status (`unchecked` / `loading` / `active` / `error`) is reported through a callback into `DataProviderContext`'s local state, exposed to the UI via `useConnectionStatusMap()` — this status is never persisted, it's rebuilt on every fetch. All connections are **read-only**; `createEvent`/`updateEvent`/`deleteEvent` throw.
+**Fan-out** ([lib/multi-source-provider.ts](../src/lib/multi-source-provider.ts)): each connection's own provider (`WebCalProvider`, `CalDAVProvider`, or the demo provider) is fetched in parallel via `fetchConnectionEvents()`, so one broken connection never blocks the others — it catches per-connection, reports `"error"` status, toasts, and resolves `null` rather than rejecting, so callers (`MultiSourceProvider.getEvents()`, and the event cache's own per-connection gap-fetch loop) can always `Promise.all` safely. Per-connection status (`unchecked` / `loading` / `active` / `error`) is reported through a callback into `DataProviderContext`'s local state, exposed to the UI via `useConnectionStatusMap()` — this status is never persisted, it's rebuilt on every fetch. All connections are **read-only**; `DataProvider` has no create/update/delete methods.
 
 Note: `WebCalProvider.getEvents()` catches its own per-source fetch errors internally (toasting and returning whatever partial result it has) rather than rejecting — so a failed WebCal fetch is reported to the user via that toast, but still resolves as `"active"` status rather than `"error"`, for that connection. This is pre-existing, intentional behavior (unchanged by the event cache — see [008-events-perf-caching](../specs/008-events-perf-caching/spec.md) FR-011) — only providers that actually reject (e.g. `CalDAVProvider`) surface as `"error"` status.
 
@@ -168,9 +164,8 @@ Everything lives in the browser. There is no server-side database — the Next.j
 | `useUIStore` | `proton-cal:ui` | Partial (`partialize`) | Only `view`, `weekStartsOnMonday`, `use24h`, `dateFormatEU` are persisted. `currentDate` and `sidebarOpen` reset every load. The legacy `darkMode` field is gone from this store — it's superseded by `useThemeStore`, and is only ever read once, raw, for the migration above. |
 | `useBackendStore` | `webcal:backend` | Yes | **Deprecated** — kept only so `useConnectionStore`'s one-time migration has something to read, then it's deleted. |
 | `useEventsStore` | — | **No** | Events are never persisted directly; they're served from the [event cache](#event-caching--sync-feedback) on load and on date-range change, which fetches only what isn't already cached. Also holds `hasLoadedOnce`, driving the first-load skeleton. |
-| `MockDataProvider` | `proton-cal:events` | Yes, in full | Separate from Zustand — a plain `localStorage.getItem/setItem` pair ([lib/mock-data-provider.ts](../src/lib/mock-data-provider.ts)), since the demo backend needs read/write without going through a persisted store. |
 
-**SSR guard:** Next.js server-renders "use client" components once to produce the initial HTML, where no `localStorage`/`window` exists. All persist configs share one `storage` wrapper ([store/index.ts](../src/store/index.ts)) that returns a no-op storage when `typeof window === "undefined"`, and `MockDataProvider` checks the same condition directly — without these guards, `next build`'s prerender step crashes.
+**SSR guard:** Next.js server-renders "use client" components once to produce the initial HTML, where no `localStorage`/`window` exists. All persist configs share one `storage` wrapper ([store/index.ts](../src/store/index.ts)) that returns a no-op storage when `typeof window === "undefined"` — without it, `next build`'s prerender step crashes.
 
 ---
 
@@ -183,4 +178,4 @@ Everything below opens in one shared side drawer (`SettingsDrawer`, [components/
 - **Types** — sidebar **Types** section, see [Display types](#display-types).
 - **Règles** — sidebar footer icon (next to Réglages), see [Display rules engine](#display-rules-engine).
 - **Thème** — sidebar **Thème** section: every theme, including the two built-ins, is listed and selectable inline; editing opens the same drawer. See [Global theming](#global-theming).
-- **Réglages** — sidebar footer button: week start (Monday/Sunday), 24h clock, date format (DD/MM/YYYY or MM/DD/YYYY), settings export/import, and a full reset (`PreferencesPanel` in [views/SettingsPage.tsx](../src/views/SettingsPage.tsx)). `/settings` is kept only as a redirect (`src/app/settings/page.tsx`) that opens this panel then bounces to `/`.
+- **Réglages** — sidebar footer button: week start (Monday/Sunday), 24h clock, date format (DD/MM/YYYY or MM/DD/YYYY), settings export/import, and a full reset (`PreferencesPanel` in [views/SettingsPage.tsx](../src/views/SettingsPage.tsx)). Export is split into five independently-selectable sections (`EXPORT_SECTIONS` in [lib/settings-export.ts](../src/lib/settings-export.ts): presets, sources, rules+styles, themes, general prefs) so a partial export/import is possible. `/settings` is kept only as a redirect (`src/app/settings/page.tsx`) that opens this panel then bounces to `/`.

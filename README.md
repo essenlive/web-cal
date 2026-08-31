@@ -6,8 +6,8 @@ Everything runs client-side — no backend database, all state lives in `localSt
 
 ## Tech stack
 
-- Next.js 15 (App Router) + React 19 + TypeScript
-- Tailwind CSS + Radix UI + lucide-react
+- Next.js 16 (App Router) + React 19 + TypeScript 6
+- Tailwind CSS 4 + Radix UI + lucide-react
 - Zustand (persist middleware)
 - date-fns
 

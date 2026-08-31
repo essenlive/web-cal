@@ -25,7 +25,7 @@ Auto-generated from all feature plans. Last updated: 2026-08-20
 ```text
 src/
   app/          # Next.js App Router — routes only
-  views/        # route-level components (CalendarPage, SettingsPage, RulesPage, DevPage)
+  views/        # route-level components (CalendarPage, SettingsPage, RulesPage)
   components/   # calendar/, events/, settings/, sidebar/, ui/
   context/      # DataProviderContext
   lib/          # data providers, rules engine, theme resolution
