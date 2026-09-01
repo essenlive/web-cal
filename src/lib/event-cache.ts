@@ -172,3 +172,19 @@ export function mergeFetchedRange(
 export function isStale(entry: ConnectionCacheEntry, ttlMs: number = STALE_TTL_MS): boolean {
   return entry.lastFetchedAt === null || Date.now() - entry.lastFetchedAt > ttlMs;
 }
+
+/**
+ * Trims `coveredRanges`/`events` down to `window` — used only when writing a snapshot to
+ * disk (see event-cache-persistence.ts), so persisted size stays bounded regardless of how
+ * much history a long session has accumulated in the live (unbounded) in-memory cache.
+ */
+export function clampEntryToWindow(entry: ConnectionCacheEntry, windowRange: DateRange): ConnectionCacheEntry {
+  const start = toMs(windowRange.start);
+  const end = toMs(windowRange.end);
+  const coveredRanges = entry.coveredRanges
+    .map((r) => ({ start: Math.max(toMs(r.start), start), end: Math.min(toMs(r.end), end) }))
+    .filter((r) => r.start < r.end)
+    .map((r) => ({ start: new Date(r.start).toISOString(), end: new Date(r.end).toISOString() }));
+  const events = entry.events.filter((e) => eventOverlaps(e, start, end));
+  return { ...entry, coveredRanges, events };
+}

@@ -13,7 +13,6 @@
  */
 
 import { isWithinInterval, parseISO } from "date-fns";
-import { toast } from "sonner";
 import { HttpError, type DataProvider } from "./data-provider";
 import type { CalendarEvent, Connection, ConnectionStatus } from "../types";
 import { WebCalProvider } from "./webcal-provider";
@@ -77,11 +76,16 @@ export type FetchResult =
   | { ok: false; message: string; retryAfterMs: number | null };
 
 /**
- * Fetch one connection's events for [start, end), reporting status and toasting on
- * failure exactly as MultiSourceProvider.getEvents always did — extracted so the
- * events-performance cache (DataProviderContext, see specs/008-events-perf-caching)
- * can drive per-connection gap-fetches without duplicating this error/status handling.
- * Never rejects — always resolves a FetchResult so callers can `Promise.all` safely.
+ * Fetch one connection's events for [start, end), reporting status via `onStatusChange` —
+ * extracted so the events-performance cache (DataProviderContext, see
+ * specs/008-events-perf-caching) can drive per-connection gap-fetches without duplicating
+ * this status handling. Never rejects — always resolves a FetchResult so callers can
+ * `Promise.all` safely.
+ *
+ * Deliberately does NOT toast on failure itself (unlike an earlier version of this
+ * function) — only DataProviderContext knows whether a connection was *already* failing,
+ * which it needs to toast only on the transition into/out of "error" rather than on every
+ * automatic retry of a still-down source. The toast lives there now; see recordFailure().
  */
 export async function fetchConnectionEvents(
   conn: Connection,
@@ -98,7 +102,6 @@ export async function fetchConnectionEvents(
     onStatusChange(conn.id, "error");
     console.warn("[MultiSourceProvider] Connection failed:", err);
     const message = err instanceof Error ? err.message : "Erreur inconnue";
-    toast.error(`Échec de connexion à « ${conn.name} ».`, { description: message });
     return { ok: false, message, retryAfterMs: err instanceof HttpError ? err.retryAfterMs : null };
   }
 }

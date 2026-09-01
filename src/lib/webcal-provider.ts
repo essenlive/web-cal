@@ -35,18 +35,27 @@ function icsTimeToISO(time: InstanceType<typeof ICAL.Time>): string {
   return time.toJSDate().toISOString();
 }
 
-/** Returns `null` (distinct from a legitimately empty calendar) when the feed itself can't be parsed. */
+/**
+ * Returns `null` (distinct from a legitimately empty calendar) when the feed itself can't be
+ * parsed. `getAllSubcomponents` is inside the same try as `ICAL.parse`/`new ICAL.Component` —
+ * not just those two — because it can itself throw on a syntactically-parseable-but-structurally-
+ * empty/malformed body (e.g. a truly empty response): that must still surface as "unreadable
+ * feed" (returns null, toasted once by the caller) rather than an uncaught exception, which
+ * would otherwise propagate all the way up and get misreported as a connection health failure
+ * (backoff/retry/error status) instead of a content problem.
+ */
 function parseICS(text: string): ParsedEvent[] | null {
-  let root: InstanceType<typeof ICAL.Component>;
+  let subcomponents: InstanceType<typeof ICAL.Component>[];
   try {
-    root = new ICAL.Component(ICAL.parse(text));
+    const root = new ICAL.Component(ICAL.parse(text));
+    subcomponents = root.getAllSubcomponents("vevent");
   } catch (err) {
     console.warn("[WebCalProvider] Failed to parse ICS feed:", err);
     return null;
   }
 
   const events: ParsedEvent[] = [];
-  for (const vevent of root.getAllSubcomponents("vevent")) {
+  for (const vevent of subcomponents) {
     try {
       const event = new ICAL.Event(vevent);
       if (!event.uid || !event.startDate) continue;
