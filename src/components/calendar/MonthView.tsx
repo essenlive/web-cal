@@ -71,15 +71,16 @@ const AvatarBadge = memo(function AvatarBadge({
 }) {
   const color = type?.color ?? "#6366f1";
   return (
-    <div
-      title={event.title}
-      onClick={(ev) => { ev.stopPropagation(); onEdit(event); }}
-      style={{ backgroundColor: color, pointerEvents: "auto" }}
-      className="size-5 sm:size-6 rounded-full flex items-center justify-center cursor-pointer shrink-0
-                 shadow-xs transition-all hover:scale-110 active:scale-95"
-    >
-      {getBadgeContent(type, event.title, 11)}
-    </div>
+    <SimpleTooltip label={event.title}>
+      <div
+        onClick={(ev) => { ev.stopPropagation(); onEdit(event); }}
+        style={{ backgroundColor: color, pointerEvents: "auto" }}
+        className="size-5 sm:size-6 rounded-full flex items-center justify-center cursor-pointer shrink-0
+                   shadow-xs transition-all hover:scale-110 active:scale-95"
+      >
+        {getBadgeContent(type, event.title, 11)}
+      </div>
+    </SimpleTooltip>
   );
 });
 
