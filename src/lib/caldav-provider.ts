@@ -16,6 +16,7 @@
 
 import { toast } from "sonner";
 import { HttpError, parseRetryAfterMs, type DataProvider } from "./data-provider";
+import { parseICS } from "./webcal-provider";
 import type { CalendarEvent } from "../types";
 
 /** Internal representation of a CalDAV calendar collection. */
@@ -79,45 +80,6 @@ function parseMultiStatus(xml: string): Array<{ href: string; ics: string; etag:
     ics: r.querySelector("calendar-data")?.textContent ?? "",
     etag: r.querySelector("getetag")?.textContent ?? "",
   })).filter((r) => r.ics);
-}
-
-// ── Minimal ICS parser (same approach as WebCalProvider) ─────────────────────
-
-function unfoldLines(raw: string): string[] {
-  return raw.replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
-}
-
-function icsDateToISO(raw: string): string {
-  const r = raw.trim().replace(/Z$/, "");
-  if (r.length === 8) return `${r.slice(0, 4)}-${r.slice(4, 6)}-${r.slice(6, 8)}`;
-  const d = r.slice(0, 8);
-  const t = r.slice(9);
-  return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}`;
-}
-
-function parseSingleEvent(ics: string, calendarId: string): CalendarEvent | null {
-  const lines = unfoldLines(ics);
-  let uid = "", title = "", start = "", end = "", allDay = false, location: string | undefined, notes: string | undefined;
-
-  for (const rawLine of lines) {
-    const semiColon = rawLine.indexOf(";");
-    const colon = rawLine.indexOf(":");
-    if (colon === -1) continue;
-    const keyRaw = semiColon !== -1 && semiColon < colon ? rawLine.slice(0, semiColon) : rawLine.slice(0, colon);
-    const value = rawLine.slice(colon + 1);
-    const key = keyRaw.toUpperCase();
-    switch (key) {
-      case "UID": uid = value.trim(); break;
-      case "SUMMARY": title = value.replace(/\\n/g, "\n").replace(/\\,/g, ","); break;
-      case "DTSTART": { const iso = icsDateToISO(value); start = iso; allDay = !iso.includes("T"); break; }
-      case "DTEND": end = icsDateToISO(value); break;
-      case "LOCATION": location = value.replace(/\\,/g, ","); break;
-      case "DESCRIPTION": notes = value.replace(/\\n/g, "\n").replace(/\\,/g, ","); break;
-    }
-  }
-
-  if (!uid || !start) return null;
-  return { id: uid, title: title || "(no title)", calendarId, eventTypeId: "meeting", start, end: end || start, allDay, location, notes };
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -208,8 +170,23 @@ export class CalDAVProvider implements DataProvider {
           const xml = await res.text();
           const items = parseMultiStatus(xml);
           for (const item of items) {
-            const event = parseSingleEvent(item.ics, cal.id);
-            if (event) all.push(event);
+            // Each response's calendar-data holds the master VEVENT plus any of its
+            // RECURRENCE-ID overrides; parseICS expands recurring ones into occurrences.
+            const parsed = parseICS(item.ics, start, end);
+            if (!parsed) continue;
+            for (const e of parsed) {
+              all.push({
+                id: e.uid,
+                title: e.title,
+                calendarId: cal.id,
+                eventTypeId: "meeting",
+                start: e.start,
+                end: e.end,
+                allDay: e.allDay,
+                location: e.location,
+                notes: e.notes,
+              });
+            }
           }
         } catch (err) {
           console.warn(`[CalDAVProvider] Failed to fetch ${cal.name}:`, err);
