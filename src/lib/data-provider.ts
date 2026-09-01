@@ -17,3 +17,28 @@ export function describeHttpError(status: number): string {
       return `HTTP ${status}`;
   }
 }
+
+/**
+ * Thrown by providers on a failed HTTP fetch, carrying enough for the caller to back off
+ * smartly instead of hammering the source again on the next navigation/staleness tick —
+ * `retryAfterMs` is the server's own `Retry-After` header (429/503) when present.
+ */
+export class HttpError extends Error {
+  status: number;
+  retryAfterMs: number | null;
+  constructor(status: number, retryAfterMs: number | null = null) {
+    super(describeHttpError(status));
+    this.name = "HttpError";
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+/** Parses a `Retry-After` header (seconds, or an HTTP-date) into a millisecond delay. */
+export function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const date = Date.parse(header);
+  return Number.isNaN(date) ? null : Math.max(0, date - Date.now());
+}

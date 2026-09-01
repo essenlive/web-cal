@@ -119,6 +119,19 @@ export interface Theme {
  */
 export type ConnectionStatus = "unchecked" | "loading" | "active" | "error";
 
+/**
+ * Runtime-only sync bookkeeping per connection, alongside ConnectionStatus. Never
+ * persisted — rebuilt every session from the same fetch results that drive status.
+ */
+export interface ConnectionSyncMeta {
+  /** Epoch ms of the last *successful* fetch for this connection, or null before the first one. */
+  lastSyncedAt: number | null;
+  /** Human-readable cause of the current "error" status, if any (e.g. describeHttpError() output). */
+  message?: string;
+  /** Epoch ms before which this connection won't be retried automatically (429 backoff). */
+  nextRetryAt: number | null;
+}
+
 /** Keyed by Connection.id — tracks live health of each connection. */
 export type ConnectionStatusMap = Record<string, ConnectionStatus>;
 

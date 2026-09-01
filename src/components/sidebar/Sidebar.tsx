@@ -9,13 +9,14 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
-import { useConnectionStatusMap, useSourceSync } from "../../context/DataProviderContext";
+import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync } from "../../context/DataProviderContext";
 import { getIconEl } from "../../lib/icons";
 import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
 import { PresetSelector } from "./PresetSelector";
+import { SimpleTooltip } from "../ui/tooltip";
 import { orderThemes } from "../../lib/theme";
-import type { Connection, ConnectionStatus, EventType, Theme } from "../../types";
+import type { Connection, ConnectionStatus, ConnectionSyncMeta, EventType, Theme } from "../../types";
 
 /** Pointer-based (mouse + touch) drag handle wiring for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
 export interface DragProps {
@@ -45,8 +46,24 @@ export function statusLabel(status: ConnectionStatus) {
   }
 }
 
-export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
-  connection: Connection; status: ConnectionStatus; onEdit: () => void; onToggleHidden: () => void;
+/**
+ * Full sync detail behind a connection's status dot: the last error (with when it'll
+ * retry, if backed off) or, when healthy, when it last actually synced — see
+ * useConnectionSyncMeta(). Falls back to the bare statusLabel() before any fetch attempt.
+ */
+export function connectionStatusDetail(status: ConnectionStatus, meta?: ConnectionSyncMeta): string {
+  if (status === "error") {
+    const retrying = meta?.nextRetryAt && meta.nextRetryAt > Date.now()
+      ? ` — nouvelle tentative à ${format(meta.nextRetryAt, "HH:mm")}`
+      : "";
+    return (meta?.message ?? statusLabel(status)) + retrying;
+  }
+  if (meta?.lastSyncedAt) return `${statusLabel(status)} — synchronisé à ${format(meta.lastSyncedAt, "HH:mm")}`;
+  return statusLabel(status);
+}
+
+export function ConnectionRow({ connection, status, syncMeta, onEdit, onToggleHidden }: {
+  connection: Connection; status: ConnectionStatus; syncMeta?: ConnectionSyncMeta; onEdit: () => void; onToggleHidden: () => void;
 }) {
   const hidden = !!connection.hidden;
   return (
@@ -55,7 +72,9 @@ export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
       name={connection.name}
       muted={hidden}
       state={
-        <span aria-label={statusLabel(status)} className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} />
+        <SimpleTooltip label={connectionStatusDetail(status, syncMeta)}>
+          <span aria-label={connectionStatusDetail(status, syncMeta)} className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} />
+        </SimpleTooltip>
       }
       actions={[
         { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
@@ -107,6 +126,7 @@ export function Sidebar() {
 
   const { connections, updateConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
+  const syncMeta = useConnectionSyncMeta();
   const { refresh, lastUpdated } = useSourceSync();
   const { types, updateType } = useEventTypeStore();
   const { customThemes, themeOrder, selectedThemeId, selectTheme } = useThemeStore();
@@ -202,6 +222,7 @@ export function Sidebar() {
             key={c.id}
             connection={c}
             status={statusMap[c.id] ?? "unchecked"}
+            syncMeta={syncMeta[c.id]}
             onEdit={() => openDrawer("connection", c.id)}
             onToggleHidden={() => updateConnection({ ...c, hidden: !c.hidden })}
           />

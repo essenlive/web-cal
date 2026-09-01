@@ -59,8 +59,18 @@ export async function GET(req: NextRequest) {
   const body = await upstream.arrayBuffer();
   return new NextResponse(body, {
     status: upstream.status,
-    headers: { "Content-Type": upstream.headers.get("content-type") ?? "text/plain" },
+    headers: relayHeaders(upstream, "text/plain"),
   });
+}
+
+/** Content-Type plus Retry-After (429/503 backoff hint) from the upstream response, when present. */
+function relayHeaders(upstream: Response, defaultContentType: string): HeadersInit {
+  const headers: Record<string, string> = {
+    "Content-Type": upstream.headers.get("content-type") ?? defaultContentType,
+  };
+  const retryAfter = upstream.headers.get("retry-after");
+  if (retryAfter) headers["Retry-After"] = retryAfter;
+  return headers;
 }
 
 const TUNNELED_METHODS = new Set(["PROPFIND", "REPORT", "PUT", "DELETE"]);
@@ -101,6 +111,6 @@ export async function POST(req: NextRequest) {
   const text = await upstream.text();
   return new NextResponse(text, {
     status: upstream.status,
-    headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/xml" },
+    headers: relayHeaders(upstream, "application/xml"),
   });
 }

@@ -28,13 +28,44 @@ export interface ConnectionCacheEntry {
    *  connection whose current computeFetchKey() no longer matches this means its config
    *  changed — the entry must be discarded and rebuilt from empty. */
   fetchKey: string;
+  /** Epoch ms before which this connection should not be retried (set on the last fetch
+   *  failure); null while healthy. See applyBackoff()/clearBackoff(). */
+  nextRetryAt: number | null;
+  /** Backoff duration used for the *next* failure if one occurs, doubling each consecutive
+   *  error up to MAX_BACKOFF_MS, reset to BASE_BACKOFF_MS on success. */
+  backoffMs: number;
 }
 
 /** 5 minutes — see research.md Decision C. */
 export const STALE_TTL_MS = 5 * 60 * 1000;
+/** Starting/floor backoff after a connection error with no server-given Retry-After. */
+export const BASE_BACKOFF_MS = 30 * 1000;
+/** Backoff ceiling — a repeatedly-failing connection is retried at most this often. */
+export const MAX_BACKOFF_MS = 10 * 60 * 1000;
 
 export function createEmptyCacheEntry(fetchKey: string): ConnectionCacheEntry {
-  return { coveredRanges: [], events: [], lastFetchedAt: null, fetchSeq: 0, fetchKey };
+  return {
+    coveredRanges: [], events: [], lastFetchedAt: null, fetchSeq: 0, fetchKey,
+    nextRetryAt: null, backoffMs: BASE_BACKOFF_MS,
+  };
+}
+
+/**
+ * Records a fetch failure: schedules the next retry using the server's own Retry-After
+ * (429/503) when given, otherwise the entry's own doubling backoff. Returns a new entry —
+ * does not mutate `entry`.
+ */
+export function applyBackoff(entry: ConnectionCacheEntry, retryAfterMs: number | null): ConnectionCacheEntry {
+  const delay = retryAfterMs ?? entry.backoffMs;
+  return {
+    ...entry,
+    nextRetryAt: Date.now() + delay,
+    backoffMs: Math.min(entry.backoffMs * 2, MAX_BACKOFF_MS),
+  };
+}
+
+export function isBackedOff(entry: ConnectionCacheEntry): boolean {
+  return entry.nextRetryAt !== null && Date.now() < entry.nextRetryAt;
 }
 
 /**
@@ -133,6 +164,8 @@ export function mergeFetchedRange(
     events: [...retained, ...freshEvents],
     coveredRanges: unionRange(entry.coveredRanges, range),
     lastFetchedAt: Date.now(),
+    nextRetryAt: null,
+    backoffMs: BASE_BACKOFF_MS,
   };
 }
 

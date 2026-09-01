@@ -14,7 +14,7 @@
 
 import { isWithinInterval, parseISO } from "date-fns";
 import { toast } from "sonner";
-import type { DataProvider } from "./data-provider";
+import { HttpError, type DataProvider } from "./data-provider";
 import type { CalendarEvent, Connection, ConnectionStatus } from "../types";
 import { WebCalProvider } from "./webcal-provider";
 import { CalDAVProvider } from "./caldav-provider";
@@ -70,32 +70,36 @@ export function applyConnectionMeta(events: CalendarEvent[], conn: Connection): 
   }));
 }
 
+/** Outcome of fetchConnectionEvents — a discriminated result instead of `T | null` so a
+ *  failure can carry the info (message, 429 Retry-After) that drives smart-retry backoff. */
+export type FetchResult =
+  | { ok: true; events: CalendarEvent[] }
+  | { ok: false; message: string; retryAfterMs: number | null };
+
 /**
  * Fetch one connection's events for [start, end), reporting status and toasting on
  * failure exactly as MultiSourceProvider.getEvents always did — extracted so the
  * events-performance cache (DataProviderContext, see specs/008-events-perf-caching)
  * can drive per-connection gap-fetches without duplicating this error/status handling.
- * Never rejects: returns `null` on failure instead, after reporting "error" status
- * and toasting, so callers can `Promise.all` safely.
+ * Never rejects — always resolves a FetchResult so callers can `Promise.all` safely.
  */
 export async function fetchConnectionEvents(
   conn: Connection,
   start: Date,
   end: Date,
   onStatusChange: (id: string, status: ConnectionStatus) => void,
-): Promise<CalendarEvent[] | null> {
+): Promise<FetchResult> {
   onStatusChange(conn.id, "loading");
   try {
     const events = await makeProvider(conn).getEvents(start, end);
     onStatusChange(conn.id, "active");
-    return applyConnectionMeta(events, conn);
+    return { ok: true, events: applyConnectionMeta(events, conn) };
   } catch (err) {
     onStatusChange(conn.id, "error");
     console.warn("[MultiSourceProvider] Connection failed:", err);
-    toast.error(`Échec de connexion à « ${conn.name} ».`, {
-      description: err instanceof Error ? err.message : undefined,
-    });
-    return null;
+    const message = err instanceof Error ? err.message : "Erreur inconnue";
+    toast.error(`Échec de connexion à « ${conn.name} ».`, { description: message });
+    return { ok: false, message, retryAfterMs: err instanceof HttpError ? err.retryAfterMs : null };
   }
 }
 
@@ -116,6 +120,6 @@ export class MultiSourceProvider implements DataProvider {
     const results = await Promise.all(
       this.connections.map((conn) => fetchConnectionEvents(conn, start, end, this.onStatusChange))
     );
-    return results.flatMap((events) => events ?? []);
+    return results.flatMap((r) => (r.ok ? r.events : []));
   }
 }

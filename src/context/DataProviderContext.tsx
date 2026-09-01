@@ -12,9 +12,11 @@ import { addMonths, subMonths } from "date-fns";
 import type { DataProvider } from "../lib/data-provider";
 import { MultiSourceProvider, fetchConnectionEvents } from "../lib/multi-source-provider";
 import {
+  applyBackoff,
   computeFetchKey,
   computeGaps,
   createEmptyCacheEntry,
+  isBackedOff,
   isStale,
   mergeFetchedRange,
   STALE_TTL_MS,
@@ -22,13 +24,17 @@ import {
   type DateRange,
 } from "../lib/event-cache";
 import { useConnectionStore, useEventsStore, useUIStore } from "../store";
-import type { Connection, ConnectionStatusMap, SyncState } from "../types";
+import type { Connection, ConnectionStatusMap, ConnectionSyncMeta, SyncState } from "../types";
 
 const DataCtx = createContext<DataProvider | null>(null);
 const StatusCtx = createContext<ConnectionStatusMap>({});
+const SyncMetaCtx = createContext<Record<string, ConnectionSyncMeta>>({});
 
 interface SyncCtxValue {
   refresh: () => Promise<void>;
+  /** Force-refreshes just one connection (bypassing its cache and any retry backoff),
+   *  leaving every other connection's cache/backoff untouched. */
+  refreshConnection: (id: string) => Promise<void>;
   lastUpdated: Date | null;
   /** Idle/syncing/error, derived from ConnectionStatusMap + background-refresh activity —
    *  never a separate source of truth. See specs/008-events-perf-caching/research.md Decision I. */
@@ -37,6 +43,7 @@ interface SyncCtxValue {
 
 const SyncCtx = createContext<SyncCtxValue>({
   refresh: async () => {},
+  refreshConnection: async () => {},
   lastUpdated: null,
   syncState: "idle",
 });
@@ -59,12 +66,30 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   const { setEvents } = useEventsStore();
   const { currentDate } = useUIStore();
   const [statusMap, setStatusMap] = useState<ConnectionStatusMap>({});
+  const [syncMeta, setSyncMeta] = useState<Record<string, ConnectionSyncMeta>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const hydrated = useConnectionsHydrated();
 
   const handleStatusChange = useCallback((id: string, status: ConnectionStatusMap[string]) => {
     setStatusMap((prev) => ({ ...prev, [id]: status }));
+  }, []);
+
+  /** A fetch for `connId` failed: schedules its retry backoff on the cache entry (honoring
+   *  the server's Retry-After for 429s) and surfaces the reason via useConnectionSyncMeta(). */
+  const recordFailure = useCallback((connId: string, message: string, retryAfterMs: number | null) => {
+    const current = cacheRef.current.get(connId);
+    if (current) cacheRef.current.set(connId, applyBackoff(current, retryAfterMs));
+    const nextRetryAt = cacheRef.current.get(connId)?.nextRetryAt ?? null;
+    setSyncMeta((prev) => ({
+      ...prev,
+      [connId]: { lastSyncedAt: prev[connId]?.lastSyncedAt ?? null, message, nextRetryAt },
+    }));
+  }, []);
+
+  /** A fetch for `connId` succeeded: clears any prior error/backoff from useConnectionSyncMeta(). */
+  const recordSuccess = useCallback((connId: string) => {
+    setSyncMeta((prev) => ({ ...prev, [connId]: { lastSyncedAt: Date.now(), message: undefined, nextRetryAt: null } }));
   }, []);
 
   // The session-only range cache (specs/008-events-perf-caching): one ConnectionCacheEntry
@@ -107,13 +132,14 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
 
   /**
    * Cache-aware load of [start, end): serves already-covered data instantly, fetches only
-   * the uncovered delta per connection (research.md Decision B), and — unless `force` — kicks
+   * the uncovered delta per connection (research.md Decision B), and — unless forced — kicks
    * a non-blocking background refresh of the requested window for any connection whose cache
-   * is stale (Decision C). `force` (manual refresh) resets every connection's cache first, so
-   * the normal gap-fetch path ends up fetching the whole window immediately (Decision D/FR-004).
+   * is stale (Decision C). `force: true` (the sidebar's "refresh all" button) resets every
+   * connection's cache first; `only: id` (a single source's own refresh button) does the same
+   * but for just that one connection, leaving every other connection's cache/backoff untouched.
    */
   const loadWindow = useCallback(
-    async (start: Date, end: Date, { force = false }: { force?: boolean } = {}) => {
+    async (start: Date, end: Date, { force = false, only }: { force?: boolean; only?: string } = {}) => {
       const conns = useConnectionStore.getState().connections;
       const requested: DateRange = { start: start.toISOString(), end: end.toISOString() };
 
@@ -126,7 +152,7 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       for (const conn of conns) {
         const key = computeFetchKey(conn);
         const existing = cacheRef.current.get(conn.id);
-        if (!existing || existing.fetchKey !== key || force) {
+        if (!existing || existing.fetchKey !== key || force || conn.id === only) {
           cacheRef.current.set(conn.id, createEmptyCacheEntry(key));
         }
       }
@@ -142,6 +168,14 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
           if (inFlight) await inFlight;
 
           const entry = cacheRef.current.get(conn.id)!;
+          const forced = force || conn.id === only;
+
+          // Smart retry: a connection that failed recently (429 Retry-After, or this
+          // entry's own doubling backoff) is left alone until its cooldown elapses —
+          // an unforced navigation/staleness tick must not keep hammering it. An explicit
+          // refresh (all sources, or this one source) always gets one immediate attempt.
+          if (!forced && isBackedOff(entry)) return;
+
           const gaps = computeGaps(entry.coveredRanges, requested);
 
           if (gaps.length > 0) {
@@ -152,30 +186,32 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
             const seq = entry.fetchSeq;
             const fetchPromise = Promise.all(
               gaps.map(async (gap) => {
-                const events = await fetchConnectionEvents(conn, new Date(gap.start), new Date(gap.end), handleStatusChange);
-                if (events === null) return; // error already toasted/status set — keep old cache
+                const result = await fetchConnectionEvents(conn, new Date(gap.start), new Date(gap.end), handleStatusChange);
                 const current = cacheRef.current.get(conn.id);
                 if (!current || current.fetchSeq !== seq) return; // superseded
-                cacheRef.current.set(conn.id, mergeFetchedRange(current, gap, events));
+                if (!result.ok) { recordFailure(conn.id, result.message, result.retryAfterMs); return; }
+                cacheRef.current.set(conn.id, mergeFetchedRange(current, gap, result.events));
+                recordSuccess(conn.id);
               })
             ).then(() => {});
             inFlightRef.current.set(conn.id, fetchPromise);
             await fetchPromise;
             inFlightRef.current.delete(conn.id);
-          } else if (!force && isStale(entry, STALE_TTL_MS)) {
+          } else if (!forced && isStale(entry, STALE_TTL_MS)) {
             // Background: the requested window is already covered but stale — refresh it
             // without blocking the caller, and never clear currently-shown events while it runs.
             entry.fetchSeq += 1;
             const seq = entry.fetchSeq;
             backgroundRefreshingRef.current.add(conn.id);
             notifyBackgroundRefreshChange();
-            const fetchPromise = fetchConnectionEvents(conn, start, end, handleStatusChange).then((events) => {
+            const fetchPromise = fetchConnectionEvents(conn, start, end, handleStatusChange).then((result) => {
               backgroundRefreshingRef.current.delete(conn.id);
               notifyBackgroundRefreshChange();
-              if (events === null) return;
               const current = cacheRef.current.get(conn.id);
               if (!current || current.fetchSeq !== seq) return; // superseded
-              cacheRef.current.set(conn.id, mergeFetchedRange(current, requested, events));
+              if (!result.ok) { recordFailure(conn.id, result.message, result.retryAfterMs); return; }
+              cacheRef.current.set(conn.id, mergeFetchedRange(current, requested, result.events));
+              recordSuccess(conn.id);
               publishMergedEvents();
             });
             inFlightRef.current.set(conn.id, fetchPromise);
@@ -188,7 +224,7 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
 
       publishMergedEvents();
     },
-    [handleStatusChange, notifyBackgroundRefreshChange, publishMergedEvents]
+    [handleStatusChange, notifyBackgroundRefreshChange, publishMergedEvents, recordFailure, recordSuccess]
   );
 
   // Re-fetches (cache-aware — see loadWindow) whenever the visible window changes, shared by
@@ -197,6 +233,13 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     const start = subMonths(currentDate, 1);
     const end = addMonths(currentDate, 2);
     await loadWindow(start, end, { force: true });
+  }, [currentDate, loadWindow]);
+
+  // Same, scoped to one connection — a single source's own refresh button.
+  const refreshConnection = useCallback(async (id: string) => {
+    const start = subMonths(currentDate, 1);
+    const end = addMonths(currentDate, 2);
+    await loadWindow(start, end, { only: id });
   }, [currentDate, loadWindow]);
 
   useEffect(() => {
@@ -223,14 +266,16 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   }, [statusMap, isBackgroundRefreshing]);
 
   const syncCtxValue = useMemo<SyncCtxValue>(
-    () => ({ refresh, lastUpdated, syncState }),
-    [refresh, lastUpdated, syncState]
+    () => ({ refresh, refreshConnection, lastUpdated, syncState }),
+    [refresh, refreshConnection, lastUpdated, syncState]
   );
 
   return (
     <SyncCtx.Provider value={syncCtxValue}>
       <StatusCtx.Provider value={statusMap}>
-        <DataCtx.Provider value={provider}>{children}</DataCtx.Provider>
+        <SyncMetaCtx.Provider value={syncMeta}>
+          <DataCtx.Provider value={provider}>{children}</DataCtx.Provider>
+        </SyncMetaCtx.Provider>
       </StatusCtx.Provider>
     </SyncCtx.Provider>
   );
@@ -247,8 +292,14 @@ export function useConnectionStatusMap(): ConnectionStatusMap {
   return useContext(StatusCtx);
 }
 
-/** Manual re-fetch of every source (force — bypasses cache/staleness), plus when that
- *  last succeeded and the derived app-wide sync state. */
+/** Per-connection last-sync timestamp, last error reason, and retry-backoff deadline —
+ *  the detail behind each status dot. See ConnectionSyncMeta. */
+export function useConnectionSyncMeta(): Record<string, ConnectionSyncMeta> {
+  return useContext(SyncMetaCtx);
+}
+
+/** Manual re-fetch of every source, or just one (both bypass cache/staleness/backoff),
+ *  plus when that last succeeded and the derived app-wide sync state. */
 export function useSourceSync(): SyncCtxValue {
   return useContext(SyncCtx);
 }

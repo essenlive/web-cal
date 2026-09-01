@@ -10,10 +10,10 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { RefreshCw } from "lucide-react";
 import { useConnectionStore } from "../../store";
-import { useConnectionStatusMap, useSourceSync } from "../../context/DataProviderContext";
+import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync } from "../../context/DataProviderContext";
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { ItemBadge } from "../sidebar/ItemRow";
-import { statusColor, statusLabel } from "../sidebar/Sidebar";
+import { connectionStatusDetail, statusColor } from "../sidebar/Sidebar";
 import { AddConnectionModal } from "./AddConnectionModal";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader } from "./PanelHeader";
@@ -24,7 +24,8 @@ import type { Connection } from "../../types";
 export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { connections, addConnection, updateConnection, removeConnection, reorderConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
-  const { refresh, lastUpdated } = useSourceSync();
+  const syncMeta = useConnectionSyncMeta();
+  const { refresh, refreshConnection, lastUpdated } = useSourceSync();
   const { getDragProps } = useDragReorder(connections, (c) => c.id, reorderConnection);
 
   const initialConn = initialEditId ? connections.find((c) => c.id === initialEditId) ?? null : null;
@@ -71,7 +72,7 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
               aria-label="Actualiser les sources"
               className="shrink-0"
             >
-              <RefreshCw size={16} />
+              <RefreshCw size={14} />
             </ActionButton>
           </SimpleTooltip>
         }
@@ -84,12 +85,13 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
             badge={<ItemBadge color={c.color}>{c.name.trim().charAt(0).toUpperCase()}</ItemBadge>}
             name={c.name}
             state={
-              <SimpleTooltip label={statusLabel(statusMap[c.id] ?? "unchecked")}>
+              <SimpleTooltip label={connectionStatusDetail(statusMap[c.id] ?? "unchecked", syncMeta[c.id])}>
                 <span className={`size-1.5 rounded-full shrink-0 ${statusColor(statusMap[c.id] ?? "unchecked")}`} />
               </SimpleTooltip>
             }
             onEdit={() => { setEditingConn(c); setFormOpen(true); }}
             onDuplicate={() => { const { id, ...rest } = c; addConnection({ ...rest, name: `${rest.name} (copie)` } as Omit<Connection, "id">); }}
+            onRefresh={() => refreshConnection(c.id)}
             onDelete={() => removeConnection(c.id)}
             dragProps={getDragProps(index)}
           />
