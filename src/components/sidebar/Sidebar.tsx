@@ -8,7 +8,6 @@ import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
-import { SimpleTooltip } from "../ui/tooltip";
 import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap, useSourceSync } from "../../context/DataProviderContext";
 import { getIconEl } from "../../lib/icons";
@@ -56,9 +55,7 @@ export function ConnectionRow({ connection, status, onEdit, onToggleHidden }: {
       name={connection.name}
       muted={hidden}
       state={
-        <SimpleTooltip label={statusLabel(status)}>
-          <span className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} />
-        </SimpleTooltip>
+        <span aria-label={statusLabel(status)} className={cn("size-1.5 rounded-full shrink-0", statusColor(status))} />
       }
       actions={[
         { icon: <Pencil size={12} />, label: "Modifier", onClick: onEdit },
@@ -185,18 +182,16 @@ export function Sidebar() {
         onOpen={() => openDrawer("connection")}
         onAdd={() => openNewItemDrawer("connection")}
         extra={
-          <SimpleTooltip label={lastUpdated ? `Actualiser (dernière actualisation à ${format(lastUpdated, "HH:mm")})` : "Actualiser"}>
-            <ActionButton
-              variant="ghost"
-              size="icon"
-              confirm={false}
-              onAction={refresh}
-              aria-label="Actualiser les sources"
-              className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
-            >
-              <RefreshCw size={12} />
-            </ActionButton>
-          </SimpleTooltip>
+          <ActionButton
+            variant="ghost"
+            size="icon"
+            confirm={false}
+            onAction={refresh}
+            aria-label={lastUpdated ? `Actualiser (dernière actualisation à ${format(lastUpdated, "HH:mm")})` : "Actualiser"}
+            className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
+          >
+            <RefreshCw size={12} />
+          </ActionButton>
         }
       >
         {connections.length === 0 && (
@@ -251,28 +246,24 @@ export function Sidebar() {
           <Settings size={14} className="text-muted-foreground" />
           Réglages
         </button>
-        <SimpleTooltip label="Règles">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground shrink-0"
-            onClick={() => openDrawer("rules")}
-            aria-label="Règles"
-          >
-            <ListOrdered size={16} />
-          </Button>
-        </SimpleTooltip>
-        <SimpleTooltip label="Raccourcis clavier">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground shrink-0"
-            onClick={() => openDrawer("shortcuts")}
-            aria-label="Raccourcis clavier"
-          >
-            <Keyboard size={16} />
-          </Button>
-        </SimpleTooltip>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground shrink-0"
+          onClick={() => openDrawer("rules")}
+          aria-label="Règles"
+        >
+          <ListOrdered size={16} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground shrink-0"
+          onClick={() => openDrawer("shortcuts")}
+          aria-label="Raccourcis clavier"
+        >
+          <Keyboard size={16} />
+        </Button>
       </div>
     </aside>
   );

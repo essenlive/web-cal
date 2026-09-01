@@ -10,7 +10,6 @@
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useUIStore } from "../../store";
-import { SimpleTooltip } from "../ui/tooltip";
 
 export function Section({ id, label, onOpen, onAdd, extra, children }: { id: string; label: string; onOpen: () => void; onAdd: () => void; extra?: ReactNode; children: ReactNode }) {
   const { collapsedSections, toggleSection } = useUIStore();
@@ -33,11 +32,9 @@ export function Section({ id, label, onOpen, onAdd, extra, children }: { id: str
           {label}
         </button>
         {extra}
-        <SimpleTooltip label={`Ajouter : ${label}`}>
-          <button onClick={onAdd} className="text-muted-foreground hover:text-foreground shrink-0" aria-label={`Ajouter : ${label}`}>
-            <Plus size={12} />
-          </button>
-        </SimpleTooltip>
+        <button onClick={onAdd} className="text-muted-foreground hover:text-foreground shrink-0" aria-label={`Ajouter : ${label}`}>
+          <Plus size={12} />
+        </button>
       </div>
       {!collapsed && <div className="space-y-0.5">{children}</div>}
     </div>

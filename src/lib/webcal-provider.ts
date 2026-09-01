@@ -8,7 +8,7 @@
 
 import ICAL from "ical.js";
 import { toast } from "sonner";
-import type { DataProvider } from "./data-provider";
+import { describeHttpError, type DataProvider } from "./data-provider";
 import type { CalendarEvent } from "../types";
 import type { WebCalSource } from "../store";
 
@@ -91,7 +91,7 @@ export class WebCalProvider implements DataProvider {
             ? `${this.proxyPrefix}${encodeURIComponent(url)}`
             : `/api/proxy?url=${encodeURIComponent(url)}`;
           const res = await fetch(fetchUrl);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          if (!res.ok) throw new Error(describeHttpError(res.status));
           const text = await res.text();
           const parsed = parseICS(text);
           if (parsed === null) {

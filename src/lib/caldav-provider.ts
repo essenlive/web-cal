@@ -15,7 +15,7 @@
  */
 
 import { toast } from "sonner";
-import type { DataProvider } from "./data-provider";
+import { describeHttpError, type DataProvider } from "./data-provider";
 import type { CalendarEvent } from "../types";
 
 /** Internal representation of a CalDAV calendar collection. */
@@ -151,7 +151,7 @@ export class CalDAVProvider implements DataProvider {
 </D:propfind>`;
 
     const res = await davRequest("PROPFIND", this.serverUrl, this.auth, this.proxy, body);
-    if (!res.ok && res.status !== 207) throw new Error(`CalDAV PROPFIND failed: ${res.status}`);
+    if (!res.ok && res.status !== 207) throw new Error(describeHttpError(res.status));
     const xml = await res.text();
 
     const parser = new DOMParser();

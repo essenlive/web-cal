@@ -1,7 +1,7 @@
 import { memo } from "react";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, firstGrapheme } from "../../lib/utils";
 import { findMatchingRule } from "../../lib/rules";
 import { useEventTypeStore } from "../../store";
 import { SimpleTooltip } from "../ui/tooltip";
@@ -31,7 +31,7 @@ function getIcon(name: string | undefined, size: number, color?: string) {
  */
 export function getBadgeContent(type: EventType | undefined, title: string, size: number, color = "#fff") {
   if (type?.badgeLetter) {
-    return <span style={{ color, fontSize: size, lineHeight: 1, fontWeight: 600 }}>{title.charAt(0).toUpperCase()}</span>;
+    return <span style={{ color, fontSize: size, lineHeight: 1, fontWeight: 600 }}>{firstGrapheme(title).toUpperCase()}</span>;
   }
   return getIcon(type?.icon, size, color);
 }
@@ -97,7 +97,7 @@ export const EventChip = memo(function EventChip({ event, eventType, onClick, co
                      transition-all hover:scale-110 active:scale-95 hover:brightness-90 shadow-xs"
           style={{ backgroundColor: color }}
         >
-          {getBadgeContent(eventType, event.title, 11)}
+          {getBadgeContent(eventType, event.title, 13)}
         </div>
       </SimpleTooltip>
     );
@@ -110,18 +110,20 @@ export const EventChip = memo(function EventChip({ event, eventType, onClick, co
 
   // ── Block — full-width chip with title ────────────────────────────────────
   return (
-    <div
-      onClick={stopProp(onClick)}
-      className={cn(
-        "w-full cursor-pointer select-none overflow-hidden rounded-md px-2 py-0.5",
-        "text-xs font-medium text-white transition-all hover:brightness-90 active:scale-95"
-      )}
-      style={{ backgroundColor: color }}
-    >
-      <div className="flex items-center gap-1 min-w-0">
-        {!compact && getIcon(icon, 10, "#fff")}
-        <span className="truncate">{event.title}</span>
+    <SimpleTooltip label={event.title}>
+      <div
+        onClick={stopProp(onClick)}
+        className={cn(
+          "w-full cursor-pointer select-none overflow-hidden rounded-md px-2 py-0.5",
+          "text-xs font-medium text-white transition-all hover:brightness-90 active:scale-95"
+        )}
+        style={{ backgroundColor: color }}
+      >
+        <div className="flex items-center gap-1 min-w-0">
+          {!compact && getIcon(icon, 10, "#fff")}
+          <span className="truncate">{event.title}</span>
+        </div>
       </div>
-    </div>
+    </SimpleTooltip>
   );
 });

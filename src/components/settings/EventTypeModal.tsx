@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { cn } from "../../lib/utils";
+import { cn, firstGrapheme } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { ColorPicker } from "./ColorPicker";
 import { PanelHeader, PanelFooter, InlineLink } from "./PanelHeader";
@@ -50,8 +50,8 @@ const MAX_ICON_RESULTS = 60;
 const avatarDot = (color: string, icon: string, letter?: string) => (
   <div className="size-5 rounded-full flex items-center justify-center shadow-xs" style={{ backgroundColor: color }}>
     {letter
-      ? <span style={{ color: "#fff", fontSize: 9, lineHeight: 1, fontWeight: 600 }}>{letter.charAt(0).toUpperCase()}</span>
-      : getIconEl(icon, 9, "#fff")}
+      ? <span style={{ color: "#fff", fontSize: 11, lineHeight: 1, fontWeight: 600 }}>{firstGrapheme(letter).toUpperCase()}</span>
+      : getIconEl(icon, 11, "#fff")}
   </div>
 );
 

@@ -6,6 +6,7 @@ import {
 import { cn } from "../../lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { SimpleTooltip } from "../ui/tooltip";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import { EventChip, resolveStyle, getBadgeContent } from "../events/EventChip";
@@ -35,6 +36,7 @@ function EventListModal({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
+        animation="fade"
         className="max-w-sm rounded-2xl p-4"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -76,7 +78,7 @@ const AvatarBadge = memo(function AvatarBadge({
       className="size-5 sm:size-6 rounded-full flex items-center justify-center cursor-pointer shrink-0
                  shadow-xs transition-all hover:scale-110 active:scale-95"
     >
-      {getBadgeContent(type, event.title, 9)}
+      {getBadgeContent(type, event.title, 11)}
     </div>
   );
 });
@@ -198,19 +200,26 @@ const DayCell = memo(function DayCell({
       )}
 
       {/* Date number + label (background/text style name) */}
-      <div className="flex items-center gap-1 pt-1 pl-1.5 pr-1.5 pb-0.5 shrink-0 min-w-0">
-        <button className={numberClass} onClick={handleNumberClick} disabled={allCellEvents.length === 0}>
-          {format(day, "d")}
-        </button>
-        {labelWinner && (
-          <span
-            className="text-[10px] font-medium truncate min-w-0"
-            style={{ color: labelWinner.type.color }}
-          >
-            {labelWinner.event.title}
-          </span>
-        )}
-      </div>
+      {(() => {
+        const dateRow = (
+          <div className="flex items-center gap-1 pt-1 pl-1.5 pr-1.5 pb-0.5 shrink-0 min-w-0">
+            <button className={numberClass} onClick={handleNumberClick} disabled={allCellEvents.length === 0}>
+              {format(day, "d")}
+            </button>
+            {labelWinner && (
+              <span
+                className="text-[10px] font-medium truncate min-w-0"
+                style={{ color: labelWinner.type.color }}
+              >
+                {labelWinner.event.title}
+              </span>
+            )}
+          </div>
+        );
+        return cellStyleEvents.length > 0
+          ? <SimpleTooltip label={cellStyleEvents.map((c) => c.event.title).join(", ")}>{dateRow}</SimpleTooltip>
+          : dateRow;
+      })()}
 
       {cellModalOpen && (
         <EventListModal
@@ -224,7 +233,7 @@ const DayCell = memo(function DayCell({
       )}
 
       {/* Timed block event chips */}
-      <div className="flex flex-col gap-[2px] px-1 pb-0.5 min-w-0">
+      <div className="flex flex-col gap-[2px] px-1 pb-0.5 mt-4 min-w-0">
         {visibleBlock.map((e) => (
           <EventChip
             key={e.id}

@@ -41,8 +41,8 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md rounded-2xl p-0 gap-0">
-        <DialogHeader className="px-5 pt-5 pb-3">
+      <DialogContent animation="fade" className="max-w-md rounded-2xl p-0 gap-0 flex flex-col max-h-[85vh]">
+        <DialogHeader className="px-5 pt-5 pb-3 shrink-0">
           <DialogTitle className="text-base font-semibold flex items-center gap-2">
             <span
               className="flex items-center justify-center size-6 rounded-full shrink-0"
@@ -50,11 +50,11 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
             >
               {getIconEl(type.icon, 13, type.color)}
             </span>
-            {event.title}
+            <span className="min-w-0 wrap-anywhere">{event.title}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 pb-5 space-y-3">
+        <div className="px-5 pb-5 space-y-3 overflow-y-auto min-h-0">
           <div className="text-sm text-muted-foreground">
             {event.allDay
               ? `${format(start, dateFmt)} – ${format(end, dateFmt)}`
@@ -63,15 +63,15 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
 
           {event.location && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin size={13} />
-              {event.location}
+              <MapPin size={13} className="shrink-0" />
+              <span className="min-w-0 wrap-anywhere">{event.location}</span>
             </div>
           )}
 
           {event.notes && (
             <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
               <StickyNote size={13} className="mt-0.5 shrink-0" />
-              <span className="whitespace-pre-wrap">{event.notes}</span>
+              <span className="min-w-0 whitespace-pre-wrap wrap-anywhere">{event.notes}</span>
             </div>
           )}
 
@@ -79,7 +79,7 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
           <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1.5">
             <div className="flex items-center gap-1.5">
               <ListOrdered size={13} className="shrink-0" />
-              <span>
+              <span className="min-w-0 wrap-anywhere">
                 Règle correspondante : {isDefault ? "aucune (style par défaut)" : ruleDescription}
               </span>
             </div>

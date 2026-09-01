@@ -113,6 +113,11 @@ function eventOverlaps(e: CalendarEvent, start: number, end: number): boolean {
  * overlapping `range` (they're about to be replaced, never duplicated), append the
  * fresh ones, union `range` into coveredRanges, and stamp `lastFetchedAt` (research.md
  * Decision B step 4). Returns a new entry — does not mutate `entry`.
+ *
+ * Also drops any retained event whose id reappears in `freshEvents`: a provider's own
+ * range filter can be boundary-inclusive where `eventOverlaps` is exclusive (e.g. an
+ * event ending exactly at `range.start`), which would otherwise let that event survive
+ * in `retained` *and* come back in `freshEvents`, producing a duplicate id.
  */
 export function mergeFetchedRange(
   entry: ConnectionCacheEntry,
@@ -121,7 +126,8 @@ export function mergeFetchedRange(
 ): ConnectionCacheEntry {
   const start = toMs(range.start);
   const end = toMs(range.end);
-  const retained = entry.events.filter((e) => !eventOverlaps(e, start, end));
+  const freshIds = new Set(freshEvents.map((e) => e.id));
+  const retained = entry.events.filter((e) => !eventOverlaps(e, start, end) && !freshIds.has(e.id));
   return {
     ...entry,
     events: [...retained, ...freshEvents],
