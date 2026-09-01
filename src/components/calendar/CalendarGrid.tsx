@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { startOfWeek, addDays } from "date-fns";
 import { useUIStore, useEventsStore } from "../../store";
+import { useSwipeNavigate } from "../../hooks/useSwipeNavigate";
 import { MonthView } from "./MonthView";
 import { TimeGridView } from "./TimeGridView";
 import { AgendaView } from "./AgendaView";
@@ -23,8 +24,10 @@ export function CalendarGrid() {
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [currentDate, weekStartsOnMonday]);
 
+  const swipeProps = useSwipeNavigate();
+
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
+    <div className="flex-1 overflow-hidden flex flex-col touch-pan-y" {...swipeProps}>
       {!hasLoadedOnce ? (
         <CalendarSkeleton />
       ) : (

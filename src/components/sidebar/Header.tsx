@@ -53,8 +53,19 @@ export function Header() {
 
       <h1 className="text-xs sm:text-sm font-semibold text-foreground capitalize ml-1 flex-1 truncate">{title()}</h1>
 
-      {/* View switcher */}
-      <div className="flex rounded-xl border border-border overflow-hidden bg-background shrink-0">
+      {/* View switcher: native select on mobile (native picker, zero extra a11y wiring), pill on desktop */}
+      <select
+        value={view}
+        onChange={(e) => setView(e.target.value as CalendarView)}
+        aria-label="Vue du calendrier"
+        className="sm:hidden rounded-xl border border-border bg-background text-foreground text-xs font-medium px-2 py-2.5 shrink-0"
+      >
+        {VIEWS.map((v) => (
+          <option key={v.id} value={v.id}>{v.label}</option>
+        ))}
+      </select>
+
+      <div className="hidden sm:flex rounded-xl border border-border overflow-hidden bg-background shrink-0">
         {VIEWS.map((v) => (
           <Button
             key={v.id}
