@@ -9,22 +9,22 @@ import { PanelHeader, InlineLink } from "../components/settings/PanelHeader";
 import { useUIStore, useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
 import { getIconEl } from "../lib/icons";
 import { describeMatch } from "../lib/rules";
-import type { Connection } from "../types";
 
-/** One connection's fixed, undeletable source rule — auto-created if missing. */
-function SourceRuleRow({ connection }: { connection: Connection }) {
-  const rule = useSourceRule(connection.id);
-  return rule ? <RuleEditRow rule={rule} lockValue /> : null;
+/** Ensures a connection's fixed source rule exists — auto-created if missing. Renders nothing; the row itself is rendered from the merged `rules` list once created. */
+function EnsureSourceRule({ connectionId }: { connectionId: string }) {
+  useSourceRule(connectionId);
+  return null;
 }
 
 /**
  * Rules manager — rendered as drawer content from the sidebar's flat "Règles"
- * button. Split into two sections: "Textes" (name-pattern rules, freely
- * addable/deletable/reorderable) and "Sources" (one fixed, undeletable rule
- * per connection — the source itself already determines the match, so there's
- * nothing to add or delete). Legacy "event" rules (the old "just this event"
- * quick action, now retired) still render, read-only, under "Autres" if any
- * remain from before that feature was retired.
+ * button. Source and text rules render as a single list in true priority
+ * order (array order), freely reorderable across type — a source rule can
+ * outrank a text rule or vice versa. Source rules stay undeletable (one per
+ * connection, auto-created) and their value locked to that connection; text
+ * rules are freely addable/deletable/editable. Legacy "event" rules (the old
+ * "just this event" quick action, now retired) still render, read-only,
+ * under "Autres" if any remain from before that feature was retired.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for prop-shape parity with SettingsDrawer's generic openDrawer(panel, editId)/openNewItemDrawer(panel) call; there's no deep-link edit view to jump to anymore.
 export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: boolean } = {}) {
@@ -34,9 +34,10 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
 
-  const textRules = rules.filter((r) => r.matchType === "name");
+  // Priority order is array order — filtering preserves it, so this is already sorted.
+  const orderedRules = rules.filter((r) => r.matchType === "name" || r.matchType === "source");
   const legacyRules = rules.filter((r) => r.matchType === "event");
-  const { getDragProps } = useFilteredRuleDragReorder(rules, textRules, reorderRule);
+  const { getDragProps } = useFilteredRuleDragReorder(rules, orderedRules, reorderRule);
   const defaultType = getDefaultType();
 
   const getEventTitle = (id: string) => events.find((e) => e.id === id)?.title;
@@ -51,36 +52,38 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
             C&apos;est ici que l&apos;on définit les règles qui déterminent quel{" "}
             <InlineLink onClick={() => openDrawer("eventType")}>type</InlineLink>{" "}
             d&apos;affichage chaque événement doit utiliser. Les règles peuvent s&apos;appliquer à une source ou à un texte dans le titre. Elles
-            s&apos;appliquent par ordre de priorité, de haut en bas. Si aucune règle ne s&apos;applique, le style par
+            s&apos;appliquent par ordre de priorité, de haut en bas — glissez une règle pour changer sa priorité,
+            source comme texte. Si aucune règle ne s&apos;applique, le style par
             défaut est actuellement —{" "}
             <InlineLink onClick={() => openDrawer("eventType", defaultType.id)}>{defaultType.label}</InlineLink>.
           </>
         }
       />
 
-      <div className="space-y-4 px-4 pb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-1.5">Textes</h3>
-          <div className="space-y-1.5">
-            {textRules.map((rule, index) => {
-              const duplicate = () =>
-                addRule({ matchType: rule.matchType, matchValue: rule.matchValue, displayTypeId: rule.displayTypeId, enabled: rule.enabled });
-              return (
-                <RuleEditRow key={rule.id} rule={rule} onDuplicate={duplicate} onDelete={() => removeRule(rule.id)} dragProps={getDragProps(index)} />
-              );
-            })}
-            <AddItemButton
-              label="Nouvelle règle"
-              onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: defaultType.id })}
-            />
-          </div>
-        </div>
+      {connections.map((c) => <EnsureSourceRule key={c.id} connectionId={c.id} />)}
 
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-1.5">Sources</h3>
-          <div className="space-y-1.5">
-            {connections.map((c) => <SourceRuleRow key={c.id} connection={c} />)}
-          </div>
+      <div className="space-y-4 px-4 pb-4">
+        <div className="space-y-1.5">
+          {orderedRules.map((rule, index) => {
+            const duplicate =
+              rule.matchType === "name"
+                ? () => addRule({ matchType: rule.matchType, matchValue: rule.matchValue, displayTypeId: rule.displayTypeId, enabled: rule.enabled })
+                : undefined;
+            return (
+              <RuleEditRow
+                key={rule.id}
+                rule={rule}
+                onDuplicate={duplicate}
+                onDelete={rule.matchType === "name" ? () => removeRule(rule.id) : undefined}
+                dragProps={getDragProps(index)}
+                lockValue={rule.matchType === "source"}
+              />
+            );
+          })}
+          <AddItemButton
+            label="Nouvelle règle de texte"
+            onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: defaultType.id })}
+          />
         </div>
 
         {legacyRules.length > 0 && (
