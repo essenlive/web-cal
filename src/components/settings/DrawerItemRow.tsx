@@ -13,7 +13,7 @@
 
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
-import { GripVertical, Pencil, Copy, Trash2, Check, Sparkles, Plus, RefreshCw } from "lucide-react";
+import { GripVertical, Pencil, Copy, Trash2, Check, Sparkles, Plus } from "lucide-react";
 import { ActionButton } from "../ui/action-button";
 import { SimpleTooltip } from "../ui/tooltip";
 import type { DragProps } from "../sidebar/Sidebar";
@@ -28,22 +28,6 @@ export function IconButton({ icon, label, onClick }: { icon: ReactNode; label: s
       >
         {icon}
       </button>
-    </SimpleTooltip>
-  );
-}
-
-export function RefreshButton({ onRefresh, label = "Actualiser" }: { onRefresh: () => void | Promise<void>; label?: string }) {
-  return (
-    <SimpleTooltip label={label}>
-      <ActionButton
-        variant="secondary"
-        confirm={false}
-        onAction={onRefresh}
-        aria-label={label}
-        className="size-8 shrink-0 rounded-full p-0 text-muted-foreground hover:text-foreground [&_svg]:size-3"
-      >
-        <RefreshCw size={12} />
-      </ActionButton>
     </SimpleTooltip>
   );
 }
@@ -65,14 +49,13 @@ export function DeleteButton({ onDelete, label = "Supprimer" }: { onDelete: () =
   );
 }
 
-export function DrawerItemRow({ badge, name, tag, state, onEdit, onDuplicate, onRefresh, onDelete, deleteDisabledReason, dragProps }: {
+export function DrawerItemRow({ badge, name, tag, state, onEdit, onDuplicate, onDelete, deleteDisabledReason, dragProps }: {
   badge: ReactNode;
   name: string;
   tag?: ReactNode;
   state?: ReactNode;
   onEdit?: () => void;
   onDuplicate?: () => void;
-  onRefresh?: () => void | Promise<void>;
   onDelete?: () => void;
   deleteDisabledReason?: string;
   dragProps?: DragProps;
@@ -104,7 +87,6 @@ export function DrawerItemRow({ badge, name, tag, state, onEdit, onDuplicate, on
       {tag}
       {onEdit && <IconButton icon={<Pencil size={12} />} label="Modifier" onClick={onEdit} />}
       {onDuplicate && <IconButton icon={<Copy size={12} />} label="Dupliquer" onClick={onDuplicate} />}
-      {onRefresh && <RefreshButton onRefresh={onRefresh} />}
       {onDelete && <DeleteButton onDelete={onDelete} />}
       {!onDelete && deleteDisabledReason && (
         <SimpleTooltip label={deleteDisabledReason}>

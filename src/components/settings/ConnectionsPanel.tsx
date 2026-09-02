@@ -25,7 +25,7 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
   const { connections, addConnection, updateConnection, removeConnection, reorderConnection } = useConnectionStore();
   const statusMap = useConnectionStatusMap();
   const syncMeta = useConnectionSyncMeta();
-  const { refresh, refreshConnection, lastUpdated } = useSourceSync();
+  const { refresh, lastUpdated } = useSourceSync();
   const { getDragProps } = useDragReorder(connections, (c) => c.id, reorderConnection);
 
   const initialConn = initialEditId ? connections.find((c) => c.id === initialEditId) ?? null : null;
@@ -91,7 +91,6 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
             }
             onEdit={() => { setEditingConn(c); setFormOpen(true); }}
             onDuplicate={() => { const { id, ...rest } = c; addConnection({ ...rest, name: `${rest.name} (copie)` } as Omit<Connection, "id">); }}
-            onRefresh={() => refreshConnection(c.id)}
             onDelete={() => removeConnection(c.id)}
             dragProps={getDragProps(index)}
           />

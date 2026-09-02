@@ -52,9 +52,6 @@ const CacheCtx = createContext<() => Map<string, ConnectionCacheEntry>>(() => ne
 
 interface SyncCtxValue {
   refresh: () => Promise<void>;
-  /** Force-refreshes just one connection (bypassing its cache and any retry backoff),
-   *  leaving every other connection's cache/backoff untouched. */
-  refreshConnection: (id: string) => Promise<void>;
   lastUpdated: Date | null;
   /** Idle/syncing/error, derived from ConnectionStatusMap + background-refresh activity —
    *  never a separate source of truth. See specs/008-events-perf-caching/research.md Decision I. */
@@ -63,7 +60,6 @@ interface SyncCtxValue {
 
 const SyncCtx = createContext<SyncCtxValue>({
   refresh: async () => {},
-  refreshConnection: async () => {},
   lastUpdated: null,
   syncState: "idle",
 });
@@ -330,13 +326,11 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
    * the uncovered delta per connection (research.md Decision B), and — unless forced — kicks
    * a non-blocking background refresh of the requested window for any connection whose cache
    * is stale (Decision C). `force: true` (the sidebar's "refresh all" button) resets every
-   * connection's cache first; `only: id` (a single source's own refresh button) does the same
-   * but for just that one connection, leaving every other connection's cache/backoff untouched.
-   * Each connection is synced via syncConnection independently — see there for how/when it
-   * publishes and schedules its own retry.
+   * connection's cache first. Each connection is synced via syncConnection independently —
+   * see there for how/when it publishes and schedules its own retry.
    */
   const loadWindow = useCallback(
-    async (start: Date, end: Date, { force = false, only }: { force?: boolean; only?: string } = {}) => {
+    async (start: Date, end: Date, { force = false }: { force?: boolean } = {}) => {
       const conns = useConnectionStore.getState().connections;
       const requested: DateRange = { start: start.toISOString(), end: end.toISOString() };
 
@@ -353,13 +347,13 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       for (const conn of conns) {
         const key = computeFetchKey(conn);
         const existing = cacheRef.current.get(conn.id);
-        if (!existing || existing.fetchKey !== key || force || conn.id === only) {
+        if (!existing || existing.fetchKey !== key || force) {
           cacheRef.current.set(conn.id, createEmptyCacheEntry(key));
         }
       }
 
       await Promise.all(
-        conns.map((conn) => syncConnection(conn, requested, force || conn.id === only))
+        conns.map((conn) => syncConnection(conn, requested, force))
       );
 
       // Safety net for the zero-connections case — with no connections, no syncConnection
@@ -375,13 +369,6 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     const start = subMonths(currentDate, 1);
     const end = addMonths(currentDate, 2);
     await loadWindow(start, end, { force: true });
-  }, [currentDate, loadWindow]);
-
-  // Same, scoped to one connection — a single source's own refresh button.
-  const refreshConnection = useCallback(async (id: string) => {
-    const start = subMonths(currentDate, 1);
-    const end = addMonths(currentDate, 2);
-    await loadWindow(start, end, { only: id });
   }, [currentDate, loadWindow]);
 
   // Boot-time hydration from disk, once: seeds cacheRef from the last session's persisted
@@ -447,8 +434,8 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   }, [statusMap, isBackgroundRefreshing]);
 
   const syncCtxValue = useMemo<SyncCtxValue>(
-    () => ({ refresh, refreshConnection, lastUpdated, syncState }),
-    [refresh, refreshConnection, lastUpdated, syncState]
+    () => ({ refresh, lastUpdated, syncState }),
+    [refresh, lastUpdated, syncState]
   );
 
   // Stable across renders — cacheRef's own identity never changes, only its .current contents.
@@ -484,8 +471,8 @@ export function useConnectionSyncMeta(): Record<string, ConnectionSyncMeta> {
   return useContext(SyncMetaCtx);
 }
 
-/** Manual re-fetch of every source, or just one (both bypass cache/staleness/backoff),
- *  plus when that last succeeded and the derived app-wide sync state. */
+/** Manual re-fetch of every source (bypasses cache/staleness/backoff), plus when that last
+ *  succeeded and the derived app-wide sync state. */
 export function useSourceSync(): SyncCtxValue {
   return useContext(SyncCtx);
 }
