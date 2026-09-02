@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { SortHeader, type SortDir } from "./table";
 import { CopySnapshotButton } from "./CopySnapshotButton";
 
-const KNOWN_PREFIXES = ["webcal:", "proton-cal:"];
+const KNOWN_PREFIXES = ["overcal:", "webcal:", "proton-cal:"];
 
 interface Row {
   key: string;
@@ -96,7 +96,7 @@ export function StoragePanel() {
           {filtered.length} / {rows.length} clés · {(total / 1024).toFixed(1)} Ko au total
         </span>
         <CopySnapshotButton
-          context="web-cal debug snapshot — onglet Stockage. Contenu brut de localStorage pour les clés persistées par l'application (préfixes webcal: et proton-cal:) : connexions, règles, types d'événements, thème, préférences UI, et le cache local des événements. 'value' est l'objet JSON parsé quand c'est possible, sinon la chaîne brute."
+          context="overcal debug snapshot — onglet Stockage. Contenu brut de localStorage pour les clés persistées par l'application (préfixe overcal:) : connexions, règles, types d'événements, thème, préférences UI, et le cache local des événements. 'value' est l'objet JSON parsé quand c'est possible, sinon la chaîne brute."
           data={snapshotData}
         />
       </div>

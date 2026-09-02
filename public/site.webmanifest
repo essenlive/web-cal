@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "web-cal",
-  "short_name": "web-cal",
+  "name": "overcal",
+  "short_name": "overcal",
   "description": "A unified calendar view across CalDAV and WebCal sources.",
   "start_url": "/",
   "scope": "/",

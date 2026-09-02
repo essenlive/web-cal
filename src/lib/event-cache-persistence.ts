@@ -14,7 +14,7 @@
 
 import { clampEntryToWindow, type ConnectionCacheEntry, type DateRange } from "./event-cache";
 
-const STORAGE_KEY = "webcal:event-cache";
+const STORAGE_KEY = "overcal:event-cache";
 /** Insurance against a pathological feed (heavy recurrence expansion) eating the
  *  localStorage quota shared with the app's other six persisted stores. */
 const MAX_BYTES = 4 * 1024 * 1024;

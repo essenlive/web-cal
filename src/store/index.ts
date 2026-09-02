@@ -13,6 +13,27 @@ const noopStorage: StateStorage = {
 };
 const storage = createJSONStorage(() => (typeof window !== "undefined" ? localStorage : noopStorage));
 
+// One-time rename: "proton-cal:"/"webcal:" → "overcal:" (app rebrand). Copies each old
+// key's raw value to its new name if the new key isn't already populated; old keys are
+// left in place (harmless, and other one-time migrations below still read a couple of
+// them by their old name).
+if (typeof window !== "undefined") {
+  const RENAMED_KEYS: Record<string, string> = {
+    "webcal:connections": "overcal:connections",
+    "proton-cal:event-types": "overcal:event-types",
+    "webcal:rules": "overcal:rules",
+    "webcal:presets": "overcal:presets",
+    "proton-cal:ui": "overcal:ui",
+    "proton-cal:themes": "overcal:themes",
+    "webcal:event-cache": "overcal:event-cache",
+  };
+  for (const [oldKey, newKey] of Object.entries(RENAMED_KEYS)) {
+    if (localStorage.getItem(newKey) !== null) continue;
+    const old = localStorage.getItem(oldKey);
+    if (old !== null) localStorage.setItem(newKey, old);
+  }
+}
+
 // ── Legacy backend config shape ───────────────────────────────────────────────
 // Kept only so useConnectionStore's one-time migration (below) can parse a
 // pre-existing "webcal:backend" localStorage blob; there is no live store for
@@ -81,7 +102,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         }),
     }),
     {
-      name: "webcal:connections",
+      name: "overcal:connections",
       storage,
       onRehydrateStorage: () => (state) => {
         if (!state || typeof window === "undefined") return;
@@ -218,7 +239,7 @@ export const useEventTypeStore = create<EventTypeStore>()(
         }),
     }),
     {
-      name: "proton-cal:event-types",
+      name: "overcal:event-types",
       storage,
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -250,7 +271,7 @@ function tierOf(matchType: RuleMatchType): number {
  */
 function legacyDefaultTypeId(types: EventType[]): string {
   try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem("webcal:rules") : null;
+    const raw = typeof window !== "undefined" ? localStorage.getItem("overcal:rules") : null;
     const persistedRules: Rule[] | undefined = (raw ? JSON.parse(raw) : null)?.state?.rules;
     const catchAll = persistedRules?.find((r) => r.matchType === "all");
     if (catchAll && types.some((t) => t.id === catchAll.displayTypeId)) return catchAll.displayTypeId;
@@ -364,7 +385,7 @@ export const useRuleStore = create<RuleStore>()(
         })),
     }),
     {
-      name: "webcal:rules",
+      name: "overcal:rules",
       storage,
       onRehydrateStorage: () => (state) => {
         if (state) state.rules = seedCatchAllRule(dedupeSourceRules(state.rules));
@@ -461,7 +482,7 @@ export const usePresetStore = create<PresetStore>()(
         for (const t of types) if (t.hidden) updateType({ ...t, hidden: false });
       },
     }),
-    { name: "webcal:presets", storage }
+    { name: "overcal:presets", storage }
   )
 );
 
@@ -546,7 +567,7 @@ export const useUIStore = create<UIStore>()(
       toggleSection: (id) => set((s) => ({ collapsedSections: { ...s.collapsedSections, [id]: !s.collapsedSections[id] } })),
     }),
     {
-      name: "proton-cal:ui",
+      name: "overcal:ui",
       storage,
       partialize: (s) => ({
         view: s.view,
@@ -620,7 +641,7 @@ export const useThemeStore = create<ThemeStore>()(
         }),
     }),
     {
-      name: "proton-cal:themes",
+      name: "overcal:themes",
       storage,
       partialize: (s) => ({
         customThemes: s.customThemes,
@@ -633,10 +654,10 @@ export const useThemeStore = create<ThemeStore>()(
         if (!state || typeof window === "undefined") return;
         if (!state.migratedLegacyDarkMode) {
           // One-time migration: honor the legacy darkMode toggle's preference
-          // (proton-cal:ui) for users upgrading from before this feature existed.
-          // Read-only — proton-cal:ui / useUIStore.darkMode are left untouched.
+          // (overcal:ui) for users upgrading from before this feature existed.
+          // Read-only — overcal:ui / useUIStore.darkMode are left untouched.
           try {
-            const raw = localStorage.getItem("proton-cal:ui");
+            const raw = localStorage.getItem("overcal:ui");
             if (raw) {
               const parsed = JSON.parse(raw) as { state?: { darkMode?: boolean } };
               if (parsed?.state?.darkMode === true) {

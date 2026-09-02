@@ -6,11 +6,11 @@
  */
 
 export const EXPORT_SECTIONS = {
-  presets: ["webcal:presets"],
-  sources: ["webcal:connections"],
-  rulesAndStyles: ["webcal:rules", "proton-cal:event-types"],
-  themes: ["proton-cal:themes"],
-  general: ["proton-cal:ui"],
+  presets: ["overcal:presets"],
+  sources: ["overcal:connections"],
+  rulesAndStyles: ["overcal:rules", "overcal:event-types"],
+  themes: ["overcal:themes"],
+  general: ["overcal:ui"],
 } as const;
 
 export type ExportSection = keyof typeof EXPORT_SECTIONS;

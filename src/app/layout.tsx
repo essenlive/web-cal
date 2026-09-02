@@ -3,8 +3,8 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "proton-cal",
-  applicationName: "web-cal",
+  title: "overcal",
+  applicationName: "overcal",
   manifest: "/site.webmanifest",
   icons: {
     icon: [
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "web-cal",
+    title: "overcal",
   },
 };
 
