@@ -47,6 +47,8 @@ type SyncConnectionFn = (
 const DataCtx = createContext<DataProvider | null>(null);
 const StatusCtx = createContext<ConnectionStatusMap>({});
 const SyncMetaCtx = createContext<Record<string, ConnectionSyncMeta>>({});
+/** Read-only escape hatch onto the session cache (see cacheRef below), for the /debug page only. */
+const CacheCtx = createContext<() => Map<string, ConnectionCacheEntry>>(() => new Map());
 
 interface SyncCtxValue {
   refresh: () => Promise<void>;
@@ -449,11 +451,16 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     [refresh, refreshConnection, lastUpdated, syncState]
   );
 
+  // Stable across renders — cacheRef's own identity never changes, only its .current contents.
+  const getCache = useCallback(() => cacheRef.current, []);
+
   return (
     <SyncCtx.Provider value={syncCtxValue}>
       <StatusCtx.Provider value={statusMap}>
         <SyncMetaCtx.Provider value={syncMeta}>
-          <DataCtx.Provider value={provider}>{children}</DataCtx.Provider>
+          <CacheCtx.Provider value={getCache}>
+            <DataCtx.Provider value={provider}>{children}</DataCtx.Provider>
+          </CacheCtx.Provider>
         </SyncMetaCtx.Provider>
       </StatusCtx.Provider>
     </SyncCtx.Provider>
@@ -481,4 +488,11 @@ export function useConnectionSyncMeta(): Record<string, ConnectionSyncMeta> {
  *  plus when that last succeeded and the derived app-wide sync state. */
 export function useSourceSync(): SyncCtxValue {
   return useContext(SyncCtx);
+}
+
+/** Getter for the live per-connection range cache (coveredRanges, backoffMs, fetchSeq…) —
+ *  for the /debug page only. Re-invoke inside a memo keyed on useConnectionSyncMeta()/
+ *  useSourceSync().lastUpdated to stay in sync, since the getter itself isn't reactive. */
+export function useDebugCache(): () => Map<string, ConnectionCacheEntry> {
+  return useContext(CacheCtx);
 }

@@ -3,12 +3,13 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, RefreshCw, Settings, Keyboard, ListOrdered, Eye, EyeOff, Pencil, Sun, Moon } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Settings, Keyboard, Eye, EyeOff, Pencil, Plus, Sun, Moon, Bug, GitBranch } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
-import { useUIStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
+import { useUIStore, useConnectionStore, useEventTypeStore, useRuleStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync } from "../../context/DataProviderContext";
 import { getIconEl } from "../../lib/icons";
 import { Section } from "./Section";
@@ -17,6 +18,8 @@ import { PresetSelector } from "./PresetSelector";
 import { SimpleTooltip } from "../ui/tooltip";
 import { orderThemes } from "../../lib/theme";
 import type { Connection, ConnectionStatus, ConnectionSyncMeta, EventType, Theme } from "../../types";
+
+const REPO_URL = "https://github.com/essenlive/web-cal";
 
 /** Pointer-based (mouse + touch) drag handle wiring for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
 export interface DragProps {
@@ -128,8 +131,14 @@ export function Sidebar() {
   const statusMap = useConnectionStatusMap();
   const syncMeta = useConnectionSyncMeta();
   const { refresh, lastUpdated } = useSourceSync();
-  const { types, updateType } = useEventTypeStore();
+  const { types, updateType, getDefaultType } = useEventTypeStore();
+  const { addRule } = useRuleStore();
   const { customThemes, themeOrder, selectedThemeId, selectTheme } = useThemeStore();
+
+  const handleAddRule = () => {
+    addRule({ matchType: "name", matchValue: "", displayTypeId: getDefaultType().id });
+    openDrawer("rules");
+  };
 
   if (!sidebarOpen) return null;
 
@@ -147,9 +156,10 @@ export function Sidebar() {
     <aside className="
       fixed top-14 bottom-0 left-0 z-40 w-56
       sm:relative sm:inset-auto sm:z-auto sm:translate-x-0
-      shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto
+      shrink-0 border-r border-border flex flex-col bg-card overflow-hidden
       transition-transform duration-200
     ">
+      <div className="flex-1 overflow-y-auto">
       {/* Mini calendar */}
       <div className="px-3 pb-3">
         <div className="flex items-center justify-between mb-2">
@@ -192,6 +202,29 @@ export function Sidebar() {
 
       {/* Presets */}
       <PresetSelector />
+
+      <div className="border-t border-border" />
+
+      {/* Rules — its own section, but purely a link to the rules drawer: unlike
+          Sources/Types/Thème there's no compact per-item preview worth rendering here.
+          A dot stands in for the other sections' chevron (nothing to collapse) so the
+          label still lines up with theirs. */}
+      <div className="px-3 py-3">
+        <div className="flex items-center gap-1 px-2">
+          <span className="flex items-center justify-center size-3 shrink-0">
+            <span className="size-1.5 rounded-full bg-muted-foreground/50" />
+          </span>
+          <button
+            onClick={() => openDrawer("rules")}
+            className="flex-1 min-w-0 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wide truncate"
+          >
+            Règles
+          </button>
+          <button onClick={handleAddRule} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Ajouter une règle">
+            <Plus size={12} />
+          </button>
+        </div>
+      </div>
 
       <div className="border-t border-border" />
 
@@ -257,34 +290,35 @@ export function Sidebar() {
           />
         ))}
       </Section>
+      </div>
 
-      {/* Preferences — flat, no sub-items to collapse or reorder */}
-      <div className="mt-auto border-t border-border px-3 py-3 flex items-center gap-1">
-        <button
-          onClick={() => openDrawer("preferences")}
-          className="flex items-center gap-2 flex-1 min-w-0 rounded-lg px-2 py-1.5 hover:bg-muted text-xs text-foreground"
-        >
-          <Settings size={14} className="text-muted-foreground" />
-          Réglages
-        </button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground shrink-0"
-          onClick={() => openDrawer("rules")}
-          aria-label="Règles"
-        >
-          <ListOrdered size={16} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground shrink-0"
-          onClick={() => openDrawer("shortcuts")}
-          aria-label="Raccourcis clavier"
-        >
-          <Keyboard size={16} />
-        </Button>
+      {/* Bottom toolbar — outside the scroll container above, so it stays visible
+          regardless of how much sidebar content there is to scroll through. */}
+      <div className="shrink-0 border-t border-border px-2 py-2 flex items-center justify-around">
+        <SimpleTooltip label="Réglages">
+          <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => openDrawer("preferences")} aria-label="Réglages">
+            <Settings size={16} />
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip label="Raccourcis clavier">
+          <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => openDrawer("shortcuts")} aria-label="Raccourcis clavier">
+            <Keyboard size={16} />
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip label="Debug">
+          <Button variant="ghost" size="icon" className="text-muted-foreground" asChild aria-label="Debug">
+            <Link href="/debug">
+              <Bug size={16} />
+            </Link>
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip label="Dépôt GitHub">
+          <Button variant="ghost" size="icon" className="text-muted-foreground" asChild aria-label="Dépôt GitHub">
+            <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+              <GitBranch size={16} />
+            </a>
+          </Button>
+        </SimpleTooltip>
       </div>
     </aside>
   );
