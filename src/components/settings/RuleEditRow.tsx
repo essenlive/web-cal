@@ -43,8 +43,13 @@ export function useSourceRule(connectionId: string): Rule | undefined {
   const rule = rules.find((r) => r.matchType === "source" && r.matchValue === connectionId);
 
   useEffect(() => {
-    if (!rule) addRule({ matchType: "source", matchValue: connectionId, displayTypeId: getDefaultType().id });
-  }, [rule, connectionId, addRule, getDefaultType]);
+    // Re-check against live store state, not the `rule` closed over above — React
+    // Strict Mode (and any other double-mount) re-runs this effect with that same
+    // stale closure, so relying on it lets two invocations both see "missing" and
+    // both add a rule.
+    const exists = useRuleStore.getState().rules.some((r) => r.matchType === "source" && r.matchValue === connectionId);
+    if (!exists) addRule({ matchType: "source", matchValue: connectionId, displayTypeId: getDefaultType().id });
+  }, [connectionId, addRule, getDefaultType]);
 
   return rule;
 }

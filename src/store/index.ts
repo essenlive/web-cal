@@ -260,6 +260,17 @@ function legacyDefaultTypeId(types: EventType[]): string {
   return types[0]?.id;
 }
 
+/** Drops duplicate matchType:"source" rules for the same connection, keeping the earliest (highest-priority) one — cleans up state left over from a since-fixed race in useSourceRule. */
+function dedupeSourceRules(rules: Rule[]): Rule[] {
+  const seen = new Set<string>();
+  return rules.filter((r) => {
+    if (r.matchType !== "source") return true;
+    if (seen.has(r.matchValue)) return false;
+    seen.add(r.matchValue);
+    return true;
+  });
+}
+
 /** Ensures exactly one matchType:"all" (catch-all) rule exists, appending one if missing. */
 function seedCatchAllRule(rules: Rule[]): Rule[] {
   if (rules.some((r) => r.matchType === "all")) return rules;
@@ -356,7 +367,7 @@ export const useRuleStore = create<RuleStore>()(
       name: "webcal:rules",
       storage,
       onRehydrateStorage: () => (state) => {
-        if (state) state.rules = seedCatchAllRule(state.rules);
+        if (state) state.rules = seedCatchAllRule(dedupeSourceRules(state.rules));
       },
     }
   )
