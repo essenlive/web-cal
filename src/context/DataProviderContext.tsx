@@ -28,13 +28,24 @@ import { readPersistedCache, writePersistedCache } from "../lib/event-cache-pers
 import { useConnectionStore, useEventsStore, useUIStore } from "../store";
 import type { Connection, ConnectionStatus, ConnectionStatusMap, ConnectionSyncMeta, SyncState } from "../types";
 
+/** How many months on each side of a center date count as "nearby enough to keep warm" —
+ *  aggressively wider than the single visible month, so a normal amount of navigation in
+ *  either direction stays served from cache instead of hitting a genuine gap (and, on reload,
+ *  a normal amount of *time* passing before the tab is reopened doesn't invalidate the
+ *  persisted snapshot either — see computePersistWindow). */
+const WINDOW_MONTHS_BACK = 2;
+const WINDOW_MONTHS_FORWARD = 3;
+
+function windowAround(centerDate: Date): { start: Date; end: Date } {
+  return { start: subMonths(centerDate, WINDOW_MONTHS_BACK), end: addMonths(centerDate, WINDOW_MONTHS_FORWARD) };
+}
+
 /** The window persisted to disk on every write — centered on real "now", not `currentDate`
  *  (which isn't persisted in useUIStore, so a reload always starts centered on today
- *  regardless of where the user last navigated). One month wider on each side than the
- *  default fetch window so a little post-reload navigation still hits cache. */
+ *  regardless of where the user last navigated). */
 function computePersistWindow(): DateRange {
-  const now = new Date();
-  return { start: subMonths(now, 2).toISOString(), end: addMonths(now, 3).toISOString() };
+  const { start, end } = windowAround(new Date());
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 type SyncConnectionFn = (
@@ -163,8 +174,8 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       retryTimersRef.current.delete(connId);
       const conn = useConnectionStore.getState().connections.find((c) => c.id === connId);
       if (!conn || !syncConnectionRef.current) return;
-      const now = useUIStore.getState().currentDate;
-      const requested: DateRange = { start: subMonths(now, 1).toISOString(), end: addMonths(now, 2).toISOString() };
+      const { start, end } = windowAround(useUIStore.getState().currentDate);
+      const requested: DateRange = { start: start.toISOString(), end: end.toISOString() };
       void syncConnectionRef.current(conn, requested, false, silentStatusChange);
     }, Math.max(0, delayMs));
     retryTimersRef.current.set(connId, timer);
@@ -251,7 +262,13 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       // refresh (all sources, or this one source) always gets one immediate attempt.
       if (!forced && isBackedOff(entry)) return;
 
-      const gaps = computeGaps(entry.coveredRanges, requested);
+      // Forced (manual refresh) always re-fetches the WHOLE requested window as one gap,
+      // regardless of what's already covered — but critically, this only decides what to
+      // fetch, not what to display: the entry (and its currently-shown events) is untouched
+      // until mergeFetchedRange below atomically swaps in the fresh result on arrival, exactly
+      // like the background staleness path already does. Nothing on screen goes blank waiting
+      // on a refresh — old data stays up until better data has actually replaced it.
+      const gaps = forced ? [requested] : computeGaps(entry.coveredRanges, requested);
 
       if (gaps.length > 0) {
         // Foreground: genuinely new data the user is waiting for. Fetch every gap in
@@ -325,9 +342,10 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
    * Cache-aware load of [start, end): serves already-covered data instantly, fetches only
    * the uncovered delta per connection (research.md Decision B), and — unless forced — kicks
    * a non-blocking background refresh of the requested window for any connection whose cache
-   * is stale (Decision C). `force: true` (the sidebar's "refresh all" button) resets every
-   * connection's cache first. Each connection is synced via syncConnection independently —
-   * see there for how/when it publishes and schedules its own retry.
+   * is stale (Decision C). `force: true` (the sidebar's "refresh all" button) re-fetches every
+   * connection's whole window without ever blanking what's currently shown — see
+   * syncConnection's `forced` handling. Each connection is synced independently — see there
+   * for how/when it publishes and schedules its own retry.
    */
   const loadWindow = useCallback(
     async (start: Date, end: Date, { force = false }: { force?: boolean } = {}) => {
@@ -335,7 +353,11 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       const requested: DateRange = { start: start.toISOString(), end: end.toISOString() };
 
       // Drop cache entries for connections that no longer exist, and (re)seed entries whose
-      // fetch-relevant config changed since they were cached, or that are being force-refreshed.
+      // fetch-relevant config changed since they were cached (their old events belong to a
+      // different URL/credentials at this point, so continuing to show them while refetching
+      // would be misleading — a brief empty state here is correct, not a bug). A plain forced
+      // refresh does NOT reset anything here — see syncConnection's `forced` handling below,
+      // which fetches the whole window without ever blanking what's already on screen.
       const liveIds = new Set(conns.map((c) => c.id));
       for (const id of cacheRef.current.keys()) {
         if (!liveIds.has(id)) {
@@ -347,7 +369,7 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       for (const conn of conns) {
         const key = computeFetchKey(conn);
         const existing = cacheRef.current.get(conn.id);
-        if (!existing || existing.fetchKey !== key || force) {
+        if (!existing || existing.fetchKey !== key) {
           cacheRef.current.set(conn.id, createEmptyCacheEntry(key));
         }
       }
@@ -366,8 +388,7 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   // Re-fetches (cache-aware — see loadWindow) whenever the visible window changes, shared by
   // the auto-load effect below and the manual refresh button (which forces a full re-fetch).
   const refresh = useCallback(async () => {
-    const start = subMonths(currentDate, 1);
-    const end = addMonths(currentDate, 2);
+    const { start, end } = windowAround(currentDate);
     await loadWindow(start, end, { force: true });
   }, [currentDate, loadWindow]);
 
@@ -412,8 +433,7 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    const start = subMonths(currentDate, 1);
-    const end = addMonths(currentDate, 2);
+    const { start, end } = windowAround(currentDate);
     // Deferred a microtask out: loadWindow synchronously reports "loading" status
     // (setState) before its first await — same as this effect's previous
     // provider.getEvents(...).then(...) shape, just now via a local callback the
