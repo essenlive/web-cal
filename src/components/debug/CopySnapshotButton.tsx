@@ -1,44 +1,17 @@
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
-import { useConnectionStore, useEventTypeStore, useEventsStore, useRuleStore } from "../../store";
-import { useDebugCache } from "../../context/DataProviderContext";
-import { useResolvedEvents } from "../../hooks/useResolvedEvents";
-import type { Connection } from "../../types";
 
-/** Connection with any credential field stripped, for safe pasting into a bug report. */
-function redact(conn: Connection): Connection {
-  if (conn.type === "caldav") return { ...conn, password: "«redacted»" };
-  return conn;
-}
-
-export function CopySnapshotButton() {
-  const { connections } = useConnectionStore();
-  const { types } = useEventTypeStore();
-  const { rules } = useRuleStore();
-  const { events } = useEventsStore();
-  const getCache = useDebugCache();
-  const { visibleEvents } = useResolvedEvents();
-
+/**
+ * Copies a JSON snapshot of the *calling panel's own data* — scoped to whichever
+ * tab it's rendered in, never the whole debug page. `context` is a plain-English
+ * paragraph baked into the payload so the JSON is self-explanatory when pasted
+ * into an AI chat with no other context: what app this is, what each field means,
+ * and any domain rules needed to reason about it (e.g. rule priority order).
+ */
+export function CopySnapshotButton({ context, data }: { context: string; data: Record<string, unknown> }) {
   const copy = async () => {
-    const cache = getCache();
-    const snapshot = {
-      generatedAt: new Date().toISOString(),
-      connections: connections.map(redact),
-      cacheEntries: Array.from(cache.entries()).map(([id, entry]) => ({
-        connectionId: id,
-        coveredRanges: entry.coveredRanges,
-        eventCount: entry.events.length,
-        lastFetchedAt: entry.lastFetchedAt,
-        nextRetryAt: entry.nextRetryAt,
-        backoffMs: entry.backoffMs,
-        fetchSeq: entry.fetchSeq,
-      })),
-      rules,
-      eventTypes: types,
-      totalEvents: events.length,
-      visibleEvents: visibleEvents.length,
-    };
+    const snapshot = { context, generatedAt: new Date().toISOString(), ...data };
     try {
       await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
       toast.success("Instantané copié dans le presse-papiers.");
@@ -49,8 +22,8 @@ export function CopySnapshotButton() {
 
   return (
     <Button variant="outline" size="sm" onClick={copy} className="gap-1.5 shrink-0">
-      <Copy size={14} />
-      Copier l&apos;instantané
+      <Copy size={12} />
+      Copier
     </Button>
   );
 }

@@ -1,24 +1,27 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useConnectionStore, useEventTypeStore, useEventsStore, useRuleStore } from "../../store";
 import { describeMatch, findMatchingRule } from "../../lib/rules";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
+import { SortHeader, ColorDot } from "./table";
+import type { SortDir } from "./table";
+import { CopySnapshotButton } from "./CopySnapshotButton";
 import type { CalendarEvent } from "../../types";
 
 interface Row {
   event: CalendarEvent;
   sourceName: string;
+  sourceColor?: string;
   ruleLabel: string;
   typeLabel: string;
+  typeColor?: string;
   hidden: boolean;
   visibilityLabel: string;
 }
 
 type SortKey = "title" | "source" | "start" | "end" | "allDay" | "rule" | "type" | "visibility";
-type SortDir = "asc" | "desc";
 
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "title", label: "Titre" },
@@ -42,19 +45,6 @@ function compareRows(a: Row, b: Row, key: SortKey): number {
     case "type": return a.typeLabel.localeCompare(b.typeLabel);
     case "visibility": return a.visibilityLabel.localeCompare(b.visibilityLabel);
   }
-}
-
-function SortHeader({ label, sortKey, active, dir, onSort }: {
-  label: string; sortKey: SortKey; active: boolean; dir: SortDir; onSort: (key: SortKey) => void;
-}) {
-  return (
-    <th className="px-3 py-2 text-left font-medium">
-      <button onClick={() => onSort(sortKey)} className={cn("flex items-center gap-1 hover:text-foreground", active && "text-foreground")}>
-        {label}
-        {active ? (dir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} className="opacity-30" />}
-      </button>
-    </th>
-  );
 }
 
 export function EventsPanel() {
@@ -84,8 +74,10 @@ export function EventsPanel() {
       return {
         event,
         sourceName: connection?.name ?? event.calendarId,
+        sourceColor: connection?.color,
         ruleLabel: describeMatch(rule, getEventTitle, getConnectionName),
         typeLabel: r?.type.label ?? "—",
+        typeColor: r?.type.color,
         hidden,
         visibilityLabel,
       };
@@ -107,6 +99,21 @@ export function EventsPanel() {
     if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("asc"); }
   };
+
+  const snapshotData = useMemo(() => ({
+    events: rows.map((r) => ({
+      id: r.event.id,
+      title: r.event.title,
+      source: r.sourceName,
+      start: r.event.start,
+      end: r.event.end,
+      allDay: r.event.allDay,
+      matchedRule: r.ruleLabel,
+      resolvedType: r.typeLabel,
+      hidden: r.hidden,
+      visibility: r.visibilityLabel,
+    })),
+  }), [rows]);
 
   return (
     <div className="space-y-2">
@@ -131,6 +138,10 @@ export function EventsPanel() {
           <option value="hidden">Masqué</option>
         </select>
         <span className="text-xs text-muted-foreground ml-auto shrink-0">{filtered.length} / {events.length} événements</span>
+        <CopySnapshotButton
+          context="web-cal debug snapshot — onglet Événements. Chaque entrée est un événement de calendrier actuellement chargé, avec le résultat de sa résolution par le moteur de règles : 'matchedRule' est la règle qui s'applique (la première correspondance, par ordre de priorité), 'resolvedType' est le type d'affichage qui en résulte, et 'visibility'/'hidden' indiquent s'il est affiché ou masqué — masqué soit parce que sa source est masquée, soit parce que son type résolu est masqué."
+          data={snapshotData}
+        />
       </div>
       <div className="overflow-x-auto rounded-lg border border-border max-h-128 overflow-y-auto">
         <table className="w-full text-xs">
@@ -144,15 +155,21 @@ export function EventsPanel() {
           </thead>
           <tbody className="divide-y divide-border">
             {filtered.map((r) => (
-              <tr key={r.event.id}>
+              <tr key={r.event.id} className={r.hidden ? "opacity-60" : undefined}>
                 <td className="px-3 py-1.5 font-medium text-foreground">{r.event.title}</td>
-                <td className="px-3 py-1.5 text-muted-foreground">{r.sourceName}</td>
+                <td className="px-3 py-1.5 text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><ColorDot color={r.sourceColor} />{r.sourceName}</span>
+                </td>
                 <td className="px-3 py-1.5 text-muted-foreground">{format(new Date(r.event.start), "d MMM HH:mm", { locale: fr })}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{format(new Date(r.event.end), "d MMM HH:mm", { locale: fr })}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.event.allDay ? "Oui" : "Non"}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.ruleLabel}</td>
-                <td className="px-3 py-1.5 text-muted-foreground">{r.typeLabel}</td>
-                <td className="px-3 py-1.5 text-muted-foreground">{r.visibilityLabel}</td>
+                <td className="px-3 py-1.5 text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><ColorDot color={r.typeColor} />{r.typeLabel}</span>
+                </td>
+                <td className={cn("px-3 py-1.5 font-medium", r.hidden ? "text-amber-600 dark:text-amber-500" : "text-green-600 dark:text-green-500")}>
+                  {r.visibilityLabel}
+                </td>
                 <td className="px-3 py-1.5 text-muted-foreground font-mono truncate max-w-40" title={r.event.id}>{r.event.id}</td>
               </tr>
             ))}
