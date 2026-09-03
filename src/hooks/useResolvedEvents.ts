@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { resolveEventType, isEventHidden } from "../components/events/EventChip";
-import { useConnectionStore, useEventTypeStore, useEventsStore, useRuleStore } from "../store";
+import { useConnectionStore, useEventTypeStore, useEventsStore, useRuleStore, useUIStore } from "../store";
+import { SYSTEM_TIMEZONE, toZonedDate } from "../lib/timezone";
 import type { CalendarEvent, Connection, EventType } from "../types";
 
 export interface ResolvedEvent {
@@ -25,10 +26,28 @@ export function useResolvedEvents(): {
   resolved: Map<string, ResolvedEvent>;
   visibleEvents: CalendarEvent[];
 } {
-  const { events } = useEventsStore();
+  const { events: rawEvents } = useEventsStore();
   const { getType, types } = useEventTypeStore();
   const { rules } = useRuleStore();
   const { connections } = useConnectionStore();
+  const { timezone } = useUIStore();
+
+  // Shift timed events' start/end into the selected display timezone once, here,
+  // so every view (MonthView/TimeGridView/AgendaView/EventDetail) can keep reading
+  // wall-clock fields off `Date` with its ordinary local getters/date-fns `format`.
+  // All-day events are date-only (no time-of-day) and are left untouched.
+  const events = useMemo(() => {
+    if (timezone === SYSTEM_TIMEZONE) return rawEvents;
+    return rawEvents.map((e) =>
+      e.allDay
+        ? e
+        : {
+            ...e,
+            start: toZonedDate(new Date(e.start), timezone).toISOString(),
+            end: toZonedDate(new Date(e.end), timezone).toISOString(),
+          }
+    );
+  }, [rawEvents, timezone]);
 
   // `types`/`connections` are listed explicitly because `getType`/`getConnection`
   // are stable function references whose *output* changes without their identity

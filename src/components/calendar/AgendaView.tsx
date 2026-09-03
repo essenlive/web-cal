@@ -1,25 +1,27 @@
 import { useMemo, useState } from "react";
-import { format, isToday, isTomorrow, parseISO, startOfDay } from "date-fns";
+import { format, isSameDay, parseISO, startOfDay, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
+import { zonedNow } from "../../lib/timezone";
 import { EventChip, resolveStyle } from "../events/EventChip";
 import { EventDetail } from "../events/EventDetail";
 import type { CalendarEvent } from "../../types";
 
 
-function dayLabel(day: Date): string {
-  if (isToday(day)) return "Aujourd'hui";
-  if (isTomorrow(day)) return "Demain";
+function dayLabel(day: Date, now: Date): string {
+  if (isSameDay(day, now)) return "Aujourd'hui";
+  if (isSameDay(day, addDays(now, 1))) return "Demain";
   return format(day, "EEEE d MMMM", { locale: fr });
 }
 
 export function AgendaView() {
   const { visibleEvents: events, resolved } = useResolvedEvents();
-  const { currentDate, use24h, dateFormatEU } = useUIStore();
+  const { currentDate, use24h, dateFormatEU, timezone } = useUIStore();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const now = zonedNow(timezone);
 
   // Expand all-day events across every day they span; group by day. Memoized per
   // (events, currentDate) instead of recomputed from scratch on every render — see
@@ -81,9 +83,9 @@ export function AgendaView() {
             <div className="flex items-baseline gap-2 mb-2">
               <span className={cn(
                 "text-sm font-semibold capitalize",
-                isToday(day) ? "text-primary" : "text-foreground"
+                isSameDay(day, now) ? "text-primary" : "text-foreground"
               )}>
-                {dayLabel(day)}
+                {dayLabel(day, now)}
               </span>
               <span className="text-xs text-muted-foreground">
                 {format(day, dateFormatEU ? "dd/MM/yyyy" : "MM/dd/yyyy")}

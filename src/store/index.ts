@@ -547,6 +547,8 @@ interface UIStore {
   weekStartsOnMonday: boolean;
   use24h: boolean;
   dateFormatEU: boolean;
+  /** IANA timezone (e.g. "Europe/Paris") events are displayed in. "system" follows the browser's local timezone. */
+  timezone: string;
   activeDrawer: ActiveDrawer | null;
   /** Sidebar section id → collapsed state. Missing id = expanded. */
   collapsedSections: Record<string, boolean>;
@@ -556,6 +558,7 @@ interface UIStore {
   toggleWeekStart: () => void;
   setUse24h: (v: boolean) => void;
   setDateFormatEU: (v: boolean) => void;
+  setTimezone: (v: string) => void;
   openDrawer: (panel: DrawerPanel, editId?: string) => void;
   openNewItemDrawer: (panel: DrawerPanel) => void;
   closeDrawer: () => void;
@@ -571,6 +574,7 @@ export const useUIStore = create<UIStore>()(
       weekStartsOnMonday: true,
       use24h: true,
       dateFormatEU: true,
+      timezone: "system",
       activeDrawer: null,
       collapsedSections: {},
       setView: (view) => set({ view }),
@@ -579,6 +583,7 @@ export const useUIStore = create<UIStore>()(
       toggleWeekStart: () => set((s) => ({ weekStartsOnMonday: !s.weekStartsOnMonday })),
       setUse24h: (use24h) => set({ use24h }),
       setDateFormatEU: (dateFormatEU) => set({ dateFormatEU }),
+      setTimezone: (timezone) => set({ timezone }),
       openDrawer: (panel, editId) => set({ activeDrawer: { panel, editId } }),
       openNewItemDrawer: (panel) => set({ activeDrawer: { panel, create: true } }),
       closeDrawer: () => set({ activeDrawer: null }),
@@ -592,6 +597,7 @@ export const useUIStore = create<UIStore>()(
         weekStartsOnMonday: s.weekStartsOnMonday,
         use24h: s.use24h,
         dateFormatEU: s.dateFormatEU,
+        timezone: s.timezone,
         collapsedSections: s.collapsedSections,
       }),
     }
@@ -728,6 +734,7 @@ if (typeof window !== "undefined") {
       state.weekStartsOnMonday !== prev.weekStartsOnMonday ||
       state.use24h !== prev.use24h ||
       state.dateFormatEU !== prev.dateFormatEU ||
+      state.timezone !== prev.timezone ||
       state.collapsedSections !== prev.collapsedSections
     ) {
       bumpSettingsUpdatedAt();

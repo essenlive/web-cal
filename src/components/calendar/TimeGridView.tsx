@@ -4,6 +4,7 @@ import { fr } from "date-fns/locale";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { zonedNow } from "../../lib/timezone";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import type { ResolvedEvent } from "../../hooks/useResolvedEvents";
@@ -133,29 +134,27 @@ interface Props {
 
 export function TimeGridView({ days, onEventClick }: Props) {
   const { visibleEvents: events, resolved } = useResolvedEvents();
-  const { use24h } = useUIStore();
+  const { use24h, timezone } = useUIStore();
   const typeOf = (e: CalendarEvent): ResolvedEvent["type"] | undefined => resolved.get(e.id)?.type;
   const scrollRef = useRef<HTMLDivElement>(null);
-  const today = new Date();
 
-  const [currentMinutes, setCurrentMinutes] = useState(
-    today.getHours() * 60 + today.getMinutes(),
-  );
+  // `tick` exists only to force a re-render once a minute (and its dependents,
+  // `today`/`currentMinutes`, are derived fresh every render) so a timezone change
+  // is reflected immediately instead of waiting for the next minute's interval fire.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const today = zonedNow(timezone);
+  const currentMinutes = today.getHours() * 60 + today.getMinutes();
 
   // Scroll to current time on mount
   useEffect(() => {
     const scrollTop = Math.max(0, (currentMinutes / 60) * HOUR_HEIGHT - 120);
     scrollRef.current?.scrollTo({ top: scrollTop, behavior: "instant" as ScrollBehavior });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Update current time every minute
-  useEffect(() => {
-    const id = setInterval(() => {
-      const now = new Date();
-      setCurrentMinutes(now.getHours() * 60 + now.getMinutes());
-    }, 60_000);
-    return () => clearInterval(id);
   }, []);
 
   const showCurrentTime = days.some((d) => isSameDay(d, today));

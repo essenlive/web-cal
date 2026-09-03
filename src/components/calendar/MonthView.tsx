@@ -4,6 +4,7 @@ import {
   eachDayOfInterval, isSameDay, isSameMonth, startOfDay, addDays, format,
 } from "date-fns";
 import { cn } from "../../lib/utils";
+import { zonedNow } from "../../lib/timezone";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { SimpleTooltip } from "../ui/tooltip";
@@ -342,10 +343,10 @@ interface Props {
 
 export function MonthView({ onEventClick }: Props) {
   const { visibleEvents: events, resolved } = useResolvedEvents();
-  const { currentDate, weekStartsOnMonday } = useUIStore();
+  const { currentDate, weekStartsOnMonday, timezone } = useUIStore();
 
   const weekStartsOn = weekStartsOnMonday ? 1 : 0;
-  const today = startOfDay(new Date());
+  const today = startOfDay(zonedNow(timezone));
   const dayLabels = weekStartsOnMonday ? DAY_LABELS_MON : DAY_LABELS_SUN;
 
   const days = useMemo(() => {
