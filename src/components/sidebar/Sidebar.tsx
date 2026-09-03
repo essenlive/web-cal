@@ -3,7 +3,7 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, RefreshCw, Settings, Keyboard, Eye, EyeOff, Pencil, Plus, Sun, Moon, Bug, GitBranch } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Settings, Keyboard, Eye, EyeOff, Pencil, Plus, Sun, Moon, Bug, Database, GitBranch } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -303,6 +303,13 @@ export function Sidebar() {
         <SimpleTooltip label="Raccourcis clavier">
           <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => openDrawer("shortcuts")} aria-label="Raccourcis clavier">
             <Keyboard size={16} />
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip label="Mes données">
+          <Button variant="ghost" size="icon" className="text-muted-foreground" asChild aria-label="Mes données">
+            <Link href="/data">
+              <Database size={16} />
+            </Link>
           </Button>
         </SimpleTooltip>
         <SimpleTooltip label="Debug">
