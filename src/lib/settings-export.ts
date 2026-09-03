@@ -5,6 +5,8 @@
  * defining a parallel schema.
  */
 
+import { bumpSettingsUpdatedAt } from "./sync/clock";
+
 export const EXPORT_SECTIONS = {
   presets: ["overcal:presets"],
   sources: ["overcal:connections"],
@@ -70,6 +72,10 @@ export function downloadSettingsExport(sections?: readonly ExportSection[]): voi
 export async function importSettingsFile(file: File): Promise<void> {
   const writes = parseSettingsImport(await file.text());
   for (const [key, value] of writes) localStorage.setItem(key, value);
+  // store/index.ts's clock-bump subscriber only fires on in-app setState, not on
+  // rehydration from localStorage after reload — bump it here or this device's
+  // sync clock stays stale despite the real change, and P2P sync silently drops it.
+  bumpSettingsUpdatedAt();
   window.location.reload();
 }
 

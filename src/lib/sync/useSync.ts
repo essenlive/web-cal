@@ -28,7 +28,7 @@ function errorMessage(message: string, type?: string): string {
   if (type === "network" || type === "server-error" || type === "socket-error" || type === "socket-closed") {
     return "Impossible de joindre le service de connexion — vérifiez votre connexion internet.";
   }
-  return `Erreur de connexion : ${message}`;
+  return `Erreur de connexion : ${message}${type ? ` (${type})` : ""}`;
 }
 
 export function useSync() {
@@ -62,14 +62,12 @@ export function useSync() {
     try {
       const bundle = await decryptEnvelope<SettingsBundle>(key, data as Envelope);
       if (!isSettingsBundle(bundle)) throw new Error("malformed bundle");
-      const localUpdatedAt = getSettingsUpdatedAt();
-      if (bundle.updatedAt > localUpdatedAt) {
-        incomingRef.current = bundle;
-        setStatus({ phase: "confirm", incomingUpdatedAt: bundle.updatedAt, localUpdatedAt });
-      } else {
-        setStatus({ phase: "done", applied: false });
-        cleanup();
-      }
+      // Always let the person choose, on both ends — don't auto-discard just because
+      // the local clock looks newer, since that clock can lag behind a real edit (see
+      // settings-export.ts's legacy import path, fixed to bump it, but other gaps may
+      // exist). incomingUpdatedAt/localUpdatedAt are shown as a hint, not a verdict.
+      incomingRef.current = bundle;
+      setStatus({ phase: "confirm", incomingUpdatedAt: bundle.updatedAt, localUpdatedAt: getSettingsUpdatedAt() });
     } catch {
       setStatus({ phase: "error", message: "Message reçu invalide ou corrompu — synchronisation annulée." });
       cleanup();

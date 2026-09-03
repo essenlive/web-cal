@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { Button } from "../ui/button";
 import { captureBundle } from "../../lib/sync/bundle";
@@ -22,6 +23,7 @@ export function ExportTab() {
     a.click();
     URL.revokeObjectURL(url);
     setDownloaded(true);
+    toast.success("Réglages exportés");
   }
 
   return (

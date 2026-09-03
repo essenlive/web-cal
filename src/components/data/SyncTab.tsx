@@ -89,12 +89,13 @@ export function SyncTab() {
       {status.phase === "confirm" && (
         <div className="rounded-lg border border-border p-3 space-y-3">
           <p className="text-sm text-foreground">
-            L&rsquo;autre appareil a des réglages plus récents ({format(status.incomingUpdatedAt, "d MMM HH:mm:ss", { locale: fr })}
+            Réglages reçus de l&rsquo;autre appareil ({format(status.incomingUpdatedAt, "d MMM HH:mm:ss", { locale: fr })}
             {status.localUpdatedAt > 0 && <> — les vôtres datent du {format(status.localUpdatedAt, "d MMM HH:mm:ss", { locale: fr })}</>}).
+            {status.incomingUpdatedAt > status.localUpdatedAt ? " Ils sont plus récents que les vôtres." : " Les vôtres sont plus récents."}
           </p>
           <p className="text-xs text-muted-foreground">Appliquer les réglages reçus remplacera entièrement ceux de cet appareil.</p>
           <div className="flex gap-2">
-            <Button onClick={applyIncoming}>Appliquer les réglages reçus</Button>
+            <Button onClick={applyIncoming}>Récupérer les réglages reçus</Button>
             <Button variant="outline" onClick={keepLocal}>Garder mes réglages</Button>
           </div>
         </div>
@@ -103,7 +104,7 @@ export function SyncTab() {
       {status.phase === "done" && (
         <p className="text-sm text-foreground flex items-center gap-1.5">
           <Check size={16} className="text-green-600 dark:text-green-400" />
-          {status.applied ? "Réglages reçus et appliqués." : "Vos réglages étaient déjà les plus récents — rien à faire."}
+          {status.applied ? "Réglages reçus et appliqués." : "Vos réglages ont été conservés."}
         </p>
       )}
 

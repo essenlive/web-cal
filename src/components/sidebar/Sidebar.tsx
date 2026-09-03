@@ -3,7 +3,22 @@ import {
   format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, RefreshCw, Settings, Keyboard, Eye, EyeOff, Pencil, Plus, Sun, Moon, Bug, Database, GitBranch } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Settings,
+  Keyboard,
+  Eye,
+  EyeOff,
+  Pencil,
+  Plus,
+  Sun,
+  Moon,
+  Bug,
+  MonitorSmartphone,
+  GitBranch,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -153,174 +168,244 @@ export function Sidebar() {
   const themes = orderThemes(customThemes, themeOrder);
 
   return (
-    <aside className="
+    <aside
+      className="
       fixed top-14 bottom-0 left-0 z-40 w-56
       sm:relative sm:inset-auto sm:z-auto sm:translate-x-0
       shrink-0 border-r border-border flex flex-col bg-card overflow-hidden
       transition-transform duration-200
-    ">
+    "
+    >
       <div className="flex-1 overflow-y-auto">
-      {/* Mini calendar */}
-      <div className="px-3 pb-3">
-        <div className="flex items-center justify-between mb-2">
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => setMiniDate(subMonths(miniDate, 1))}>
-            <ChevronLeft size={14} />
-          </Button>
-          <span className="text-xs font-semibold text-foreground capitalize">
-            {format(miniDate, "MMMM yyyy", { locale: fr })}
-          </span>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => setMiniDate(addMonths(miniDate, 1))}>
-            <ChevronRight size={14} />
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-px">
-          {dayHeaders.map((d, i) => (
-            <div key={i} className="text-center text-[10px] font-medium text-muted-foreground py-0.5 uppercase">
-              {d}
-            </div>
-          ))}
-          {days.map((day) => (
-            <button
-              key={day.toISOString()}
-              onClick={() => { setCurrentDate(day); setMiniDate(day); }}
-              className={cn(
-                "flex items-center justify-center size-6 mx-auto rounded-full text-[10px] transition-colors",
-                !isSameMonth(day, miniDate) && "opacity-30",
-                isToday(day) && "bg-primary/20 text-primary font-semibold",
-                isSameDay(day, currentDate) && "bg-primary text-primary-foreground font-semibold",
-                !isSameDay(day, currentDate) && "hover:bg-muted text-foreground"
-              )}
+        {/* Mini calendar */}
+        <div className="px-3 pb-3">
+          <div className="flex items-center justify-between mb-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground"
+              onClick={() => setMiniDate(subMonths(miniDate, 1))}
             >
-              {format(day, "d")}
-            </button>
-          ))}
+              <ChevronLeft size={14} />
+            </Button>
+            <span className="text-xs font-semibold text-foreground capitalize">
+              {format(miniDate, "MMMM yyyy", { locale: fr })}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground"
+              onClick={() => setMiniDate(addMonths(miniDate, 1))}
+            >
+              <ChevronRight size={14} />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-px">
+            {dayHeaders.map((d, i) => (
+              <div
+                key={i}
+                className="text-center text-[10px] font-medium text-muted-foreground py-0.5 uppercase"
+              >
+                {d}
+              </div>
+            ))}
+            {days.map((day) => (
+              <button
+                key={day.toISOString()}
+                onClick={() => {
+                  setCurrentDate(day);
+                  setMiniDate(day);
+                }}
+                className={cn(
+                  "flex items-center justify-center size-6 mx-auto rounded-full text-[10px] transition-colors",
+                  !isSameMonth(day, miniDate) && "opacity-30",
+                  isToday(day) && "bg-primary/20 text-primary font-semibold",
+                  isSameDay(day, currentDate) &&
+                    "bg-primary text-primary-foreground font-semibold",
+                  !isSameDay(day, currentDate) &&
+                    "hover:bg-muted text-foreground",
+                )}
+              >
+                {format(day, "d")}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="border-t border-border" />
+        <div className="border-t border-border" />
 
-      {/* Presets */}
-      <PresetSelector />
+        {/* Presets */}
+        <PresetSelector />
 
-      <div className="border-t border-border" />
+        <div className="border-t border-border" />
 
-      {/* Rules — its own section, but purely a link to the rules drawer: unlike
+        {/* Rules — its own section, but purely a link to the rules drawer: unlike
           Sources/Types/Thème there's no compact per-item preview worth rendering here.
           A dot stands in for the other sections' chevron (nothing to collapse) so the
           label still lines up with theirs. */}
-      <div className="px-3 py-3">
-        <div className="flex items-center gap-1 px-2">
-          <span className="flex items-center justify-center size-3 shrink-0">
-            <span className="size-1.5 rounded-full bg-muted-foreground/50" />
-          </span>
-          <button
-            onClick={() => openDrawer("rules")}
-            className="flex-1 min-w-0 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wide truncate"
-          >
-            Règles
-          </button>
-          <button onClick={handleAddRule} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Ajouter une règle">
-            <Plus size={12} />
-          </button>
+        <div className="px-3 py-3">
+          <div className="flex items-center gap-1 px-2">
+            <span className="flex items-center justify-center size-3 shrink-0">
+              <span className="size-1.5 rounded-full bg-muted-foreground/50" />
+            </span>
+            <button
+              onClick={() => openDrawer("rules")}
+              className="flex-1 min-w-0 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wide truncate"
+            >
+              Règles
+            </button>
+            <button
+              onClick={handleAddRule}
+              className="text-muted-foreground hover:text-foreground shrink-0"
+              aria-label="Ajouter une règle"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="border-t border-border" />
+        <div className="border-t border-border" />
 
-      {/* Data sources preview */}
-      <Section
-        id="connections"
-        label="Sources"
-        onOpen={() => openDrawer("connection")}
-        onAdd={() => openNewItemDrawer("connection")}
-        extra={
-          <ActionButton
-            variant="ghost"
-            size="icon"
-            confirm={false}
-            onAction={refresh}
-            aria-label={lastUpdated ? `Actualiser (dernière actualisation à ${format(lastUpdated, "HH:mm")})` : "Actualiser"}
-            className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
-          >
-            <RefreshCw size={12} />
-          </ActionButton>
-        }
-      >
-        {connections.length === 0 && (
-          <p className="px-2 text-xs text-muted-foreground">Aucune source.</p>
-        )}
-        {connections.map((c) => (
-          <ConnectionRow
-            key={c.id}
-            connection={c}
-            status={statusMap[c.id] ?? "unchecked"}
-            syncMeta={syncMeta[c.id]}
-            onEdit={() => openDrawer("connection", c.id)}
-            onToggleHidden={() => updateConnection({ ...c, hidden: !c.hidden })}
-          />
-        ))}
-      </Section>
+        {/* Data sources preview */}
+        <Section
+          id="connections"
+          label="Sources"
+          onOpen={() => openDrawer("connection")}
+          onAdd={() => openNewItemDrawer("connection")}
+          extra={
+            <ActionButton
+              variant="ghost"
+              size="icon"
+              confirm={false}
+              onAction={refresh}
+              aria-label={
+                lastUpdated
+                  ? `Actualiser (dernière actualisation à ${format(lastUpdated, "HH:mm")})`
+                  : "Actualiser"
+              }
+              className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
+            >
+              <RefreshCw size={12} />
+            </ActionButton>
+          }
+        >
+          {connections.length === 0 && (
+            <p className="px-2 text-xs text-muted-foreground">Aucune source.</p>
+          )}
+          {connections.map((c) => (
+            <ConnectionRow
+              key={c.id}
+              connection={c}
+              status={statusMap[c.id] ?? "unchecked"}
+              syncMeta={syncMeta[c.id]}
+              onEdit={() => openDrawer("connection", c.id)}
+              onToggleHidden={() =>
+                updateConnection({ ...c, hidden: !c.hidden })
+              }
+            />
+          ))}
+        </Section>
 
-      <div className="border-t border-border" />
+        <div className="border-t border-border" />
 
-      {/* Event types preview */}
-      <Section id="eventType" label="Types" onOpen={() => openDrawer("eventType")} onAdd={() => openNewItemDrawer("eventType")}>
-        {types.map((t) => (
-          <TypeRow
-            key={t.id}
-            type={t}
-            onEdit={() => openDrawer("eventType", t.id)}
-            onToggleHidden={() => updateType({ ...t, hidden: !t.hidden })}
-          />
-        ))}
-      </Section>
+        {/* Event types preview */}
+        <Section
+          id="eventType"
+          label="Types"
+          onOpen={() => openDrawer("eventType")}
+          onAdd={() => openNewItemDrawer("eventType")}
+        >
+          {types.map((t) => (
+            <TypeRow
+              key={t.id}
+              type={t}
+              onEdit={() => openDrawer("eventType", t.id)}
+              onToggleHidden={() => updateType({ ...t, hidden: !t.hidden })}
+            />
+          ))}
+        </Section>
 
-      <div className="border-t border-border" />
+        <div className="border-t border-border" />
 
-      {/* Theme preview */}
-      <Section id="theme" label="Thème" onOpen={() => openDrawer("theme")} onAdd={() => openNewItemDrawer("theme")}>
-        {themes.map((t) => (
-          <ThemeRow
-            key={t.id}
-            theme={t}
-            active={t.id === selectedThemeId}
-            onSelect={() => selectTheme(t.id)}
-            onEdit={() => openDrawer("theme", t.id)}
-          />
-        ))}
-      </Section>
+        {/* Theme preview */}
+        <Section
+          id="theme"
+          label="Thème"
+          onOpen={() => openDrawer("theme")}
+          onAdd={() => openNewItemDrawer("theme")}
+        >
+          {themes.map((t) => (
+            <ThemeRow
+              key={t.id}
+              theme={t}
+              active={t.id === selectedThemeId}
+              onSelect={() => selectTheme(t.id)}
+              onEdit={() => openDrawer("theme", t.id)}
+            />
+          ))}
+        </Section>
       </div>
 
       {/* Bottom toolbar — outside the scroll container above, so it stays visible
           regardless of how much sidebar content there is to scroll through. */}
       <div className="shrink-0 border-t border-border px-2 py-2 flex items-center justify-around">
         <SimpleTooltip label="Réglages">
-          <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => openDrawer("preferences")} aria-label="Réglages">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            onClick={() => openDrawer("preferences")}
+            aria-label="Réglages"
+          >
             <Settings size={16} />
           </Button>
         </SimpleTooltip>
         <SimpleTooltip label="Raccourcis clavier">
-          <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => openDrawer("shortcuts")} aria-label="Raccourcis clavier">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            onClick={() => openDrawer("shortcuts")}
+            aria-label="Raccourcis clavier"
+          >
             <Keyboard size={16} />
           </Button>
         </SimpleTooltip>
-        <SimpleTooltip label="Mes données">
-          <Button variant="ghost" size="icon" className="text-muted-foreground" asChild aria-label="Mes données">
+        <SimpleTooltip label="Synchroniser">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            asChild
+            aria-label="Mes données"
+          >
             <Link href="/data">
-              <Database size={16} />
+              <MonitorSmartphone size={16} />
             </Link>
           </Button>
         </SimpleTooltip>
         <SimpleTooltip label="Debug">
-          <Button variant="ghost" size="icon" className="text-muted-foreground" asChild aria-label="Debug">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            asChild
+            aria-label="Debug"
+          >
             <Link href="/debug">
               <Bug size={16} />
             </Link>
           </Button>
         </SimpleTooltip>
         <SimpleTooltip label="Dépôt GitHub">
-          <Button variant="ghost" size="icon" className="text-muted-foreground" asChild aria-label="Dépôt GitHub">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            asChild
+            aria-label="Dépôt GitHub"
+          >
             <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
               <GitBranch size={16} />
             </a>

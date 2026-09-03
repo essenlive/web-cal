@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { AlertCircle, Upload } from "lucide-react";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
@@ -21,7 +22,9 @@ export function ImportTab() {
       if (!isSettingsBundle(parsed)) throw new Error("not a settings bundle");
       setPending(parsed);
     } catch {
-      setError("Ce fichier n'est pas un export de réglages valide.");
+      const message = "Ce fichier n'est pas un export de réglages valide.";
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -64,6 +67,7 @@ export function ImportTab() {
               applyBundle(pending);
               setPending(null);
               setApplied(true);
+              toast.success("Réglages importés");
             }}
           >
             Importer et remplacer mes réglages
