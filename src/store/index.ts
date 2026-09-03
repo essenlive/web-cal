@@ -3,6 +3,24 @@ import { createJSONStorage, persist, type StateStorage } from "zustand/middlewar
 import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Preset, Rule, RuleMatchType, Theme } from "../types";
 import { BUILTIN_THEMES, orderThemes } from "../lib/theme";
 import { capturePresetState } from "../lib/presets";
+import { bumpSettingsUpdatedAt } from "../lib/sync/clock";
+
+/**
+ * Every localStorage key (current name + legacy pre-rebrand names, see RENAMED_KEYS
+ * above) that holds synced settings — used by the /data page's Reset action so it
+ * can't miss a legacy key and have RENAMED_KEYS silently resurrect it on reload.
+ * Excludes overcal:event-cache: not a setting, and useEventsStore doesn't persist
+ * anyway.
+ */
+export const SETTINGS_STORAGE_KEYS = [
+  "overcal:connections", "webcal:connections",
+  "overcal:event-types", "proton-cal:event-types",
+  "overcal:rules", "webcal:rules",
+  "overcal:presets", "webcal:presets",
+  "overcal:ui", "proton-cal:ui",
+  "overcal:themes", "proton-cal:themes",
+  "webcal:backend",
+];
 
 // Next.js server-renders "use client" components once for the initial HTML,
 // where `localStorage` doesn't exist — fall back to a no-op store there.
@@ -684,3 +702,35 @@ export const useThemeStore = create<ThemeStore>()(
     }
   )
 );
+
+// ── Sync clock wiring ────────────────────────────────────────────────────────
+//
+// Bumps overcal:settings-updated-at (see lib/sync/clock.ts) on every genuine
+// mutation to a synced store, for the /data page's Sync tab to pick the newer
+// of two devices' settings on pairing. Subscribing here — after every store
+// above has already been created — is safe without any "was this the initial
+// hydration?" guard: persist's hydrate() reads from plain localStorage, which
+// is synchronous, so zustand's internal toThenable() resolves the whole
+// rehydration (including notifying subscribers) synchronously during each
+// create() call above, before this code ever runs. So the one setState this
+// would otherwise wrongly count as an edit has always already happened by the
+// time we get here, and every subscribe() below only ever sees real mutations.
+if (typeof window !== "undefined") {
+  for (const store of [useConnectionStore, useEventTypeStore, useRuleStore, usePresetStore, useThemeStore]) {
+    store.subscribe(bumpSettingsUpdatedAt);
+  }
+  // useUIStore also holds session-local fields (currentDate, sidebarOpen, activeDrawer,
+  // ...) that change on ordinary navigation and must NOT count as a settings edit — only
+  // bump for the same subset useUIStore's own `partialize` persists.
+  useUIStore.subscribe((state, prev) => {
+    if (
+      state.view !== prev.view ||
+      state.weekStartsOnMonday !== prev.weekStartsOnMonday ||
+      state.use24h !== prev.use24h ||
+      state.dateFormatEU !== prev.dateFormatEU ||
+      state.collapsedSections !== prev.collapsedSections
+    ) {
+      bumpSettingsUpdatedAt();
+    }
+  });
+}
