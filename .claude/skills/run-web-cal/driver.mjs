@@ -9,6 +9,7 @@
 //   fill <selector>|||<value>           (locator.fill; use a real selector, not text=, for inputs with a placeholder)
 //   dragto <fromSelector>|||<toSelector> (native HTML5 drag-and-drop; use `[data-slot="drawer-content"] >> text=X` to disambiguate from the dimmed sidebar behind an open drawer)
 //   screenshot <name>                   (PNG written to shots/, full page)
+//   resize <width> <height>             (set viewport size, e.g. for mobile emulation)
 //   console                             (print collected page/console errors)
 //
 // Usage:
@@ -69,6 +70,9 @@ for await (const raw of rl) {
       console.log(`screenshot -> ${path}`);
     } else if (cmd === "sleep") {
       await page.waitForTimeout(Number(arg) || 500);
+    } else if (cmd === "resize") {
+      const [w, h] = arg.split(" ").map(Number);
+      await page.setViewportSize({ width: w, height: h });
     } else if (cmd === "console") {
       console.log("ERRORS:", JSON.stringify(errors));
     } else {
