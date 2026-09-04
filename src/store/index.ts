@@ -570,7 +570,11 @@ export const useUIStore = create<UIStore>()(
     (set) => ({
       view: "month",
       currentDate: new Date(),
-      sidebarOpen: true,
+      // Closed by default on mobile (below Tailwind's `sm` breakpoint, which is where
+      // the sidebar itself switches from an overlay to inline layout — see Sidebar.tsx),
+      // open by default everywhere else. This runs once at store creation, so it reflects
+      // the viewport at load time, not live viewport changes.
+      sidebarOpen: typeof window === "undefined" || window.innerWidth >= 640,
       weekStartsOnMonday: true,
       use24h: true,
       dateFormatEU: true,
