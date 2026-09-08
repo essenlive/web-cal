@@ -6,7 +6,7 @@ import { cn } from "../../lib/utils";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import { zonedNow } from "../../lib/timezone";
-import { EventChip, resolveStyle } from "../events/EventChip";
+import { getBadgeContent, resolveStyle } from "../events/EventChip";
 import { EventDetail } from "../events/EventDetail";
 import type { CalendarEvent } from "../../types";
 
@@ -113,14 +113,17 @@ export function AgendaView() {
                       borderLeftWidth: 3,
                     } : undefined}
                   >
-                    {/* Event chip — avatar badge or block chip; null for day style */}
-                    {!isDayStyle && (
-                      <div className="mt-0.5 shrink-0">
-                        <EventChip event={e} eventType={type} view="agenda" />
-                      </div>
-                    )}
-                    {isDayStyle && (
+                    {/* Type indicator — colored dot for day style (matches month's background tint),
+                        otherwise a small badge circle (matches month's avatar-* styling) */}
+                    {isDayStyle ? (
                       <div className="mt-0.5 size-3 rounded-full shrink-0 self-center" style={{ backgroundColor: rowColor }} />
+                    ) : (
+                      <div
+                        className="mt-0.5 flex items-center justify-center size-6 rounded-full shrink-0"
+                        style={{ backgroundColor: type?.color ?? "#6366f1" }}
+                      >
+                        {getBadgeContent(type, e.title, 12)}
+                      </div>
                     )}
 
                     <div className="flex-1 min-w-0">
