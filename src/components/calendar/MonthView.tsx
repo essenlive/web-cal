@@ -172,7 +172,7 @@ const DayCell = memo(function DayCell({
   const numberClass = cn(
     "transition-colors",
     isToday
-      ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none shrink-0"
+      ? "inline-flex items-center justify-center size-5 sm:size-6 rounded-full ring-2 ring-inset ring-primary text-primary text-[10px] font-bold leading-none shrink-0"
       : cn(
           "text-xs font-medium leading-none shrink-0",
           allCellEvents.length > 0 && "underline underline-offset-2 decoration-dotted",
@@ -191,6 +191,7 @@ const DayCell = memo(function DayCell({
       className={cn(
         "relative border-b border-r border-border overflow-hidden",
         !isCurrentMonth && "bg-muted/15",
+        isToday && "bg-primary/5",
       )}
       style={bgColor ? { backgroundColor: bgColor } : undefined}
     >

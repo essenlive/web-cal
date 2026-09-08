@@ -1,6 +1,6 @@
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
-  format, isSameMonth, isSameDay, isToday, addMonths, subMonths, addDays,
+  format, isSameMonth, isSameDay, addMonths, subMonths, addDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
+import { zonedNow } from "../../lib/timezone";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { useUIStore, useConnectionStore, useEventTypeStore, useRuleStore, useThemeStore } from "../../store";
@@ -138,7 +139,7 @@ export function ThemeRow({ theme, active, onSelect, onEdit }: {
 }
 
 export function Sidebar() {
-  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen, openDrawer, openNewItemDrawer } = useUIStore();
+  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen, openDrawer, openNewItemDrawer, timezone } = useUIStore();
   const [miniDate, setMiniDate] = useState(currentDate);
   const weekStart = weekStartsOnMonday ? 1 : 0;
 
@@ -162,6 +163,7 @@ export function Sidebar() {
   const gridStart  = startOfWeek(monthStart, { weekStartsOn: weekStart });
   const gridEnd    = endOfWeek(monthEnd, { weekStartsOn: weekStart });
   const days       = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const today      = zonedNow(timezone);
   const dayHeaders = Array.from({ length: 7 }, (_, i) =>
     format(addDays(gridStart, i), "EEEEE", { locale: fr })
   );
@@ -210,26 +212,29 @@ export function Sidebar() {
                 {d}
               </div>
             ))}
-            {days.map((day) => (
-              <button
-                key={day.toISOString()}
-                onClick={() => {
-                  setCurrentDate(day);
-                  setMiniDate(day);
-                }}
-                className={cn(
-                  "flex items-center justify-center size-6 mx-auto rounded-full text-[10px] transition-colors",
-                  !isSameMonth(day, miniDate) && "opacity-30",
-                  isToday(day) && "bg-primary/20 text-primary font-semibold",
-                  isSameDay(day, currentDate) &&
-                    "bg-primary text-primary-foreground font-semibold",
-                  !isSameDay(day, currentDate) &&
-                    "hover:bg-muted text-foreground",
-                )}
-              >
-                {format(day, "d")}
-              </button>
-            ))}
+            {days.map((day) => {
+              const dayIsToday = isSameDay(day, today);
+              const dayIsSelected = isSameDay(day, currentDate);
+              return (
+                <button
+                  key={day.toISOString()}
+                  onClick={() => {
+                    setCurrentDate(day);
+                    setMiniDate(day);
+                  }}
+                  className={cn(
+                    "flex items-center justify-center size-6 mx-auto rounded-full text-[10px] transition-colors",
+                    !isSameMonth(day, miniDate) && "opacity-30",
+                    dayIsToday && "ring-2 ring-inset ring-primary font-semibold",
+                    dayIsSelected
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : cn("hover:bg-muted text-foreground", dayIsToday && "text-primary"),
+                  )}
+                >
+                  {format(day, "d")}
+                </button>
+              );
+            })}
           </div>
         </div>
 

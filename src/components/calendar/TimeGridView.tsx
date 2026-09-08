@@ -180,7 +180,7 @@ export function TimeGridView({ days, onEventClick }: Props) {
                   <div className={cn(
                     "inline-flex items-center justify-center size-7 rounded-full text-base font-semibold mt-0.5",
                     isToday
-                      ? "bg-primary text-primary-foreground"
+                      ? "ring-2 ring-inset ring-primary text-primary"
                       : "text-foreground",
                   )}>
                     {format(day, "d")}
@@ -290,7 +290,7 @@ export function TimeGridView({ days, onEventClick }: Props) {
                       key={day.toISOString()}
                       className={cn(
                         "flex-1 relative border-l border-border",
-                        isToday && "bg-primary/1.5",
+                        isToday && "bg-primary/8",
                       )}
                     >
                       {layoutEvents.map(({ event, top, height, colIndex, colCount }) => (
