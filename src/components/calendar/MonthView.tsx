@@ -3,7 +3,6 @@ import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   eachDayOfInterval, isSameDay, isSameMonth, startOfDay, addDays, format,
 } from "date-fns";
-import { fr } from "date-fns/locale";
 import { cn } from "../../lib/utils";
 import { zonedNow } from "../../lib/timezone";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
@@ -12,7 +11,6 @@ import { SimpleTooltip } from "../ui/tooltip";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import { EventChip, resolveStyle, getBadgeContent } from "../events/EventChip";
-import { TimeGridView } from "./TimeGridView";
 import type { CalendarEvent, DisplayStyle, EventType } from "../../types";
 import type { ResolvedEvent } from "../../hooks/useResolvedEvents";
 
@@ -59,33 +57,6 @@ function EventListModal({
             />
           ))}
         </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── DayViewModal ───────────────────────────────────────────────────────────────
-
-function DayViewModal({
-  open, onClose, day, onEventClick,
-}: {
-  open: boolean;
-  onClose: () => void;
-  day: Date;
-  onEventClick: (e: CalendarEvent) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        animation="fade"
-        className="max-w-2xl w-[95vw] h-[85vh] rounded-2xl p-0 gap-0 flex flex-col overflow-hidden"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <DialogTitle className="text-sm font-semibold text-foreground px-4 pt-4 pb-2 pr-8 shrink-0 capitalize">
-          {format(day, "EEEE d MMMM yyyy", { locale: fr })}
-        </DialogTitle>
-        <TimeGridView days={[day]} onEventClick={(e) => { onClose(); onEventClick(e); }} />
       </DialogContent>
     </Dialog>
   );
@@ -185,7 +156,7 @@ const DayCell = memo(function DayCell({
   onEventClick, resolved,
 }: DayCellProps) {
   const [avatarModal, setAvatarModal] = useState<{ events: CalendarEvent[]; corner: string } | null>(null);
-  const [dayViewOpen, setDayViewOpen] = useState(false);
+  const { setCurrentDate, setView } = useUIStore();
 
   const visibleBlock = timedBlockEvents.slice(0, MAX_VISIBLE_BLOCK);
   const hiddenBlock = timedBlockEvents.slice(MAX_VISIBLE_BLOCK);
@@ -217,19 +188,19 @@ const DayCell = memo(function DayCell({
         )
   );
 
-  // Any day with an event opens its day view in a modal — no more flat event-list picker.
-  const openDayView = () => { if (hasEvents) setDayViewOpen(true); };
+  // Clicking anywhere in the cell (outside an event/avatar, which stop propagation)
+  // jumps the whole calendar to this day's day view.
+  const goToDayView = () => { setCurrentDate(day); setView("day"); };
 
   return (
     <div
       className={cn(
-        "relative border-b border-r border-border overflow-hidden",
+        "relative border-b border-r border-border overflow-hidden cursor-pointer",
         !isCurrentMonth && "bg-muted/15",
         isToday && "bg-primary/5",
-        hasEvents && "cursor-pointer",
       )}
       style={bgColor ? { backgroundColor: bgColor } : undefined}
-      onClick={openDayView}
+      onClick={goToDayView}
     >
       {borderTopWinner && (
         <div className="absolute inset-x-0 top-0 h-0.75" style={{ backgroundColor: borderTopWinner.type.color }} />
@@ -239,39 +210,37 @@ const DayCell = memo(function DayCell({
       )}
 
       {/* Date number + label (background/text style name) */}
-      {(() => {
-        const dateRow = (
-          <div className="flex items-center gap-1 pt-1 pl-1.5 pr-1.5 pb-0.5 shrink-0 min-w-0">
-            <button
-              className={numberClass}
-              onClick={(ev) => { ev.stopPropagation(); openDayView(); }}
-              disabled={!hasEvents}
-            >
-              {format(day, "d")}
-            </button>
-            {labelWinner && (
-              <span
-                className="text-[10px] font-medium truncate min-w-0"
-                style={{ color: labelWinner.type.color }}
-              >
-                {labelWinner.event.title}
-              </span>
-            )}
-          </div>
-        );
-        return hasEvents
-          ? <SimpleTooltip label={allDayEvents.map((e) => e.title).join(", ")}>{dateRow}</SimpleTooltip>
-          : dateRow;
-      })()}
-
-      {dayViewOpen && (
-        <DayViewModal
-          open={true}
-          onClose={() => setDayViewOpen(false)}
-          day={day}
-          onEventClick={onEventClick}
-        />
-      )}
+      <div className="flex items-center gap-1 pt-1 pl-1.5 pr-1.5 pb-0.5 shrink-0 min-w-0">
+        {hasEvents ? (
+          <SimpleTooltip
+            label={
+              <div className="flex flex-col gap-1">
+                {allDayEvents.map((e) => (
+                  <div key={e.id} className="flex items-center gap-1.5">
+                    <span
+                      className="size-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: resolved.get(e.id)?.type?.color ?? "#6366f1" }}
+                    />
+                    <span className="truncate max-w-50">{e.title}</span>
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <span className={numberClass}>{format(day, "d")}</span>
+          </SimpleTooltip>
+        ) : (
+          <span className={numberClass}>{format(day, "d")}</span>
+        )}
+        {labelWinner && (
+          <span
+            className="text-[10px] font-medium truncate min-w-0"
+            style={{ color: labelWinner.type.color }}
+          >
+            {labelWinner.event.title}
+          </span>
+        )}
+      </div>
 
       {/* Timed block event chips */}
       <div className="flex flex-col gap-[2px] px-1 pb-0.5 mt-4 min-w-0">
