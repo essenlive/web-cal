@@ -18,7 +18,7 @@ const DAY_LABELS_MON = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."];
 const DAY_LABELS_SUN = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
 
 const MAX_VISIBLE_BLOCK = 3;
-const MAX_VISIBLE_AVATARS = 3;
+const MAX_VISIBLE_AVATARS = 2;
 
 const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
 
@@ -267,7 +267,7 @@ const DayCell = memo(function DayCell({
       {/* Avatar badges — top-right */}
       {trAvatars.length > 0 && (
         <div
-          className="absolute top-1 right-1 flex flex-wrap gap-0.5"
+          className="absolute top-1 right-1 flex flex-nowrap gap-0.5"
           style={{ maxWidth: "55%", pointerEvents: "none" }}
         >
           {trAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
@@ -289,7 +289,7 @@ const DayCell = memo(function DayCell({
 
       {/* Avatar badges — bottom-left */}
       {blAvatars.length > 0 && (
-        <div className="absolute bottom-1 left-1 flex flex-wrap gap-0.5">
+        <div className="absolute bottom-1 left-1 flex flex-nowrap gap-0.5">
           {blAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
             <AvatarBadge key={e.id} event={e} type={resolved.get(e.id)?.type} onEdit={onEventClick} />
           ))}
@@ -308,7 +308,7 @@ const DayCell = memo(function DayCell({
 
       {/* Avatar badges — bottom-right */}
       {brAvatars.length > 0 && (
-        <div className="absolute bottom-1 right-1 flex flex-wrap gap-0.5">
+        <div className="absolute bottom-1 right-1 flex flex-nowrap gap-0.5">
           {brAvatars.slice(0, MAX_VISIBLE_AVATARS).map((e) => (
             <AvatarBadge key={e.id} event={e} type={resolved.get(e.id)?.type} onEdit={onEventClick} />
           ))}
