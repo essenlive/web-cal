@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { addMonths, endOfDay, format, parseISO, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Loader2, MapPin, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Loader2, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { useConnectionStore, useEventTypeStore, useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import { useSourceSync, windowAround } from "../../context/DataProviderContext";
@@ -58,6 +58,7 @@ export function EventSearch() {
   const [extraBack, setExtraBack] = useState(0);
   const [extraForward, setExtraForward] = useState(0);
   const isMac = useIsMac();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(new Set());
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
@@ -87,6 +88,7 @@ export function EventSearch() {
       setQuery("");
       setExtraBack(0);
       setExtraForward(0);
+      setFiltersOpen(false);
       setSelectedTypeIds(new Set());
       setSelectedSourceIds(new Set());
       setDateFrom(null);
@@ -186,100 +188,46 @@ export function EventSearch() {
           {isMac ? "⌘K" : "Ctrl+K"}
         </kbd>
       </button>
+      {/* Mobile: a floating action button over the calendar rather than a header icon —
+          frees up header width (see the md breakpoint fix above) and stays reachable
+          regardless of scroll position. */}
       <Button
-        variant="ghost"
+        variant="default"
         size="icon"
         onClick={() => setOpen(true)}
         aria-label="Rechercher un événement"
-        className="md:hidden text-muted-foreground"
+        className="md:hidden fixed bottom-5 right-4 z-40 size-14 rounded-full shadow-lg [&_svg]:size-6"
       >
-        <Search size={18} />
+        <Search size={22} />
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent animation="fade" className="max-w-xl gap-0 overflow-hidden p-0 shadow-lg">
+        <DialogContent
+          animation="fade"
+          className="flex w-[calc(100%-2rem)] max-w-xl flex-col gap-0 overflow-hidden p-0 shadow-lg sm:w-full max-h-[85vh]"
+        >
           <DialogHeader className="sr-only">
             <DialogTitle>Rechercher un événement</DialogTitle>
             <DialogDescription>Recherchez parmi les événements déjà chargés.</DialogDescription>
           </DialogHeader>
-          <Command shouldFilter={false} className="flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground">
+          <Command shouldFilter={false} className="flex min-h-0 flex-1 w-full flex-col overflow-hidden bg-popover text-popover-foreground">
             <CommandInput
               value={query}
               onValueChange={setQuery}
               placeholder="Rechercher un événement (titre, lieu)…"
             />
-            {types.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
-                {types.map((t) => {
-                  const active = selectedTypeIds.has(t.id);
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => toggleType(t.id)}
-                      aria-pressed={active}
-                      className={cn(
-                        "flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
-                        active
-                          ? "border-transparent text-white"
-                          : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                      )}
-                      style={active ? { backgroundColor: t.color } : undefined}
-                    >
-                      {getIconEl(t.icon, 11, active ? "#fff" : undefined)}
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {connections.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
-                {connections.map((c) => {
-                  const active = selectedSourceIds.has(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => toggleSource(c.id)}
-                      aria-pressed={active}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] transition-colors",
-                        active
-                          ? "border-transparent text-white"
-                          : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                      )}
-                      style={active ? { backgroundColor: c.color } : undefined}
-                    >
-                      {!active && (
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: c.color }}
-                        />
-                      )}
-                      {c.name}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
-              <span>Période</span>
-              <input
-                type="date"
-                value={dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}
-                onChange={(e) => setDateFrom(e.target.value ? parseISO(e.target.value) : null)}
-                className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
-                aria-label="À partir du"
-              />
-              <span>–</span>
-              <input
-                type="date"
-                value={dateTo ? format(dateTo, "yyyy-MM-dd") : ""}
-                onChange={(e) => setDateTo(e.target.value ? parseISO(e.target.value) : null)}
-                className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
-                aria-label="Jusqu'au"
-              />
+            <div className="flex items-center gap-1.5 border-b border-border px-3 py-2 text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-expanded={filtersOpen}
+                className="flex items-center gap-1.5 hover:text-foreground"
+              >
+                <SlidersHorizontal size={12} />
+                Filtres
+                {hasActiveFilters && <span className="size-1.5 rounded-full bg-primary" />}
+                <ChevronDown size={12} className={cn("transition-transform", filtersOpen && "rotate-180")} />
+              </button>
               {rangeLoading && <Loader2 size={12} className="animate-spin" />}
               {hasActiveFilters && (
                 <button
@@ -290,14 +238,91 @@ export function EventSearch() {
                     setDateFrom(null);
                     setDateTo(null);
                   }}
-                  className="ml-auto flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  className="ml-auto flex items-center gap-1 hover:text-foreground"
                 >
                   <X size={11} />
                   Effacer les filtres
                 </button>
               )}
             </div>
-            <CommandList>
+            {filtersOpen && (
+              <>
+                {types.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
+                    {types.map((t) => {
+                      const active = selectedTypeIds.has(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => toggleType(t.id)}
+                          aria-pressed={active}
+                          className={cn(
+                            "flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                            active
+                              ? "border-transparent text-white"
+                              : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                          )}
+                          style={active ? { backgroundColor: t.color } : undefined}
+                        >
+                          {getIconEl(t.icon, 11, active ? "#fff" : undefined)}
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {connections.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
+                    {connections.map((c) => {
+                      const active = selectedSourceIds.has(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => toggleSource(c.id)}
+                          aria-pressed={active}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                            active
+                              ? "border-transparent text-white"
+                              : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                          )}
+                          style={active ? { backgroundColor: c.color } : undefined}
+                        >
+                          {!active && (
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: c.color }}
+                            />
+                          )}
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
+                  <span>Période</span>
+                  <input
+                    type="date"
+                    value={dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}
+                    onChange={(e) => setDateFrom(e.target.value ? parseISO(e.target.value) : null)}
+                    className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
+                    aria-label="À partir du"
+                  />
+                  <span>–</span>
+                  <input
+                    type="date"
+                    value={dateTo ? format(dateTo, "yyyy-MM-dd") : ""}
+                    onChange={(e) => setDateTo(e.target.value ? parseISO(e.target.value) : null)}
+                    className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
+                    aria-label="Jusqu'au"
+                  />
+                </div>
+              </>
+            )}
+            <CommandList className="max-h-none flex-1 min-h-0">
               <CommandEmpty>Aucun événement trouvé.</CommandEmpty>
               <CommandGroup heading="Événements">
               {results.map((e) => {
