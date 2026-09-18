@@ -33,10 +33,10 @@ import type { Connection, ConnectionStatus, ConnectionStatusMap, ConnectionSyncM
  *  either direction stays served from cache instead of hitting a genuine gap (and, on reload,
  *  a normal amount of *time* passing before the tab is reopened doesn't invalidate the
  *  persisted snapshot either — see computePersistWindow). */
-const WINDOW_MONTHS_BACK = 2;
-const WINDOW_MONTHS_FORWARD = 3;
+export const WINDOW_MONTHS_BACK = 2;
+export const WINDOW_MONTHS_FORWARD = 3;
 
-function windowAround(centerDate: Date): { start: Date; end: Date } {
+export function windowAround(centerDate: Date): { start: Date; end: Date } {
   return { start: subMonths(centerDate, WINDOW_MONTHS_BACK), end: addMonths(centerDate, WINDOW_MONTHS_FORWARD) };
 }
 
@@ -67,12 +67,18 @@ interface SyncCtxValue {
   /** Idle/syncing/error, derived from ConnectionStatusMap + background-refresh activity —
    *  never a separate source of truth. See specs/008-events-perf-caching/research.md Decision I. */
   syncState: SyncState;
+  /** Cache-aware load of an arbitrary [start, end) window, independent of the visible
+   *  calendar range — e.g. the event search modal's "load earlier/later events" buttons,
+   *  which widen the cache without moving `currentDate`. Same gap/staleness logic as
+   *  ordinary navigation (see loadWindow); never forces a re-fetch of already-covered data. */
+  loadRange: (start: Date, end: Date) => Promise<void>;
 }
 
 const SyncCtx = createContext<SyncCtxValue>({
   refresh: async () => {},
   lastUpdated: null,
   syncState: "idle",
+  loadRange: async () => {},
 });
 
 /**
@@ -453,9 +459,16 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     return "idle";
   }, [statusMap, isBackgroundRefreshing]);
 
+  const loadRange = useCallback(
+    async (start: Date, end: Date) => {
+      await loadWindow(start, end);
+    },
+    [loadWindow]
+  );
+
   const syncCtxValue = useMemo<SyncCtxValue>(
-    () => ({ refresh, lastUpdated, syncState }),
-    [refresh, lastUpdated, syncState]
+    () => ({ refresh, lastUpdated, syncState, loadRange }),
+    [refresh, lastUpdated, syncState, loadRange]
   );
 
   // Stable across renders — cacheRef's own identity never changes, only its .current contents.

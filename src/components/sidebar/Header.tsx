@@ -5,6 +5,7 @@ import { cn, stepDate } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { useUIStore } from "../../store";
 import { SyncIndicator } from "./SyncIndicator";
+import { EventSearch } from "../events/EventSearch";
 import type { CalendarView } from "../../types";
 
 const VIEWS: { id: CalendarView; label: string }[] = [
@@ -52,6 +53,8 @@ export function Header() {
       <SyncIndicator />
 
       <h1 className="text-xs sm:text-sm font-semibold text-foreground capitalize ml-1 flex-1 truncate">{title()}</h1>
+
+      <EventSearch />
 
       {/* View switcher: native select on mobile (native picker, zero extra a11y wiring), pill on desktop */}
       <select
