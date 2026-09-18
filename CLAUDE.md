@@ -36,7 +36,7 @@ specs/          # Spec Kit feature specs (spec/plan/data-model/tasks per feature
 
 ## Commands
 
-npm run dev && npm run build && npm run lint
+npm run dev && npm run build && npm run lint && npm test
 
 ## Code Style
 
