@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { addMonths, endOfDay, format, parseISO, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Loader2, MapPin, Search, X } from "lucide-react";
-import { useEventTypeStore, useUIStore } from "../../store";
+import { useConnectionStore, useEventTypeStore, useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import { useSourceSync, windowAround } from "../../context/DataProviderContext";
 import { getBadgeContent } from "./EventChip";
@@ -59,12 +59,14 @@ export function EventSearch() {
   const [extraForward, setExtraForward] = useState(0);
   const isMac = useIsMac();
   const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(new Set());
+  const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
   const [rangeLoading, setRangeLoading] = useState(false);
 
   const { setCurrentDate, use24h } = useUIStore();
   const { types } = useEventTypeStore();
+  const { connections } = useConnectionStore();
   const { visibleEvents, resolved } = useResolvedEvents();
   const { loadRange } = useSourceSync();
 
@@ -86,6 +88,7 @@ export function EventSearch() {
       setExtraBack(0);
       setExtraForward(0);
       setSelectedTypeIds(new Set());
+      setSelectedSourceIds(new Set());
       setDateFrom(null);
       setDateTo(null);
     }
@@ -93,6 +96,15 @@ export function EventSearch() {
 
   const toggleType = (id: string) => {
     setSelectedTypeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSource = (id: string) => {
+    setSelectedSourceIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -126,13 +138,15 @@ export function EventSearch() {
         return false;
       }
       if (selectedTypeIds.size > 0 && !selectedTypeIds.has(resolved.get(e.id)?.type.id ?? "")) return false;
+      if (selectedSourceIds.size > 0 && !selectedSourceIds.has(e.calendarId)) return false;
       if (dateFrom && parseISO(e.end) < dateFrom) return false;
       if (rangeEnd && parseISO(e.start) > rangeEnd) return false;
       return true;
     });
-  }, [visibleEvents, query, selectedTypeIds, dateFrom, dateTo, resolved]);
+  }, [visibleEvents, query, selectedTypeIds, selectedSourceIds, dateFrom, dateTo, resolved]);
   const results = sortByRelevance(filtered).slice(0, MAX_RESULTS);
-  const hasActiveFilters = selectedTypeIds.size > 0 || dateFrom !== null || dateTo !== null;
+  const hasActiveFilters =
+    selectedTypeIds.size > 0 || selectedSourceIds.size > 0 || dateFrom !== null || dateTo !== null;
 
   const selectEvent = (e: CalendarEvent) => {
     setOpen(false);
@@ -219,6 +233,36 @@ export function EventSearch() {
                 })}
               </div>
             )}
+            {connections.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
+                {connections.map((c) => {
+                  const active = selectedSourceIds.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleSource(c.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                        active
+                          ? "border-transparent text-white"
+                          : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      )}
+                      style={active ? { backgroundColor: c.color } : undefined}
+                    >
+                      {!active && (
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: c.color }}
+                        />
+                      )}
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
               <span>Période</span>
               <input
@@ -242,6 +286,7 @@ export function EventSearch() {
                   type="button"
                   onClick={() => {
                     setSelectedTypeIds(new Set());
+                    setSelectedSourceIds(new Set());
                     setDateFrom(null);
                     setDateTo(null);
                   }}
