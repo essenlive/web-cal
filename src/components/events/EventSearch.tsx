@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Loader2, MapPin, Search } from "lucide-react";
@@ -16,7 +16,6 @@ import type { CalendarEvent } from "../../types";
 
 const LOAD_STEP_MONTHS = 3;
 const MAX_RESULTS = 50;
-const IS_MAC = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
 /** Sorts by closeness to "now" (soonest-upcoming/most-recent first) rather than plain
  *  chronological order — a plain helper (not inlined in a memo) so the Date.now() read
@@ -26,6 +25,19 @@ function sortByRelevance(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort(
     (a, b) => Math.abs(parseISO(a.start).getTime() - now) - Math.abs(parseISO(b.start).getTime() - now)
   );
+}
+
+const noopSubscribe = () => () => {};
+const getIsMacSnapshot = () => /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+const getIsMacServerSnapshot = () => false;
+
+/** `navigator` is unavailable during SSR/SSG, so this can't be computed at module scope or
+ *  read directly during render — that would render "Ctrl+K" on the server and possibly "⌘K"
+ *  after client hydration on a Mac, tripping a hydration mismatch. `useSyncExternalStore`
+ *  (rather than a `useState` + `useEffect` pair) reads the real value on the client without
+ *  an extra post-mount render. */
+function useIsMac(): boolean {
+  return useSyncExternalStore(noopSubscribe, getIsMacSnapshot, getIsMacServerSnapshot);
 }
 
 /** Global "search all cached events" command palette, opened from the header's search
@@ -40,6 +52,7 @@ export function EventSearch() {
   const [loadingDir, setLoadingDir] = useState<"prev" | "next" | null>(null);
   const [extraBack, setExtraBack] = useState(0);
   const [extraForward, setExtraForward] = useState(0);
+  const isMac = useIsMac();
 
   const { setCurrentDate, use24h } = useUIStore();
   const { visibleEvents, resolved } = useResolvedEvents();
@@ -110,7 +123,7 @@ export function EventSearch() {
         <Search size={14} />
         <span>Rechercher…</span>
         <kbd className="ml-2 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-          {IS_MAC ? "⌘K" : "Ctrl+K"}
+          {isMac ? "⌘K" : "Ctrl+K"}
         </kbd>
       </button>
       <Button
