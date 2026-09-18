@@ -91,9 +91,12 @@ Useless headless — only relevant if a human has a browser.
 
 ## Test
 
-No browser-based test suite exists. Type/lint checks:
+No browser-based (Playwright) test suite exists — `playwright` here is only the
+manual driver above, not a configured test runner. Component tests run on
+Vitest + React Testing Library + jsdom instead:
 
 ```bash
+npm test        # vitest run
 npm run build   # tsc type-check, part of the Next.js build
 npm run lint
 ```
