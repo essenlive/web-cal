@@ -40,6 +40,14 @@ export function windowAround(centerDate: Date): { start: Date; end: Date } {
   return { start: subMonths(centerDate, WINDOW_MONTHS_BACK), end: addMonths(centerDate, WINDOW_MONTHS_FORWARD) };
 }
 
+/** Outer span of a cache entry's coveredRanges (already sorted/merged — see event-cache.ts's
+ *  unionRange), or null if nothing's been fetched yet. Used to surface "cached period" in the
+ *  UI without exposing the full multi-range detail. */
+function cacheSpan(entry: ConnectionCacheEntry | undefined): DateRange | null {
+  if (!entry || entry.coveredRanges.length === 0) return null;
+  return { start: entry.coveredRanges[0].start, end: entry.coveredRanges[entry.coveredRanges.length - 1].end };
+}
+
 /** The window persisted to disk on every write — centered on real "now", not `currentDate`
  *  (which isn't persisted in useUIStore, so a reload always starts centered on today
  *  regardless of where the user last navigated). */
@@ -197,7 +205,7 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     const nextRetryAt = cacheRef.current.get(connId)?.nextRetryAt ?? null;
     setSyncMeta((prev) => ({
       ...prev,
-      [connId]: { lastSyncedAt: prev[connId]?.lastSyncedAt ?? null, message, nextRetryAt },
+      [connId]: { lastSyncedAt: prev[connId]?.lastSyncedAt ?? null, message, nextRetryAt, cachedRange: prev[connId]?.cachedRange ?? null },
     }));
     if (!erroredConnectionsRef.current.has(connId)) {
       erroredConnectionsRef.current.add(connId);
@@ -209,7 +217,8 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   /** A fetch for `connId` succeeded: clears any prior error/backoff from useConnectionSyncMeta(),
    *  and toasts a recovery message only if this connection was previously known to be failing. */
   const recordSuccess = useCallback((connId: string, connName: string) => {
-    setSyncMeta((prev) => ({ ...prev, [connId]: { lastSyncedAt: Date.now(), message: undefined, nextRetryAt: null } }));
+    const cachedRange = cacheSpan(cacheRef.current.get(connId));
+    setSyncMeta((prev) => ({ ...prev, [connId]: { lastSyncedAt: Date.now(), message: undefined, nextRetryAt: null, cachedRange } }));
     if (erroredConnectionsRef.current.has(connId)) {
       erroredConnectionsRef.current.delete(connId);
       toast.success(`Connexion à « ${connName} » rétablie.`);
@@ -410,6 +419,18 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
     const persisted = readPersistedCache();
     if (!persisted) return;
     cacheRef.current = persisted;
+    // Deferred a microtask out — same reasoning as the loadWindow effect below: avoids
+    // a synchronous setState directly inside the effect body.
+    void Promise.resolve().then(() => {
+      setSyncMeta((prev) => {
+        const next = { ...prev };
+        for (const [connId, entry] of persisted) {
+          if (entry.lastFetchedAt === null) continue;
+          next[connId] = { lastSyncedAt: entry.lastFetchedAt, message: undefined, nextRetryAt: entry.nextRetryAt, cachedRange: cacheSpan(entry) };
+        }
+        return next;
+      });
+    });
     for (const [connId, entry] of persisted) {
       if (entry.nextRetryAt !== null && entry.nextRetryAt > Date.now()) {
         scheduleRetryTimer(connId, entry.nextRetryAt - Date.now());

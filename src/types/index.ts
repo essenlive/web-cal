@@ -130,6 +130,11 @@ export interface ConnectionSyncMeta {
   message?: string;
   /** Epoch ms before which this connection won't be retried automatically (429 backoff). */
   nextRetryAt: number | null;
+  /** Outer span (earliest start, latest end) of this connection's cached coveredRanges —
+   *  ISO strings, or null before anything has ever been fetched. Not the full multi-range
+   *  detail (see ConnectionCacheEntry.coveredRanges in lib/event-cache.ts), just enough to
+   *  show "cached period" in the UI without a second reactive path onto the cache. */
+  cachedRange: { start: string; end: string } | null;
 }
 
 /** Keyed by Connection.id — tracks live health of each connection. */

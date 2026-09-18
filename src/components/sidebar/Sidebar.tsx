@@ -151,6 +151,22 @@ export function Sidebar() {
   const { addRule } = useRuleStore();
   const { customThemes, themeOrder, selectedThemeId, selectTheme } = useThemeStore();
 
+  // Aggregate cached period across every source, for the refresh button's tooltip —
+  // earliest cachedRange start to latest cachedRange end. null until at least one
+  // connection has completed a fetch.
+  const cachedSpan = Object.values(syncMeta).reduce<{ start: string; end: string } | null>((acc, m) => {
+    if (!m.cachedRange) return acc;
+    if (!acc) return m.cachedRange;
+    return { start: m.cachedRange.start < acc.start ? m.cachedRange.start : acc.start, end: m.cachedRange.end > acc.end ? m.cachedRange.end : acc.end };
+  }, null);
+  const refreshLabel = lastUpdated
+    ? `Actualisé à ${format(lastUpdated, "HH:mm", { locale: fr })}${
+        cachedSpan
+          ? ` · période en cache : ${format(new Date(cachedSpan.start), "d MMM", { locale: fr })} – ${format(new Date(cachedSpan.end), "d MMM", { locale: fr })}`
+          : ""
+      }`
+    : "Actualiser";
+
   const handleAddRule = () => {
     addRule({ matchType: "name", matchValue: "", displayTypeId: getDefaultType().id });
     openDrawer("rules");
@@ -279,20 +295,18 @@ export function Sidebar() {
           onOpen={() => openDrawer("connection")}
           onAdd={() => openNewItemDrawer("connection")}
           extra={
-            <ActionButton
-              variant="ghost"
-              size="icon"
-              confirm={false}
-              onAction={refresh}
-              aria-label={
-                lastUpdated
-                  ? `Actualiser (dernière actualisation à ${format(lastUpdated, "HH:mm")})`
-                  : "Actualiser"
-              }
-              className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
-            >
-              <RefreshCw size={12} />
-            </ActionButton>
+            <SimpleTooltip label={refreshLabel}>
+              <ActionButton
+                variant="ghost"
+                size="icon"
+                confirm={false}
+                onAction={refresh}
+                aria-label={refreshLabel}
+                className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
+              >
+                <RefreshCw size={12} />
+              </ActionButton>
+            </SimpleTooltip>
           }
         >
           {connections.length === 0 && (

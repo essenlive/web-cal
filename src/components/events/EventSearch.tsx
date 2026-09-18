@@ -178,7 +178,7 @@ export function EventSearch() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Rechercher un événement"
-        className="hidden sm:flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors shrink-0"
+        className="hidden md:flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors shrink-0"
       >
         <Search size={14} />
         <span>Rechercher…</span>
@@ -191,7 +191,7 @@ export function EventSearch() {
         size="icon"
         onClick={() => setOpen(true)}
         aria-label="Rechercher un événement"
-        className="sm:hidden text-muted-foreground"
+        className="md:hidden text-muted-foreground"
       >
         <Search size={18} />
       </Button>
