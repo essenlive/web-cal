@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { addMonths, format, parseISO, subMonths } from "date-fns";
+import { addMonths, endOfDay, format, parseISO, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Loader2, MapPin, Search } from "lucide-react";
-import { useUIStore } from "../../store";
+import { ArrowDown, ArrowUp, Loader2, MapPin, Search, X } from "lucide-react";
+import { useEventTypeStore, useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import { useSourceSync, windowAround } from "../../context/DataProviderContext";
 import { getBadgeContent } from "./EventChip";
@@ -12,10 +12,15 @@ import { EventDetail } from "./EventDetail";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
+import { getIconEl } from "../../lib/icons";
+import { cn } from "../../lib/utils";
 import type { CalendarEvent } from "../../types";
 
 const LOAD_STEP_MONTHS = 3;
 const MAX_RESULTS = 50;
+/** How far past a single open-ended date bound (only "from" or only "to" set) to widen
+ *  the cache-aware `loadRange` call — see the dateFrom/dateTo effect below. */
+const OPEN_RANGE_MONTHS = 6;
 
 /** Sorts by closeness to "now" (soonest-upcoming/most-recent first) rather than plain
  *  chronological order — a plain helper (not inlined in a memo) so the Date.now() read
@@ -53,8 +58,13 @@ export function EventSearch() {
   const [extraBack, setExtraBack] = useState(0);
   const [extraForward, setExtraForward] = useState(0);
   const isMac = useIsMac();
+  const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(new Set());
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [rangeLoading, setRangeLoading] = useState(false);
 
   const { setCurrentDate, use24h } = useUIStore();
+  const { types } = useEventTypeStore();
   const { visibleEvents, resolved } = useResolvedEvents();
   const { loadRange } = useSourceSync();
 
@@ -75,18 +85,54 @@ export function EventSearch() {
       setQuery("");
       setExtraBack(0);
       setExtraForward(0);
+      setSelectedTypeIds(new Set());
+      setDateFrom(null);
+      setDateTo(null);
     }
   };
 
+  const toggleType = (id: string) => {
+    setSelectedTypeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Widens the shared range cache to cover the chosen date filter (same cache-aware
+  // `loadRange` the "load earlier/later" buttons use below — only the still-uncovered
+  // gap is actually fetched) so the date filter reflects real data instead of silently
+  // returning nothing for a range the app just hasn't loaded yet. An open-ended bound
+  // (only one of dateFrom/dateTo set) is widened by a fixed OPEN_RANGE_MONTHS rather
+  // than fetched unbounded.
+  useEffect(() => {
+    if (!dateFrom && !dateTo) return;
+    // Deferred a microtask out, same as DataProviderContext's own loadWindow effect —
+    // the linter flags setState called synchronously during the effect body.
+    void Promise.resolve().then(() => {
+      const start = dateFrom ?? subMonths(dateTo!, OPEN_RANGE_MONTHS);
+      const end = dateTo ? endOfDay(dateTo) : addMonths(dateFrom!, OPEN_RANGE_MONTHS);
+      setRangeLoading(true);
+      loadRange(start, end).finally(() => setRangeLoading(false));
+    });
+  }, [dateFrom, dateTo, loadRange]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
-    return q
-      ? visibleEvents.filter(
-          (e) => e.title.toLocaleLowerCase("fr").includes(q) || e.location?.toLocaleLowerCase("fr").includes(q)
-        )
-      : visibleEvents;
-  }, [visibleEvents, query]);
+    const rangeEnd = dateTo ? endOfDay(dateTo) : null;
+    return visibleEvents.filter((e) => {
+      if (q && !(e.title.toLocaleLowerCase("fr").includes(q) || e.location?.toLocaleLowerCase("fr").includes(q))) {
+        return false;
+      }
+      if (selectedTypeIds.size > 0 && !selectedTypeIds.has(resolved.get(e.id)?.type.id ?? "")) return false;
+      if (dateFrom && parseISO(e.end) < dateFrom) return false;
+      if (rangeEnd && parseISO(e.start) > rangeEnd) return false;
+      return true;
+    });
+  }, [visibleEvents, query, selectedTypeIds, dateFrom, dateTo, resolved]);
   const results = sortByRelevance(filtered).slice(0, MAX_RESULTS);
+  const hasActiveFilters = selectedTypeIds.size > 0 || dateFrom !== null || dateTo !== null;
 
   const selectEvent = (e: CalendarEvent) => {
     setOpen(false);
@@ -148,6 +194,64 @@ export function EventSearch() {
               onValueChange={setQuery}
               placeholder="Rechercher un événement (titre, lieu)…"
             />
+            {types.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
+                {types.map((t) => {
+                  const active = selectedTypeIds.has(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleType(t.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        "flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                        active
+                          ? "border-transparent text-white"
+                          : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      )}
+                      style={active ? { backgroundColor: t.color } : undefined}
+                    >
+                      {getIconEl(t.icon, 11, active ? "#fff" : undefined)}
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
+              <span>Période</span>
+              <input
+                type="date"
+                value={dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}
+                onChange={(e) => setDateFrom(e.target.value ? parseISO(e.target.value) : null)}
+                className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
+                aria-label="À partir du"
+              />
+              <span>–</span>
+              <input
+                type="date"
+                value={dateTo ? format(dateTo, "yyyy-MM-dd") : ""}
+                onChange={(e) => setDateTo(e.target.value ? parseISO(e.target.value) : null)}
+                className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
+                aria-label="Jusqu'au"
+              />
+              {rangeLoading && <Loader2 size={12} className="animate-spin" />}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTypeIds(new Set());
+                    setDateFrom(null);
+                    setDateTo(null);
+                  }}
+                  className="ml-auto flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X size={11} />
+                  Effacer les filtres
+                </button>
+              )}
+            </div>
             <CommandList>
               <CommandEmpty>Aucun événement trouvé.</CommandEmpty>
               <CommandGroup heading="Événements">
