@@ -1,4 +1,4 @@
-import { differenceInMinutes, startOfWeek } from "date-fns";
+import { differenceInMinutes, startOfWeek, addWeeks } from "date-fns";
 import type { CalendarEvent } from "../types";
 
 /** One bucket of the sparkline: total minutes for events starting in that week. */
@@ -47,6 +47,24 @@ export function aggregateRangeStats(events: CalendarEvent[]): RangeStats {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([weekStart, totalMinutes]) => ({ weekStart, totalMinutes }));
   return { totalMinutes, activeDays: days.size, eventCount: events.length, weeks };
+}
+
+/** Every calendar week (Monday-start) touching [from, to], oldest first — used to fill in zero-hour weeks so a chart shows the whole period rather than skipping quiet weeks. */
+export function enumerateWeeks(from: Date, to: Date): string[] {
+  const weeks: string[] = [];
+  let cursor = startOfWeek(from, { weekStartsOn: 1 });
+  const last = startOfWeek(to, { weekStartsOn: 1 });
+  while (cursor <= last) {
+    weeks.push(cursor.toISOString().slice(0, 10));
+    cursor = addWeeks(cursor, 1);
+  }
+  return weeks;
+}
+
+/** Merges a group's non-zero weeks (from aggregateRangeStats) onto the full list of weeks in the period, so every week in range gets a bar, zero-height where there was no activity. */
+export function fillWeeks(weeks: WeekBucket[], allWeeks: string[]): WeekBucket[] {
+  const byWeek = new Map(weeks.map((w) => [w.weekStart, w.totalMinutes]));
+  return allWeeks.map((weekStart) => ({ weekStart, totalMinutes: byWeek.get(weekStart) ?? 0 }));
 }
 
 /** "3h", "3,5h" — a compact hour label; drops the decimal above 10h to stay short in a pill. */

@@ -3,36 +3,33 @@
 /**
  * StatsPage — dedicated "how busy is each source/type/rule" view (see project thread:
  * Quentin picked a full page over per-drawer summaries once he saw the compact-pill
- * version and wanted the underlying numbers displayed on their own, with a range picker
- * and a bit of visual interactivity, rather than squeezed into the existing drawers).
+ * version, then asked for the period to be freely editable — not just fixed presets —
+ * and for the charts to be bigger and clearer).
  *
  * Three tabs (Sources/Types/Règles) share one aggregation (useEventStatsByGroup) over a
- * user-picked date range, each row showing total hours/event count/active days for that
- * range plus a small per-week bar sparkline (hover a bar for that week's total).
+ * period picked with the shared EventPeriodPicker/useEventPeriod (presets + custom
+ * dates, which also loads the range into the shared event cache). Each row shows
+ * total hours/event count/active days for that period plus a per-week bar chart
+ * (hover a bar for that week's total).
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { startOfDay, endOfDay, subDays, format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useConnectionStore, useEventTypeStore, useRuleStore, useEventsStore } from "../store";
-import { useSourceSync } from "../context/DataProviderContext";
 import { useEventStatsByGroup } from "../hooks/useEventStatsByGroup";
-import { formatHours, emptyStats, type RangeStats, type WeekBucket } from "../lib/eventStats";
+import { useEventPeriod } from "../hooks/useEventPeriod";
+import { formatHours, emptyStats, enumerateWeeks, fillWeeks, type RangeStats, type WeekBucket } from "../lib/eventStats";
 import { describeMatch } from "../lib/rules";
 import { EnsureSourceRule } from "./RulesPage";
 import { ItemBadge } from "../components/sidebar/ItemRow";
+import { EventPeriodPicker } from "../components/events/EventPeriodPicker";
 import { SimpleTooltip } from "../components/ui/tooltip";
 import { getIconEl } from "../lib/icons";
 import type { Rule } from "../types";
-
-const RANGE_PRESETS = [
-  { days: 7, label: "7 jours" },
-  { days: 28, label: "28 jours" },
-  { days: 90, label: "3 mois" },
-] as const;
 
 const TABS = [
   { id: "sources", label: "Sources" },
@@ -41,78 +38,68 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-/** Small per-week bar chart — one bar per week in range, scaled to the tab's tallest bar so rows stay visually comparable. Hover a bar for that week's total. */
-function Sparkline({ weeks, maxMinutes }: { weeks: WeekBucket[]; maxMinutes: number }) {
-  if (weeks.length === 0) return <span className="text-[10px] text-muted-foreground/40">—</span>;
+/** Per-week bar chart — one bar per week in range, scaled to the tab's tallest bar so rows stay visually comparable. A short date labels each bar; hovering shows that week's total. */
+function WeekChart({ weeks, maxMinutes }: { weeks: WeekBucket[]; maxMinutes: number }) {
+  if (weeks.length === 0) {
+    return <p className="text-xs text-muted-foreground/50 py-1">Aucune donnée sur cette période.</p>;
+  }
   return (
-    <div className="flex items-end gap-0.5 h-6 shrink-0">
+    <div className="flex items-end gap-1.5 h-20">
       {weeks.map((w) => {
-        const height = maxMinutes > 0 ? Math.max(2, Math.round((w.totalMinutes / maxMinutes) * 24)) : 2;
+        const height = maxMinutes > 0 ? Math.max(3, Math.round((w.totalMinutes / maxMinutes) * 72)) : 3;
         return (
-          <SimpleTooltip
-            key={w.weekStart}
-            label={`Semaine du ${format(new Date(w.weekStart), "d MMM", { locale: fr })} · ${formatHours(w.totalMinutes)}`}
-          >
-            <div className="w-1.5 rounded-t bg-primary/60 hover:bg-primary transition-colors" style={{ height }} />
-          </SimpleTooltip>
+          <div key={w.weekStart} className="flex-1 min-w-0 flex flex-col items-center gap-1">
+            <SimpleTooltip label={`Semaine du ${format(new Date(w.weekStart), "d MMMM", { locale: fr })} · ${formatHours(w.totalMinutes)}`}>
+              <div className="w-full max-w-8 rounded-t bg-primary/70 hover:bg-primary transition-colors" style={{ height }} />
+            </SimpleTooltip>
+            <span className="text-[10px] text-muted-foreground/70 truncate w-full text-center">
+              {format(new Date(w.weekStart), "d MMM", { locale: fr })}
+            </span>
+          </div>
         );
       })}
     </div>
   );
 }
 
-function GroupRow({ badge, name, stats, maxWeekMinutes, weeks }: {
+function GroupCard({ badge, name, stats, chartWeeks, maxWeekMinutes, weekCount }: {
   badge: React.ReactNode;
   name: React.ReactNode;
   stats: RangeStats;
+  /** stats.weeks filled in with zero-hour weeks for the ones with no events — see enumerateWeeks/fillWeeks. */
+  chartWeeks: WeekBucket[];
   maxWeekMinutes: number;
-  weeks: number;
+  weekCount: number;
 }) {
-  const perWeek = weeks > 0 ? stats.totalMinutes / weeks : 0;
-  const daysPerWeek = weeks > 0 ? stats.activeDays / weeks : 0;
+  const perWeek = weekCount > 0 ? stats.totalMinutes / weekCount : 0;
+  const daysPerWeek = weekCount > 0 ? stats.activeDays / weekCount : 0;
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
-      {badge}
-      <span className="flex-1 min-w-0 truncate text-sm text-foreground">{name}</span>
-      <Sparkline weeks={stats.weeks} maxMinutes={maxWeekMinutes} />
-      <div className="flex items-center gap-4 shrink-0 text-xs text-muted-foreground tabular-nums">
-        <span className="w-14 text-right">{formatHours(stats.totalMinutes)} total</span>
-        <span className="w-16 text-right">{formatHours(perWeek)}/sem</span>
-        <span className="w-16 text-right">{daysPerWeek.toFixed(1)} j/sem</span>
-        <span className="w-16 text-right">{stats.eventCount} évt.</span>
+    <div className="rounded-lg bg-muted/50 px-3 py-3 space-y-2">
+      <div className="flex items-center gap-3">
+        {badge}
+        <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{name}</span>
+        <div className="flex items-center gap-4 shrink-0 text-xs text-muted-foreground tabular-nums">
+          <span className="w-16 text-right">{formatHours(stats.totalMinutes)} total</span>
+          <span className="w-16 text-right">{formatHours(perWeek)}/sem</span>
+          <span className="w-16 text-right">{daysPerWeek.toFixed(1)} j/sem</span>
+          <span className="w-14 text-right">{stats.eventCount} évt.</span>
+        </div>
       </div>
+      <WeekChart weeks={chartWeeks} maxMinutes={maxWeekMinutes} />
     </div>
   );
 }
 
 export function StatsPage() {
   const [tab, setTab] = useState<TabId>("sources");
-  const [rangeDays, setRangeDays] = useState<(typeof RANGE_PRESETS)[number]["days"]>(28);
-  const [rangeLoading, setRangeLoading] = useState(false);
+  const { from, to, presetDays, loading, setPreset, setCustom } = useEventPeriod(28);
+  const weeks = Math.max(1, (differenceInCalendarDays(to, from) + 1) / 7);
 
-  const to = endOfDay(new Date());
-  const from = startOfDay(subDays(to, rangeDays - 1));
-  const weeks = Math.ceil(rangeDays / 7);
-
-  const { loadRange } = useSourceSync();
   const { hasLoadedOnce, events } = useEventsStore();
   const { connections } = useConnectionStore();
   const { types } = useEventTypeStore();
   const { rules } = useRuleStore();
   const { bySource, byType, byRule } = useEventStatsByGroup(from, to);
-
-  // Widens the shared range cache to cover the chosen period — same cache-aware
-  // loadRange the search modal's date filter uses — so switching to "3 mois" reflects
-  // real data instead of silently showing zeros for a period the app hasn't loaded yet.
-  useEffect(() => {
-    // Deferred a microtask out, same as EventSearch.tsx's date-filter effect — the
-    // linter flags setState called synchronously during the effect body.
-    void Promise.resolve().then(() => {
-      setRangeLoading(true);
-      void loadRange(from, to).finally(() => setRangeLoading(false));
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeDays, loadRange]);
 
   const orderedRules = rules.filter((r) => r.matchType === "name" || r.matchType === "source");
   const getConnectionName = (id: string) => connections.find((c) => c.id === id)?.name;
@@ -146,6 +133,7 @@ export function StatsPage() {
         });
 
   const sortedRows = [...rows].sort((a, b) => b.stats.totalMinutes - a.stats.totalMinutes);
+  const allWeeks = enumerateWeeks(from, to);
   const maxWeekMinutes = Math.max(0, ...sortedRows.flatMap((r) => r.stats.weeks.map((w) => w.totalMinutes)));
 
   return (
@@ -157,7 +145,6 @@ export function StatsPage() {
         </Link>
         <span className="text-border">/</span>
         <h1 className="text-sm font-bold text-foreground">Statistiques</h1>
-        {rangeLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
       </header>
 
       {connections.map((c) => <EnsureSourceRule key={c.id} connectionId={c.id} />)}
@@ -179,20 +166,7 @@ export function StatsPage() {
                 </button>
               ))}
             </div>
-            <div className="flex rounded-xl border border-border overflow-hidden bg-background w-fit">
-              {RANGE_PRESETS.map((p) => (
-                <button
-                  key={p.days}
-                  onClick={() => setRangeDays(p.days)}
-                  className={cn(
-                    "px-3 py-2 text-xs font-medium transition-colors",
-                    rangeDays === p.days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <EventPeriodPicker from={from} to={to} presetDays={presetDays} loading={loading} onPreset={setPreset} onCustom={setCustom} />
           </div>
 
           <p className="text-xs text-muted-foreground">
@@ -200,10 +174,18 @@ export function StatsPage() {
             {!hasLoadedOnce && " Chargement des événements…"}
           </p>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {sortedRows.length === 0 && <p className="text-xs text-muted-foreground">Rien à afficher.</p>}
             {sortedRows.map((r) => (
-              <GroupRow key={r.key} badge={r.badge} name={r.name} stats={r.stats} maxWeekMinutes={maxWeekMinutes} weeks={weeks} />
+              <GroupCard
+                key={r.key}
+                badge={r.badge}
+                name={r.name}
+                stats={r.stats}
+                chartWeeks={fillWeeks(r.stats.weeks, allWeeks)}
+                maxWeekMinutes={maxWeekMinutes}
+                weekCount={weeks}
+              />
             ))}
           </div>
         </div>
