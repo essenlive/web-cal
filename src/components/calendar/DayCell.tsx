@@ -385,10 +385,14 @@ export const DayCell = memo(function DayCell({
  * "whole-cell" winners tint the card), but — unlike the space-constrained month
  * grid — every event gets its own full row with title, type label and location
  * instead of being condensed into a chip, a corner avatar, or a tooltip-only entry.
+ * The date lives inside the card (bigger than the month cell's, since the card
+ * carries the day's date on its own instead of sitting under a shared header).
  */
 export const AllDayCard = memo(function AllDayCard({
-  events, onEventClick, resolved,
+  day, isToday, events, onEventClick, resolved,
 }: {
+  day: Date;
+  isToday: boolean;
   events: CalendarEvent[];
   onEventClick: (e: CalendarEvent) => void;
   resolved: Map<string, ResolvedEvent>;
@@ -397,6 +401,10 @@ export const AllDayCard = memo(function AllDayCard({
   const backgroundWinner = cellStyleEvents.find((c) => c.style === "background");
   const borderTopWinner = cellStyleEvents.find((c) => c.style === "border-top");
   const borderBottomWinner = cellStyleEvents.find((c) => c.style === "border-bottom");
+
+  const numberClass = isToday
+    ? "inline-flex items-center justify-center size-9 rounded-full ring-2 ring-inset ring-primary text-primary text-base font-bold leading-none shrink-0"
+    : "text-2xl font-semibold leading-none text-foreground underline underline-offset-4 decoration-dotted shrink-0";
 
   return (
     <div
@@ -409,7 +417,10 @@ export const AllDayCard = memo(function AllDayCard({
       {borderBottomWinner && (
         <div className="absolute inset-x-0 bottom-0 h-1" style={{ backgroundColor: borderBottomWinner.type.color }} />
       )}
-      <div className="flex flex-col divide-y divide-border/60">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+        <span className={numberClass}>{format(day, "d")}</span>
+      </div>
+      <div className="flex flex-col divide-y divide-border/60 border-t border-border/60">
         {events.map((e) => {
           const type = resolved.get(e.id)?.type;
           const color = type?.color ?? "#6366f1";

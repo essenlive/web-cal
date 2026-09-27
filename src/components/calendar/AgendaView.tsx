@@ -90,13 +90,17 @@ export function AgendaView() {
               )}>
                 {dayLabel(day, now)}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {format(day, dateFormatEU ? "dd/MM/yyyy" : "MM/dd/yyyy")}
-              </span>
+              {allDayEvents.length === 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {format(day, dateFormatEU ? "dd/MM/yyyy" : "MM/dd/yyyy")}
+                </span>
+              )}
             </div>
             <div className="space-y-2">
               {allDayEvents.length > 0 && (
                 <AllDayCard
+                  day={day}
+                  isToday={isSameDay(day, now)}
                   events={allDayEvents}
                   onEventClick={setSelectedEvent}
                   resolved={resolved}
