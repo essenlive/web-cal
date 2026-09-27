@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { cn } from "../../lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
@@ -402,10 +403,6 @@ export const AllDayCard = memo(function AllDayCard({
   const borderTopWinner = cellStyleEvents.find((c) => c.style === "border-top");
   const borderBottomWinner = cellStyleEvents.find((c) => c.style === "border-bottom");
 
-  const numberClass = isToday
-    ? "inline-flex items-center justify-center size-9 rounded-full ring-2 ring-inset ring-primary text-primary text-base font-bold leading-none shrink-0"
-    : "text-2xl font-semibold leading-none text-foreground underline underline-offset-4 decoration-dotted shrink-0";
-
   return (
     <div
       className="relative rounded-xl border border-border bg-card overflow-hidden"
@@ -417,8 +414,13 @@ export const AllDayCard = memo(function AllDayCard({
       {borderBottomWinner && (
         <div className="absolute inset-x-0 bottom-0 h-1" style={{ backgroundColor: borderBottomWinner.type.color }} />
       )}
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
-        <span className={numberClass}>{format(day, "d")}</span>
+      <div className="px-4 pt-3 pb-2">
+        <span className={cn(
+          "text-base font-semibold capitalize",
+          isToday ? "text-primary" : "text-foreground",
+        )}>
+          {format(day, "EEEE d MMMM", { locale: fr })}
+        </span>
       </div>
       <div className="flex flex-col divide-y divide-border/60 border-t border-border/60">
         {events.map((e) => {

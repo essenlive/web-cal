@@ -83,19 +83,19 @@ export function AgendaView() {
         const timedEvents = dayEvents.filter((e) => !e.allDay);
         return (
           <div key={dateKey}>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className={cn(
-                "text-sm font-semibold capitalize",
-                isSameDay(day, now) ? "text-primary" : "text-foreground"
-              )}>
-                {dayLabel(day, now)}
-              </span>
-              {allDayEvents.length === 0 && (
+            {allDayEvents.length === 0 && (
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className={cn(
+                  "text-sm font-semibold capitalize",
+                  isSameDay(day, now) ? "text-primary" : "text-foreground"
+                )}>
+                  {dayLabel(day, now)}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {format(day, dateFormatEU ? "dd/MM/yyyy" : "MM/dd/yyyy")}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
             <div className="space-y-2">
               {allDayEvents.length > 0 && (
                 <AllDayCard
