@@ -84,9 +84,9 @@ export function AgendaView() {
         return (
           <div key={dateKey}>
             {allDayEvents.length === 0 && (
-              <div className="flex items-baseline gap-2 mb-2">
+              <div className="flex items-baseline gap-2 mb-2 px-4">
                 <span className={cn(
-                  "text-sm font-semibold capitalize",
+                  "text-base font-semibold capitalize",
                   isSameDay(day, now) ? "text-primary" : "text-foreground"
                 )}>
                   {dayLabel(day, now)}
