@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useRuleStore } from "../store";
 import { useResolvedEvents } from "./useResolvedEvents";
 import { findMatchingRule } from "../lib/rules";
-import { aggregateRangeStats, overlapsRange, type RangeStats } from "../lib/eventStats";
+import { aggregateRangeStats, overlapsRange, type BucketGranularity, type RangeStats } from "../lib/eventStats";
 import type { CalendarEvent } from "../types";
 
 export interface EventStatsByGroup {
@@ -27,7 +27,7 @@ function pushInto<K>(map: Map<K, CalendarEvent[]>, key: K, event: CalendarEvent)
  * numbers either. Callers are responsible for calling useSourceSync().loadRange(from, to)
  * so the range is actually cached before reading this (see StatsPage).
  */
-export function useEventStatsByGroup(from: Date, to: Date): EventStatsByGroup {
+export function useEventStatsByGroup(from: Date, to: Date, granularity: BucketGranularity): EventStatsByGroup {
   const { visibleEvents, resolved } = useResolvedEvents();
   const { rules } = useRuleStore();
 
@@ -44,8 +44,9 @@ export function useEventStatsByGroup(from: Date, to: Date): EventStatsByGroup {
       pushInto(byRuleEvents, findMatchingRule(event, rules).id, event);
     }
 
-    const toStats = (m: Map<string, CalendarEvent[]>) => new Map([...m].map(([k, v]) => [k, aggregateRangeStats(v)] as const));
+    const toStats = (m: Map<string, CalendarEvent[]>) =>
+      new Map([...m].map(([k, v]) => [k, aggregateRangeStats(v, granularity)] as const));
 
     return { bySource: toStats(bySourceEvents), byType: toStats(byTypeEvents), byRule: toStats(byRuleEvents) };
-  }, [visibleEvents, resolved, rules, from, to]);
+  }, [visibleEvents, resolved, rules, from, to, granularity]);
 }
