@@ -29,13 +29,17 @@ export interface RangeStats {
   totalMinutes: number;
   /** Distinct calendar days (timed or all-day) touched within the queried range. */
   activeDays: number;
-  eventCount: number;
+  /** Timed events don't have a "count" that means much on its own (their hours already say
+   *  how busy they were) — kept separate from allDayEventCount because the two aren't the
+   *  same unit: one is "how many hours", the other is "how many all-day events". */
+  timedEventCount: number;
+  allDayEventCount: number;
   /** One entry per bucket touched by the range, oldest first, at the granularity aggregateRangeStats was called with. */
   buckets: Bucket[];
 }
 
 export function emptyStats(): RangeStats {
-  return { totalMinutes: 0, activeDays: 0, eventCount: 0, buckets: [] };
+  return { totalMinutes: 0, activeDays: 0, timedEventCount: 0, allDayEventCount: 0, buckets: [] };
 }
 
 /** True if `event` overlaps [from, to] — same overlap test as EventSearch's date filter, so "in range" means the same thing across the app. */
@@ -89,6 +93,8 @@ export function aggregateRangeStats(events: CalendarEvent[], granularity: Bucket
   const bucketMinutes = new Map<string, number>();
   const bucketAllDay = new Map<string, number>();
   let totalMinutes = 0;
+  let timedEventCount = 0;
+  let allDayEventCount = 0;
 
   for (const e of events) {
     const eventStart = new Date(e.start);
@@ -104,6 +110,7 @@ export function aggregateRangeStats(events: CalendarEvent[], granularity: Bucket
     }
 
     if (e.allDay) {
+      allDayEventCount += 1;
       let cursor = bucketStart(clippedStart, granularity);
       const last = bucketStart(new Date(clippedEnd.getTime() - 1), granularity);
       while (cursor <= last) {
@@ -114,6 +121,7 @@ export function aggregateRangeStats(events: CalendarEvent[], granularity: Bucket
       continue;
     }
 
+    timedEventCount += 1;
     let cursor = clippedStart;
     while (cursor < clippedEnd) {
       const bStart = bucketStart(cursor, granularity);
@@ -136,7 +144,7 @@ export function aggregateRangeStats(events: CalendarEvent[], granularity: Bucket
       allDayCount: bucketAllDay.get(key) ?? 0,
     }));
 
-  return { totalMinutes, activeDays: days.size, eventCount: events.length, buckets };
+  return { totalMinutes, activeDays: days.size, timedEventCount, allDayEventCount, buckets };
 }
 
 /** Every bucket at `granularity` touching [from, to], oldest first — used to fill in zero-hour buckets so a chart shows the whole period rather than skipping quiet ones. */

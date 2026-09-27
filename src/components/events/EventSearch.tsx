@@ -12,6 +12,7 @@ import { EventDetail } from "./EventDetail";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
+import { DateRangePicker } from "../ui/date-range-picker";
 import { getIconEl } from "../../lib/icons";
 import { cn } from "../../lib/utils";
 import type { CalendarEvent } from "../../types";
@@ -304,20 +305,11 @@ export function EventSearch() {
                 )}
                 <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
                   <span>Période</span>
-                  <input
-                    type="date"
-                    value={dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}
-                    onChange={(e) => setDateFrom(e.target.value ? parseISO(e.target.value) : null)}
-                    className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
-                    aria-label="À partir du"
-                  />
-                  <span>–</span>
-                  <input
-                    type="date"
-                    value={dateTo ? format(dateTo, "yyyy-MM-dd") : ""}
-                    onChange={(e) => setDateTo(e.target.value ? parseISO(e.target.value) : null)}
-                    className="rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground"
-                    aria-label="Jusqu'au"
+                  <DateRangePicker
+                    from={dateFrom}
+                    to={dateTo}
+                    onChange={(range) => { setDateFrom(range.from); setDateTo(range.to); }}
+                    placeholder={["À partir du", "Jusqu'au"]}
                   />
                 </div>
               </>

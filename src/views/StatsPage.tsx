@@ -4,18 +4,23 @@
  * StatsPage — dedicated "how busy is each source/type/rule" view. Iterated a few times
  * in the project thread: started as a compact pill in each drawer row (dropped), then a
  * page with one chart per row (dropped for being scattered), settled on: one combined
- * stacked chart with every source/type/rule as its own series, a granularity picker
- * (day/week/month/year), a summary table below, a legend that doubles as a filter (click
- * an item to hide/show it), and an all-day "événements journée" line plotted against a
- * second, independent vertical axis (all-day events have no duration, so they'd
- * otherwise be invisible in an hours-based chart).
+ * chart (Recharts — the lightweight charting library shadcn/ui itself builds its Chart
+ * component on) with every source/type/rule as its own stacked-bar series, a granularity
+ * picker (day/week/month/year), a summary table below, a legend that doubles as a filter
+ * (click an item to hide/show it), and all-day "événements journée" plotted as a line
+ * against a second, independent axis — timed events are a duration (summed into hours),
+ * an all-day event has none (so it's counted instead), and the two are never mixed into
+ * the same number anywhere on this page.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowLeft } from "lucide-react";
+import {
+  Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from "recharts";
 import { cn } from "../lib/utils";
 import { useConnectionStore, useEventTypeStore, useRuleStore, useEventsStore } from "../store";
 import { useEventStatsByGroup } from "../hooks/useEventStatsByGroup";
@@ -28,7 +33,6 @@ import { describeMatch } from "../lib/rules";
 import { EnsureSourceRule } from "./RulesPage";
 import { ItemBadge } from "../components/sidebar/ItemRow";
 import { EventPeriodPicker } from "../components/events/EventPeriodPicker";
-import { SimpleTooltip } from "../components/ui/tooltip";
 import { getIconEl } from "../lib/icons";
 import type { Rule } from "../types";
 
@@ -39,6 +43,8 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
+const ALL_DAY_KEY = "__allDayCount";
+
 interface GroupRow {
   key: string;
   badge: React.ReactNode;
@@ -46,10 +52,6 @@ interface GroupRow {
   color: string;
   stats: RangeStats;
 }
-
-const CHART_HEIGHT = 176;
-const COL_WIDTH = 24;
-const COL_GAP = 4;
 
 /** Legend entries double as a filter: click one to hide/show its series everywhere on the
  *  page (chart + table). Hidden entries stay listed, dimmed and struck through, so they can
@@ -90,99 +92,122 @@ function Legend({ groups, hidden, onToggle, onReset }: {
   );
 }
 
-/** Combined stacked chart — one bar per bucket, one colored segment per group, plus an
- *  all-day "événements journée" line plotted against its own right-hand scale (max shown
- *  in the caption, since all-day events have no duration and would otherwise be invisible
- *  against an hours-based chart). Horizontally scrollable so a fine granularity (day) over
- *  a long period doesn't get squeezed unreadable; bucket labels are thinned out past a
- *  point to avoid overlapping text. */
-function StackedChart({ groups, bucketKeys, granularity }: {
+interface TooltipEntry { dataKey: string; value: number; color: string }
+
+/** Custom tooltip — kept deliberately explicit about units: timed series are summed
+ *  minutes shown as hours, the all-day series is a plain count of events, and the two are
+ *  never added together into one number. */
+function ChartTooltip({ active, payload, label, groupsByKey }: {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: string;
+  groupsByKey: Map<string, GroupRow>;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const hourEntries = payload.filter((p) => p.dataKey !== ALL_DAY_KEY && p.value > 0);
+  const allDayEntry = payload.find((p) => p.dataKey === ALL_DAY_KEY);
+
+  return (
+    <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
+      <p className="mb-1 font-medium text-foreground">{label}</p>
+      {hourEntries.map((p) => (
+        <div key={p.dataKey} className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+          {groupsByKey.get(p.dataKey)?.name ?? p.dataKey} · {formatHours(p.value)}
+        </div>
+      ))}
+      {allDayEntry && allDayEntry.value > 0 && (
+        <div className="mt-1 flex items-center gap-1.5 border-t border-border pt-1 text-muted-foreground">
+          <span className="size-1.5 rounded-full shrink-0 bg-foreground" />
+          {allDayEntry.value} événement{allDayEntry.value > 1 ? "s" : ""} journée
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Combined chart — one Bar series (stacked, left "Heures" axis) per visible source/type/
+ *  rule, plus a Line series for all-day event counts against its own right "Événements"
+ *  axis, since all-day events have no duration and would otherwise be invisible against an
+ *  hours-based chart. Horizontally scrollable at a fixed per-bucket width so a fine
+ *  granularity (day) over a long period doesn't get squeezed unreadable. */
+function CombinedChart({ groups, bucketKeys, granularity }: {
   groups: GroupRow[];
   bucketKeys: string[];
   granularity: BucketGranularity;
 }) {
+  const groupsByKey = useMemo(() => new Map(groups.map((g) => [g.key, g])), [groups]);
+
+  const chartData = useMemo(() => bucketKeys.map((key) => {
+    const row: Record<string, number | string> = { key, label: bucketLabel(key, granularity) };
+    let allDayTotal = 0;
+    for (const g of groups) {
+      const bucket = fillBuckets(g.stats.buckets, [key])[0];
+      row[g.key] = bucket.totalMinutes;
+      allDayTotal += bucket.allDayCount;
+    }
+    row[ALL_DAY_KEY] = allDayTotal;
+    return row;
+  }), [groups, bucketKeys, granularity]);
+
+  const hasAllDay = chartData.some((row) => (row[ALL_DAY_KEY] as number) > 0);
+  const labelEvery = Math.max(1, Math.ceil(bucketKeys.length / 14));
+  const chartWidth = Math.max(600, bucketKeys.length * 32);
+
   if (bucketKeys.length === 0 || groups.length === 0) {
     return <p className="text-xs text-muted-foreground/50 py-2">Aucune donnée sur cette période.</p>;
   }
 
-  const perGroupFilled = groups.map((g) => fillBuckets(g.stats.buckets, bucketKeys));
-  const bucketTotals = bucketKeys.map((_, i) => perGroupFilled.reduce((sum, arr) => sum + arr[i].totalMinutes, 0));
-  const allDayCounts = bucketKeys.map((_, i) => perGroupFilled.reduce((sum, arr) => sum + arr[i].allDayCount, 0));
-  const maxTotal = Math.max(1, ...bucketTotals);
-  const maxAllDay = Math.max(1, ...allDayCounts);
-  const hasAllDay = allDayCounts.some((c) => c > 0);
-  const labelEvery = Math.max(1, Math.ceil(bucketKeys.length / 14));
-  const totalWidth = bucketKeys.length * COL_WIDTH + (bucketKeys.length - 1) * COL_GAP;
-
-  const linePoints = allDayCounts
-    .map((c, i) => `${i * (COL_WIDTH + COL_GAP) + COL_WIDTH / 2},${CHART_HEIGHT - (c / maxAllDay) * CHART_HEIGHT}`)
-    .join(" ");
-
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground/70">
-        <span>Échelle heures : 0 – {formatHours(maxTotal)}</span>
-        {hasAllDay && (
-          <span className="flex items-center gap-1.5">
-            <svg width={12} height={8} className="shrink-0"><line x1={0} y1={4} x2={12} y2={4} stroke="currentColor" strokeWidth={1.5} /></svg>
-            Événements journée : 0 – {maxAllDay}
-          </span>
-        )}
-      </div>
-      <div className="overflow-x-auto">
-        <div style={{ width: totalWidth }}>
-          <div className="relative" style={{ height: CHART_HEIGHT }}>
-            <div className="absolute inset-0 flex items-end gap-1">
-              {bucketKeys.map((key, i) => (
-                <div key={key} className="w-6 shrink-0 flex flex-col-reverse" style={{ height: CHART_HEIGHT }}>
-                  {groups.map((g, gi) => {
-                    const minutes = perGroupFilled[gi][i].totalMinutes;
-                    if (minutes === 0) return null;
-                    const height = Math.max(2, Math.round((minutes / maxTotal) * CHART_HEIGHT));
-                    return (
-                      <SimpleTooltip key={g.key} label={`${g.name} · ${bucketLabel(key, granularity)} · ${formatHours(minutes)}`}>
-                        <div className="w-full first:rounded-t" style={{ height, backgroundColor: g.color }} />
-                      </SimpleTooltip>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+    <div className="overflow-x-auto">
+      <div style={{ width: chartWidth, height: 320 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+            <XAxis
+              dataKey="label"
+              interval={labelEvery - 1}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={{ className: "stroke-border" }}
+            />
+            <YAxis
+              yAxisId="hours"
+              tickFormatter={(v: number) => formatHours(v)}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={false}
+              width={40}
+              label={{ value: "Heures", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }}
+            />
             {hasAllDay && (
-              <svg
-                className="absolute inset-0 pointer-events-none text-foreground"
-                width={totalWidth}
-                height={CHART_HEIGHT}
-                viewBox={`0 0 ${totalWidth} ${CHART_HEIGHT}`}
-              >
-                <polyline points={linePoints} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
-                {allDayCounts.map((c, i) =>
-                  c === 0 ? null : (
-                    <circle
-                      key={bucketKeys[i]}
-                      cx={i * (COL_WIDTH + COL_GAP) + COL_WIDTH / 2}
-                      cy={CHART_HEIGHT - (c / maxAllDay) * CHART_HEIGHT}
-                      r={3}
-                      fill="currentColor"
-                    >
-                      <title>{`${bucketLabel(bucketKeys[i], granularity)} · ${c} événement${c > 1 ? "s" : ""} journée`}</title>
-                    </circle>
-                  )
-                )}
-              </svg>
+              <YAxis
+                yAxisId="events"
+                orientation="right"
+                allowDecimals={false}
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tickLine={false}
+                axisLine={false}
+                width={36}
+                label={{ value: "Événements", angle: 90, position: "insideRight", style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }}
+              />
             )}
-          </div>
-          <div className="flex gap-1 mt-1">
-            {bucketKeys.map((key, i) => (
-              <span
-                key={key}
-                className={cn("text-[9px] text-muted-foreground/70 truncate w-6 shrink-0 text-center", i % labelEvery !== 0 && "invisible")}
-              >
-                {bucketLabel(key, granularity)}
-              </span>
+            <Tooltip content={<ChartTooltip groupsByKey={groupsByKey} />} cursor={{ className: "fill-muted/40" }} />
+            {groups.map((g) => (
+              <Bar key={g.key} yAxisId="hours" dataKey={g.key} stackId="hours" fill={g.color} radius={[0, 0, 0, 0]} maxBarSize={28} />
             ))}
-          </div>
-        </div>
+            {hasAllDay && (
+              <Line
+                yAxisId="events"
+                dataKey={ALL_DAY_KEY}
+                stroke="hsl(var(--foreground))"
+                strokeWidth={1.5}
+                dot={{ r: 3, fill: "hsl(var(--foreground))" }}
+                activeDot={{ r: 4 }}
+              />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
@@ -195,10 +220,11 @@ function SummaryTable({ groups, bucketCount }: { groups: GroupRow[]; bucketCount
         <thead>
           <tr className="text-muted-foreground">
             <th className="text-left font-medium py-1.5 pr-2">Nom</th>
-            <th className="text-right font-medium py-1.5 px-2">Total</th>
+            <th className="text-right font-medium py-1.5 px-2">Heures</th>
             <th className="text-right font-medium py-1.5 px-2">Moyenne / période</th>
             <th className="text-right font-medium py-1.5 px-2">Jours actifs</th>
-            <th className="text-right font-medium py-1.5 pl-2">Événements</th>
+            <th className="text-right font-medium py-1.5 px-2">Événements horaires</th>
+            <th className="text-right font-medium py-1.5 pl-2">Événements journée</th>
           </tr>
         </thead>
         <tbody>
@@ -215,7 +241,8 @@ function SummaryTable({ groups, bucketCount }: { groups: GroupRow[]; bucketCount
                 {formatHours(bucketCount > 0 ? g.stats.totalMinutes / bucketCount : 0)}
               </td>
               <td className="text-right py-1.5 px-2 tabular-nums text-muted-foreground">{g.stats.activeDays}</td>
-              <td className="text-right py-1.5 pl-2 tabular-nums text-muted-foreground">{g.stats.eventCount}</td>
+              <td className="text-right py-1.5 px-2 tabular-nums text-muted-foreground">{g.stats.timedEventCount}</td>
+              <td className="text-right py-1.5 pl-2 tabular-nums text-muted-foreground">{g.stats.allDayEventCount}</td>
             </tr>
           ))}
         </tbody>
@@ -303,7 +330,7 @@ export function StatsPage() {
 
       <main className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex rounded-xl border border-border overflow-hidden bg-background w-fit">
               {TABS.map((t) => (
                 <button
@@ -344,7 +371,7 @@ export function StatsPage() {
 
           <div className="rounded-lg bg-muted/50 p-3 space-y-3">
             <Legend groups={sortedRows} hidden={hidden} onToggle={toggleHidden} onReset={resetHidden} />
-            <StackedChart groups={visibleRows} bucketKeys={bucketKeys} granularity={granularity} />
+            <CombinedChart groups={visibleRows} bucketKeys={bucketKeys} granularity={granularity} />
           </div>
 
           {sortedRows.length === 0 ? (
