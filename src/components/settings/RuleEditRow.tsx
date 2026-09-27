@@ -119,7 +119,7 @@ function DisplayTypeChip({ type }: { type: EventType | undefined }) {
   );
 }
 
-export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockValue, lockDisplayType, lockedType }: {
+export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockValue, lockDisplayType, lockedType, stats }: {
   rule: Rule;
   onDuplicate?: () => void;
   /** Omit to make the row undeletable (e.g. the one fixed rule for a source). */
@@ -136,6 +136,8 @@ export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockValue,
    * caller passes its own in-progress form state instead.
    */
   lockedType?: EventType;
+  /** Compact "Xh/sem" stats pill (see StatTag) — only the main rules drawer (RulesPage) passes this; the embedded rule rows in EventTypeModal/AddConnectionModal omit it to stay uncluttered there. */
+  stats?: ReactNode;
 }) {
   const { updateRule } = useRuleStore();
   const { types, getType } = useEventTypeStore();
@@ -233,6 +235,8 @@ export function RuleEditRow({ rule, onDuplicate, onDelete, dragProps, lockValue,
           }}
         />
       )}
+
+      {stats}
 
       {onDuplicate && <IconButton icon={<Copy size={12} />} label="Dupliquer" onClick={onDuplicate} />}
       {onDelete && <DeleteButton onDelete={onDelete} />}

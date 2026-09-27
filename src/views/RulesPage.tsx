@@ -6,6 +6,9 @@ import { DrawerItemRow, AddItemButton } from "../components/settings/DrawerItemR
 import { RuleEditRow, useSourceRule } from "../components/settings/RuleEditRow";
 import { useFilteredRuleDragReorder } from "../components/settings/EventTypeModal";
 import { PanelHeader, InlineLink } from "../components/settings/PanelHeader";
+import { StatTag } from "../components/settings/StatTag";
+import { emptyStats } from "../lib/eventStats";
+import { useEventStatsByGroup } from "../hooks/useEventStatsByGroup";
 import { useUIStore, useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
 import { getIconEl } from "../lib/icons";
 import { describeMatch } from "../lib/rules";
@@ -33,6 +36,7 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
   const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
+  const { byRule } = useEventStatsByGroup();
 
   // Priority order is array order — filtering preserves it, so this is already sorted.
   const orderedRules = rules.filter((r) => r.matchType === "name" || r.matchType === "source");
@@ -77,6 +81,7 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
                 onDelete={rule.matchType === "name" ? () => removeRule(rule.id) : undefined}
                 dragProps={getDragProps(index)}
                 lockValue={rule.matchType === "source"}
+                stats={<StatTag stats={byRule.get(rule.id) ?? emptyStats()} />}
               />
             );
           })}
