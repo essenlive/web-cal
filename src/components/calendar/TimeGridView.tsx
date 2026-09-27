@@ -8,8 +8,7 @@ import { zonedNow } from "../../lib/timezone";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import type { ResolvedEvent } from "../../hooks/useResolvedEvents";
-import { resolveStyle } from "../events/EventChip";
-import { EventChip } from "../events/EventChip";
+import { DayCell, classifyDayEvents } from "./DayCell";
 import type { CalendarEvent, EventType } from "../../types";
 
 const HOUR_HEIGHT = 64; // px per hour
@@ -167,65 +166,33 @@ export function TimeGridView({ days, onEventClick }: Props) {
       <div className="flex-1 flex flex-col overflow-x-auto overflow-y-hidden">
         <div className={cn("flex-1 flex flex-col min-h-0", days.length > 1 && "min-w-[520px]")}>
 
-          {/* Day header row */}
+          {/* Day header — date + all-day events merged into one cell, styled exactly
+              like MonthView's day cells (see DayCell). Only timed events are excluded
+              here: they render below in the scrollable time grid instead. */}
           <div className="flex shrink-0 border-b border-border bg-card">
             <div className="w-14 sm:w-16 shrink-0" />
             {days.map((day) => {
               const isToday = isSameDay(day, today);
-              return (
-                <div key={day.toISOString()} className="flex-1 text-center py-2 border-l border-border">
-                  <div className="text-[10px] font-medium text-muted-foreground uppercase">
-                    {format(day, "EEE", { locale: fr })}
-                  </div>
-                  <div className={cn(
-                    "inline-flex items-center justify-center size-7 rounded-full text-base font-semibold mt-0.5",
-                    isToday
-                      ? "ring-2 ring-inset ring-primary text-primary"
-                      : "text-foreground",
-                  )}>
-                    {format(day, "d")}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* All-day strip */}
-          <div className="flex shrink-0 border-b border-border">
-            <div className="w-14 sm:w-16 shrink-0 flex items-center justify-end pr-2 py-1">
-              <span className="text-[10px] text-muted-foreground leading-none">jour entier</span>
-            </div>
-            {days.map((day) => {
               const dayAllDay = getAllDayEventsForDay(events, day);
-
-              // Find first background-style event to color the strip background
-              const dayStyleEvent = dayAllDay.find(
-                (e) => resolveStyle(typeOf(e), "week", e.allDay) === "background",
-              );
-              const stripBg = dayStyleEvent
-                ? (typeOf(dayStyleEvent)?.color ?? "#6366f1") + "18"
-                : undefined;
-
-              const chipEvents = dayAllDay.filter(
-                (e) => resolveStyle(typeOf(e), "week", e.allDay) !== "background",
-              );
+              const { timedBlockEvents, trAvatars, blAvatars, brAvatars, cellStyleEvents } =
+                classifyDayEvents(dayAllDay, resolved);
 
               return (
-                <div
-                  key={day.toISOString()}
-                  className="flex-1 min-h-[28px] border-l border-border p-0.5 flex flex-col gap-0.5"
-                  style={stripBg ? { backgroundColor: stripBg } : undefined}
-                >
-                  {chipEvents.map((e) => (
-                    <EventChip
-                      key={e.id}
-                      event={e}
-                      eventType={typeOf(e)}
-                      onClick={() => onEventClick(e)}
-                      view="week"
-                      compact
-                    />
-                  ))}
+                <div key={day.toISOString()} className="flex-1 min-w-0">
+                  <DayCell
+                    day={day}
+                    isToday={isToday}
+                    isCurrentMonth
+                    timedBlockEvents={timedBlockEvents}
+                    trAvatars={trAvatars}
+                    blAvatars={blAvatars}
+                    brAvatars={brAvatars}
+                    cellStyleEvents={cellStyleEvents}
+                    onEventClick={onEventClick}
+                    resolved={resolved}
+                    weekdayLabel={format(day, "EEE", { locale: fr })}
+                    variant="header"
+                  />
                 </div>
               );
             })}
