@@ -17,7 +17,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -213,6 +213,17 @@ function CombinedChart({ groups, bucketKeys, granularity }: {
   );
 }
 
+/** Covers the chart + table while a period change is still being fetched into the shared
+ *  event cache, or before the very first load has resolved — otherwise the numbers
+ *  underneath would silently jump from stale to correct with no visible cue. */
+function LoadingOverlay() {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-[1px]">
+      <Loader2 size={22} className="animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 function SummaryTable({ groups, bucketCount }: { groups: GroupRow[]; bucketCount: number }) {
   return (
     <div className="overflow-x-auto">
@@ -345,13 +356,12 @@ export function StatsPage() {
                 </button>
               ))}
             </div>
-            <EventPeriodPicker from={from} to={to} presetDays={presetDays} loading={loading} onPreset={setPreset} onCustom={setCustom} />
+            <EventPeriodPicker from={from} to={to} presetDays={presetDays} onPreset={setPreset} onCustom={setCustom} />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
               Du {format(from, "d MMMM", { locale: fr })} au {format(to, "d MMMM", { locale: fr })}.
-              {!hasLoadedOnce && " Chargement des événements…"}
             </p>
             <div className="flex rounded-xl border border-border overflow-hidden bg-background w-fit">
               {GRANULARITIES.map((g) => (
@@ -369,18 +379,22 @@ export function StatsPage() {
             </div>
           </div>
 
-          <div className="rounded-lg bg-muted/50 p-3 space-y-3">
-            <Legend groups={sortedRows} hidden={hidden} onToggle={toggleHidden} onReset={resetHidden} />
-            <CombinedChart groups={visibleRows} bucketKeys={bucketKeys} granularity={granularity} />
-          </div>
+          <div className="relative space-y-4">
+            <div className="rounded-lg bg-muted/50 p-3 space-y-3">
+              <Legend groups={sortedRows} hidden={hidden} onToggle={toggleHidden} onReset={resetHidden} />
+              <CombinedChart groups={visibleRows} bucketKeys={bucketKeys} granularity={granularity} />
+            </div>
 
-          {sortedRows.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Rien à afficher.</p>
-          ) : visibleRows.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Tous les éléments sont masqués — cliquez sur la légende pour les réafficher.</p>
-          ) : (
-            <SummaryTable groups={visibleRows} bucketCount={bucketKeys.length} />
-          )}
+            {sortedRows.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Rien à afficher.</p>
+            ) : visibleRows.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Tous les éléments sont masqués — cliquez sur la légende pour les réafficher.</p>
+            ) : (
+              <SummaryTable groups={visibleRows} bucketCount={bucketKeys.length} />
+            )}
+
+            {(loading || !hasLoadedOnce) && <LoadingOverlay />}
+          </div>
         </div>
       </main>
     </div>

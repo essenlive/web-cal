@@ -21,14 +21,16 @@ function pushInto<K>(map: Map<K, CalendarEvent[]>, key: K, event: CalendarEvent)
 }
 
 /**
- * Aggregates currently-visible events overlapping [from, to] into per-source/per-type/
- * per-rule stats, for the StatsPage. Hidden event types are excluded, same as the
- * calendar views — a hidden type's events shouldn't inflate its source's or its rule's
- * numbers either. Callers are responsible for calling useSourceSync().loadRange(from, to)
- * so the range is actually cached before reading this (see StatsPage).
+ * Aggregates every fetched event overlapping [from, to] into per-source/per-type/per-rule
+ * stats, for the StatsPage — deliberately every event, including ones whose type is
+ * currently quick-hidden from the calendar views. Stats answer "how was this time
+ * actually spent", which shouldn't change just because someone toggled a type's
+ * visibility; the legend's own show/hide filter is the page's only per-item filter.
+ * Callers are responsible for calling useSourceSync().loadRange(from, to) so the range is
+ * actually cached before reading this (see StatsPage).
  */
 export function useEventStatsByGroup(from: Date, to: Date, granularity: BucketGranularity): EventStatsByGroup {
-  const { visibleEvents, resolved } = useResolvedEvents();
+  const { events, resolved } = useResolvedEvents();
   const { rules } = useRuleStore();
 
   return useMemo(() => {
@@ -36,7 +38,7 @@ export function useEventStatsByGroup(from: Date, to: Date, granularity: BucketGr
     const byTypeEvents = new Map<string, CalendarEvent[]>();
     const byRuleEvents = new Map<string, CalendarEvent[]>();
 
-    for (const event of visibleEvents) {
+    for (const event of events) {
       if (!overlapsRange(event, from, to)) continue;
       pushInto(bySourceEvents, event.calendarId, event);
       const typeId = resolved.get(event.id)?.type.id;
@@ -48,5 +50,5 @@ export function useEventStatsByGroup(from: Date, to: Date, granularity: BucketGr
       new Map([...m].map(([k, v]) => [k, aggregateRangeStats(v, granularity, from, to)] as const));
 
     return { bySource: toStats(bySourceEvents), byType: toStats(byTypeEvents), byRule: toStats(byRuleEvents) };
-  }, [visibleEvents, resolved, rules, from, to, granularity]);
+  }, [events, resolved, rules, from, to, granularity]);
 }

@@ -3,26 +3,25 @@
 /**
  * EventPeriodPicker — shared "choose and load a period of events" control: preset
  * buttons (7 jours/28 jours/3 mois) plus the app's own calendar-based DateRangePicker,
- * a loading spinner while the chosen range is being fetched into the shared event cache,
- * and a caption showing what's actually covered by that cache right now (which can lag
- * behind the selected period while a fetch is in flight, or extend past it from ordinary
- * calendar browsing). Pairs with useEventPeriod, which owns the actual loadRange call.
+ * and a caption showing what's actually covered by the shared event cache right now
+ * (which can lag behind the selected period while a fetch is in flight, or extend past
+ * it from ordinary calendar browsing). Pairs with useEventPeriod, which owns the actual
+ * loadRange call — callers show their own loading indicator over whatever depends on the
+ * data (see StatsPage's overlay) rather than this control owning that.
  */
 
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Loader2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { PERIOD_PRESETS } from "../../hooks/useEventPeriod";
 import { useEventCacheSpan } from "../../hooks/useEventCacheSpan";
 import { DateRangePicker } from "../ui/date-range-picker";
 
-export function EventPeriodPicker({ from, to, presetDays, loading, onPreset, onCustom }: {
+export function EventPeriodPicker({ from, to, presetDays, onPreset, onCustom }: {
   from: Date;
   to: Date;
   /** Which preset (if any) matches the current range, for highlighting — null once the dates were edited by hand. */
   presetDays: number | null;
-  loading?: boolean;
   onPreset: (days: number) => void;
   onCustom: (from: Date, to: Date) => void;
 }) {
@@ -52,7 +51,6 @@ export function EventPeriodPicker({ from, to, presetDays, loading, onPreset, onC
             if (range.from && range.to) onCustom(range.from, range.to);
           }}
         />
-        {loading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
       </div>
       <p className="text-[10px] text-muted-foreground/70">
         Cache d&rsquo;événements :{" "}
