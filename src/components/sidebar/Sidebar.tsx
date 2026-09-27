@@ -18,6 +18,7 @@ import {
   Bug,
   MonitorSmartphone,
   GitBranch,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -401,6 +402,19 @@ export function Sidebar() {
           >
             <Link href="/data">
               <MonitorSmartphone size={16} />
+            </Link>
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip label="Statistiques">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            asChild
+            aria-label="Statistiques"
+          >
+            <Link href="/stats">
+              <BarChart3 size={16} />
             </Link>
           </Button>
         </SimpleTooltip>
