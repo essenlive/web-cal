@@ -5,7 +5,10 @@
  * in the project thread: started as a compact pill in each drawer row (dropped), then a
  * page with one chart per row (dropped for being scattered), settled on: one combined
  * stacked chart with every source/type/rule as its own series, a granularity picker
- * (day/week/month/year), and a summary table below with the same rows' totals.
+ * (day/week/month/year), a summary table below, a legend that doubles as a filter (click
+ * an item to hide/show it), and an all-day "événements journée" line plotted against a
+ * second, independent vertical axis (all-day events have no duration, so they'd
+ * otherwise be invisible in an hours-based chart).
  */
 
 import { useState } from "react";
@@ -44,9 +47,55 @@ interface GroupRow {
   stats: RangeStats;
 }
 
-/** Combined stacked chart — one bar per bucket, one colored segment per group. Horizontally
- *  scrollable so a fine granularity (day) over a long period doesn't get squeezed unreadable;
- *  bucket labels are thinned out past a point to avoid overlapping text. */
+const CHART_HEIGHT = 176;
+const COL_WIDTH = 24;
+const COL_GAP = 4;
+
+/** Legend entries double as a filter: click one to hide/show its series everywhere on the
+ *  page (chart + table). Hidden entries stay listed, dimmed and struck through, so they can
+ *  be toggled back on. */
+function Legend({ groups, hidden, onToggle, onReset }: {
+  groups: GroupRow[];
+  hidden: Set<string>;
+  onToggle: (key: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      {groups.map((g) => {
+        const isHidden = hidden.has(g.key);
+        return (
+          <button
+            key={g.key}
+            type="button"
+            onClick={() => onToggle(g.key)}
+            aria-pressed={!isHidden}
+            title={isHidden ? "Afficher" : "Masquer"}
+            className={cn(
+              "flex items-center gap-1.5 text-xs transition-colors",
+              isHidden ? "text-muted-foreground/40 line-through" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: g.color, opacity: isHidden ? 0.35 : 1 }} />
+            <span className="truncate max-w-32">{g.name}</span>
+          </button>
+        );
+      })}
+      {hidden.size > 0 && (
+        <button type="button" onClick={onReset} className="text-xs text-primary hover:underline">
+          Tout afficher
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Combined stacked chart — one bar per bucket, one colored segment per group, plus an
+ *  all-day "événements journée" line plotted against its own right-hand scale (max shown
+ *  in the caption, since all-day events have no duration and would otherwise be invisible
+ *  against an hours-based chart). Horizontally scrollable so a fine granularity (day) over
+ *  a long period doesn't get squeezed unreadable; bucket labels are thinned out past a
+ *  point to avoid overlapping text. */
 function StackedChart({ groups, bucketKeys, granularity }: {
   groups: GroupRow[];
   bucketKeys: string[];
@@ -56,51 +105,85 @@ function StackedChart({ groups, bucketKeys, granularity }: {
     return <p className="text-xs text-muted-foreground/50 py-2">Aucune donnée sur cette période.</p>;
   }
 
-  const perGroupBuckets = groups.map((g) => {
-    const filled = fillBuckets(g.stats.buckets, bucketKeys);
-    return new Map(filled.map((b) => [b.key, b.totalMinutes]));
-  });
-
-  const bucketTotals = bucketKeys.map((key) => perGroupBuckets.reduce((sum, m) => sum + (m.get(key) ?? 0), 0));
+  const perGroupFilled = groups.map((g) => fillBuckets(g.stats.buckets, bucketKeys));
+  const bucketTotals = bucketKeys.map((_, i) => perGroupFilled.reduce((sum, arr) => sum + arr[i].totalMinutes, 0));
+  const allDayCounts = bucketKeys.map((_, i) => perGroupFilled.reduce((sum, arr) => sum + arr[i].allDayCount, 0));
   const maxTotal = Math.max(1, ...bucketTotals);
+  const maxAllDay = Math.max(1, ...allDayCounts);
+  const hasAllDay = allDayCounts.some((c) => c > 0);
   const labelEvery = Math.max(1, Math.ceil(bucketKeys.length / 14));
+  const totalWidth = bucketKeys.length * COL_WIDTH + (bucketKeys.length - 1) * COL_GAP;
+
+  const linePoints = allDayCounts
+    .map((c, i) => `${i * (COL_WIDTH + COL_GAP) + COL_WIDTH / 2},${CHART_HEIGHT - (c / maxAllDay) * CHART_HEIGHT}`)
+    .join(" ");
 
   return (
-    <div className="overflow-x-auto">
-      <div className="flex items-end gap-1 h-48 min-w-fit">
-        {bucketKeys.map((key, i) => (
-          <div key={key} className="flex flex-col items-center gap-1 w-6 shrink-0">
-            <div className="w-full flex flex-col-reverse" style={{ height: 176 }}>
-              {groups.map((g, gi) => {
-                const minutes = perGroupBuckets[gi].get(key) ?? 0;
-                if (minutes === 0) return null;
-                const height = Math.max(2, Math.round((minutes / maxTotal) * 176));
-                return (
-                  <SimpleTooltip key={g.key} label={`${g.name} · ${bucketLabel(key, granularity)} · ${formatHours(minutes)}`}>
-                    <div className="w-full first:rounded-t" style={{ height, backgroundColor: g.color }} />
-                  </SimpleTooltip>
-                );
-              })}
-            </div>
-            <span className={cn("text-[9px] text-muted-foreground/70 truncate w-full text-center", i % labelEvery !== 0 && "invisible")}>
-              {bucketLabel(key, granularity)}
-            </span>
-          </div>
-        ))}
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground/70">
+        <span>Échelle heures : 0 – {formatHours(maxTotal)}</span>
+        {hasAllDay && (
+          <span className="flex items-center gap-1.5">
+            <svg width={12} height={8} className="shrink-0"><line x1={0} y1={4} x2={12} y2={4} stroke="currentColor" strokeWidth={1.5} /></svg>
+            Événements journée : 0 – {maxAllDay}
+          </span>
+        )}
       </div>
-    </div>
-  );
-}
-
-function Legend({ groups }: { groups: GroupRow[] }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      {groups.map((g) => (
-        <div key={g.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
-          <span className="truncate max-w-32">{g.name}</span>
+      <div className="overflow-x-auto">
+        <div style={{ width: totalWidth }}>
+          <div className="relative" style={{ height: CHART_HEIGHT }}>
+            <div className="absolute inset-0 flex items-end gap-1">
+              {bucketKeys.map((key, i) => (
+                <div key={key} className="w-6 shrink-0 flex flex-col-reverse" style={{ height: CHART_HEIGHT }}>
+                  {groups.map((g, gi) => {
+                    const minutes = perGroupFilled[gi][i].totalMinutes;
+                    if (minutes === 0) return null;
+                    const height = Math.max(2, Math.round((minutes / maxTotal) * CHART_HEIGHT));
+                    return (
+                      <SimpleTooltip key={g.key} label={`${g.name} · ${bucketLabel(key, granularity)} · ${formatHours(minutes)}`}>
+                        <div className="w-full first:rounded-t" style={{ height, backgroundColor: g.color }} />
+                      </SimpleTooltip>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            {hasAllDay && (
+              <svg
+                className="absolute inset-0 pointer-events-none text-foreground"
+                width={totalWidth}
+                height={CHART_HEIGHT}
+                viewBox={`0 0 ${totalWidth} ${CHART_HEIGHT}`}
+              >
+                <polyline points={linePoints} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
+                {allDayCounts.map((c, i) =>
+                  c === 0 ? null : (
+                    <circle
+                      key={bucketKeys[i]}
+                      cx={i * (COL_WIDTH + COL_GAP) + COL_WIDTH / 2}
+                      cy={CHART_HEIGHT - (c / maxAllDay) * CHART_HEIGHT}
+                      r={3}
+                      fill="currentColor"
+                    >
+                      <title>{`${bucketLabel(bucketKeys[i], granularity)} · ${c} événement${c > 1 ? "s" : ""} journée`}</title>
+                    </circle>
+                  )
+                )}
+              </svg>
+            )}
+          </div>
+          <div className="flex gap-1 mt-1">
+            {bucketKeys.map((key, i) => (
+              <span
+                key={key}
+                className={cn("text-[9px] text-muted-foreground/70 truncate w-6 shrink-0 text-center", i % labelEvery !== 0 && "invisible")}
+              >
+                {bucketLabel(key, granularity)}
+              </span>
+            ))}
+          </div>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -144,6 +227,9 @@ function SummaryTable({ groups, bucketCount }: { groups: GroupRow[]; bucketCount
 export function StatsPage() {
   const [tab, setTab] = useState<TabId>("sources");
   const [granularity, setGranularity] = useState<BucketGranularity>("week");
+  const [hiddenByTab, setHiddenByTab] = useState<Record<TabId, Set<string>>>({
+    sources: new Set(), types: new Set(), rules: new Set(),
+  });
   const { from, to, presetDays, loading, setPreset, setCustom } = useEventPeriod(28);
 
   const { hasLoadedOnce, events } = useEventsStore();
@@ -186,7 +272,21 @@ export function StatsPage() {
         });
 
   const sortedRows = [...rows].sort((a, b) => b.stats.totalMinutes - a.stats.totalMinutes);
+  const hidden = hiddenByTab[tab];
+  const visibleRows = sortedRows.filter((r) => !hidden.has(r.key));
   const bucketKeys = enumerateBuckets(from, to, granularity);
+
+  function toggleHidden(key: string) {
+    setHiddenByTab((prev) => {
+      const next = new Set(prev[tab]);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return { ...prev, [tab]: next };
+    });
+  }
+
+  function resetHidden() {
+    setHiddenByTab((prev) => ({ ...prev, [tab]: new Set() }));
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -243,14 +343,16 @@ export function StatsPage() {
           </div>
 
           <div className="rounded-lg bg-muted/50 p-3 space-y-3">
-            <Legend groups={sortedRows} />
-            <StackedChart groups={sortedRows} bucketKeys={bucketKeys} granularity={granularity} />
+            <Legend groups={sortedRows} hidden={hidden} onToggle={toggleHidden} onReset={resetHidden} />
+            <StackedChart groups={visibleRows} bucketKeys={bucketKeys} granularity={granularity} />
           </div>
 
           {sortedRows.length === 0 ? (
             <p className="text-xs text-muted-foreground">Rien à afficher.</p>
+          ) : visibleRows.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Tous les éléments sont masqués — cliquez sur la légende pour les réafficher.</p>
           ) : (
-            <SummaryTable groups={sortedRows} bucketCount={bucketKeys.length} />
+            <SummaryTable groups={visibleRows} bucketCount={bucketKeys.length} />
           )}
         </div>
       </main>

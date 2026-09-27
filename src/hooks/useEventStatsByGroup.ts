@@ -45,7 +45,7 @@ export function useEventStatsByGroup(from: Date, to: Date, granularity: BucketGr
     }
 
     const toStats = (m: Map<string, CalendarEvent[]>) =>
-      new Map([...m].map(([k, v]) => [k, aggregateRangeStats(v, granularity)] as const));
+      new Map([...m].map(([k, v]) => [k, aggregateRangeStats(v, granularity, from, to)] as const));
 
     return { bySource: toStats(bySourceEvents), byType: toStats(byTypeEvents), byRule: toStats(byRuleEvents) };
   }, [visibleEvents, resolved, rules, from, to, granularity]);
