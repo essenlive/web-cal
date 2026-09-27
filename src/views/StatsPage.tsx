@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import {
-  Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { cn } from "../lib/utils";
 import { useConnectionStore, useEventTypeStore, useRuleStore, useEventsStore } from "../store";
@@ -43,7 +43,10 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-const ALL_DAY_KEY = "__allDayCount";
+const ALL_DAY_SUFFIX = "__allday";
+function allDayKey(groupKey: string) {
+  return `${groupKey}${ALL_DAY_SUFFIX}`;
+}
 
 interface GroupRow {
   key: string;
@@ -95,8 +98,9 @@ function Legend({ groups, hidden, onToggle, onReset }: {
 interface TooltipEntry { dataKey: string; value: number; color: string }
 
 /** Custom tooltip — kept deliberately explicit about units: timed series are summed
- *  minutes shown as hours, the all-day series is a plain count of events, and the two are
- *  never added together into one number. */
+ *  minutes shown as hours, all-day series are a plain count of events, and the two are
+ *  never added together into one number. Both are broken down per source/type/rule, so
+ *  each group gets its own line in each section. */
 function ChartTooltip({ active, payload, label, groupsByKey }: {
   active?: boolean;
   payload?: TooltipEntry[];
@@ -104,8 +108,8 @@ function ChartTooltip({ active, payload, label, groupsByKey }: {
   groupsByKey: Map<string, GroupRow>;
 }) {
   if (!active || !payload || payload.length === 0) return null;
-  const hourEntries = payload.filter((p) => p.dataKey !== ALL_DAY_KEY && p.value > 0);
-  const allDayEntry = payload.find((p) => p.dataKey === ALL_DAY_KEY);
+  const hourEntries = payload.filter((p) => !p.dataKey.endsWith(ALL_DAY_SUFFIX) && p.value > 0);
+  const allDayEntries = payload.filter((p) => p.dataKey.endsWith(ALL_DAY_SUFFIX) && p.value > 0);
 
   return (
     <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
@@ -116,10 +120,17 @@ function ChartTooltip({ active, payload, label, groupsByKey }: {
           {groupsByKey.get(p.dataKey)?.name ?? p.dataKey} · {formatHours(p.value)}
         </div>
       ))}
-      {allDayEntry && allDayEntry.value > 0 && (
-        <div className="mt-1 flex items-center gap-1.5 border-t border-border pt-1 text-muted-foreground">
-          <span className="size-1.5 rounded-full shrink-0 bg-foreground" />
-          {allDayEntry.value} événement{allDayEntry.value > 1 ? "s" : ""} journée
+      {allDayEntries.length > 0 && (
+        <div className="mt-1 space-y-0.5 border-t border-border pt-1">
+          {allDayEntries.map((p) => {
+            const groupKey = p.dataKey.slice(0, -ALL_DAY_SUFFIX.length);
+            return (
+              <div key={p.dataKey} className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                {groupsByKey.get(groupKey)?.name ?? groupKey} · {p.value} événement{p.value > 1 ? "s" : ""} journée
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -127,10 +138,13 @@ function ChartTooltip({ active, payload, label, groupsByKey }: {
 }
 
 /** Combined chart — one Bar series (stacked, left "Heures" axis) per visible source/type/
- *  rule, plus a Line series for all-day event counts against its own right "Événements"
- *  axis, since all-day events have no duration and would otherwise be invisible against an
- *  hours-based chart. Horizontally scrollable at a fixed per-bucket width so a fine
- *  granularity (day) over a long period doesn't get squeezed unreadable. */
+ *  rule, plus a second stacked-Bar cluster per group for all-day event counts against its
+ *  own right "Événements" axis, since all-day events have no duration and would otherwise
+ *  be invisible against an hours-based chart — broken down the same way as the hours bars
+ *  rather than combined into one line, so a single all-day-heavy group doesn't get lost in
+ *  a flat total. Fills the full container width by default (min-width only kicks in once a
+ *  fine granularity over a long period needs more room than that, forcing horizontal
+ *  scroll instead of squeezing bars unreadable). */
 function CombinedChart({ groups, bucketKeys, granularity }: {
   groups: GroupRow[];
   bucketKeys: string[];
@@ -140,17 +154,15 @@ function CombinedChart({ groups, bucketKeys, granularity }: {
 
   const chartData = useMemo(() => bucketKeys.map((key) => {
     const row: Record<string, number | string> = { key, label: bucketLabel(key, granularity) };
-    let allDayTotal = 0;
     for (const g of groups) {
       const bucket = fillBuckets(g.stats.buckets, [key])[0];
       row[g.key] = bucket.totalMinutes;
-      allDayTotal += bucket.allDayCount;
+      row[allDayKey(g.key)] = bucket.allDayCount;
     }
-    row[ALL_DAY_KEY] = allDayTotal;
     return row;
   }), [groups, bucketKeys, granularity]);
 
-  const hasAllDay = chartData.some((row) => (row[ALL_DAY_KEY] as number) > 0);
+  const hasAllDay = groups.some((g) => chartData.some((row) => (row[allDayKey(g.key)] as number) > 0));
   const labelEvery = Math.max(1, Math.ceil(bucketKeys.length / 14));
   const chartWidth = Math.max(600, bucketKeys.length * 32);
 
@@ -160,7 +172,7 @@ function CombinedChart({ groups, bucketKeys, granularity }: {
 
   return (
     <div className="overflow-x-auto">
-      <div style={{ width: chartWidth, height: 320 }}>
+      <div style={{ width: "100%", minWidth: chartWidth, height: 320 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
@@ -196,16 +208,17 @@ function CombinedChart({ groups, bucketKeys, granularity }: {
             {groups.map((g) => (
               <Bar key={g.key} yAxisId="hours" dataKey={g.key} stackId="hours" fill={g.color} radius={[0, 0, 0, 0]} maxBarSize={28} />
             ))}
-            {hasAllDay && (
-              <Line
+            {hasAllDay && groups.map((g) => (
+              <Bar
+                key={allDayKey(g.key)}
                 yAxisId="events"
-                dataKey={ALL_DAY_KEY}
-                stroke="hsl(var(--foreground))"
-                strokeWidth={1.5}
-                dot={{ r: 3, fill: "hsl(var(--foreground))" }}
-                activeDot={{ r: 4 }}
+                dataKey={allDayKey(g.key)}
+                stackId="events"
+                fill={g.color}
+                radius={[0, 0, 0, 0]}
+                maxBarSize={28}
               />
-            )}
+            ))}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
