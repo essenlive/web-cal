@@ -9,21 +9,17 @@
 import { useState } from "react";
 import { useUIStore, useEventTypeStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
-import { useEventStatsByGroup } from "../../hooks/useEventStatsByGroup";
 import { ItemBadge } from "../sidebar/ItemRow";
 import { EventTypeModal } from "./EventTypeModal";
 import { getIconEl } from "../../lib/icons";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader, InlineLink } from "./PanelHeader";
-import { StatTag } from "./StatTag";
-import { emptyStats } from "../../lib/eventStats";
 import type { EventType } from "../../types";
 
 export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
   const { openDrawer } = useUIStore();
   const { types, addType, updateType, removeType, setDefaultType, reorderType } = useEventTypeStore();
   const { getDragProps } = useDragReorder(types, (t) => t.id, reorderType);
-  const { byType } = useEventStatsByGroup();
 
   const initialType = initialEditId ? types.find((t) => t.id === initialEditId) ?? null : null;
   const [formOpen, setFormOpen] = useState(!!initialType || !!openCreate);
@@ -74,7 +70,6 @@ export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?:
             key={t.id}
             badge={<ItemBadge color={t.color}>{getIconEl(t.icon, 10, "#fff")}</ItemBadge>}
             name={t.label}
-            state={<StatTag stats={byType.get(t.id) ?? emptyStats()} />}
             onEdit={() => { setEditingType(t); setFormOpen(true); }}
             onDuplicate={() => { const { id, ...rest } = t; addType({ ...rest, isDefault: false, label: `${rest.label} (copie)` }); }}
             onDelete={t.isDefault ? undefined : () => removeType(t.id)}

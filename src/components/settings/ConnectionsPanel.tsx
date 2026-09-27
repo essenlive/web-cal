@@ -12,14 +12,11 @@ import { RefreshCw } from "lucide-react";
 import { useConnectionStore } from "../../store";
 import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync } from "../../context/DataProviderContext";
 import { useDragReorder } from "../../hooks/useDragReorder";
-import { useEventStatsByGroup } from "../../hooks/useEventStatsByGroup";
 import { ItemBadge } from "../sidebar/ItemRow";
 import { connectionStatusDetail, statusColor } from "../sidebar/Sidebar";
 import { AddConnectionModal } from "./AddConnectionModal";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader } from "./PanelHeader";
-import { StatTag } from "./StatTag";
-import { emptyStats } from "../../lib/eventStats";
 import { ActionButton } from "../ui/action-button";
 import { SimpleTooltip } from "../ui/tooltip";
 import type { Connection } from "../../types";
@@ -30,7 +27,6 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
   const syncMeta = useConnectionSyncMeta();
   const { refresh, lastUpdated } = useSourceSync();
   const { getDragProps } = useDragReorder(connections, (c) => c.id, reorderConnection);
-  const { bySource } = useEventStatsByGroup();
 
   const initialConn = initialEditId ? connections.find((c) => c.id === initialEditId) ?? null : null;
   const [formOpen, setFormOpen] = useState(!!initialConn || !!openCreate);
@@ -93,7 +89,6 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
                 <span className={`size-1.5 rounded-full shrink-0 ${statusColor(statusMap[c.id] ?? "unchecked")}`} />
               </SimpleTooltip>
             }
-            tag={<StatTag stats={bySource.get(c.id) ?? emptyStats()} />}
             onEdit={() => { setEditingConn(c); setFormOpen(true); }}
             onDuplicate={() => { const { id, ...rest } = c; addConnection({ ...rest, name: `${rest.name} (copie)` } as Omit<Connection, "id">); }}
             onDelete={() => removeConnection(c.id)}

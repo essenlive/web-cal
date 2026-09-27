@@ -6,15 +6,12 @@ import { DrawerItemRow, AddItemButton } from "../components/settings/DrawerItemR
 import { RuleEditRow, useSourceRule } from "../components/settings/RuleEditRow";
 import { useFilteredRuleDragReorder } from "../components/settings/EventTypeModal";
 import { PanelHeader, InlineLink } from "../components/settings/PanelHeader";
-import { StatTag } from "../components/settings/StatTag";
-import { emptyStats } from "../lib/eventStats";
-import { useEventStatsByGroup } from "../hooks/useEventStatsByGroup";
 import { useUIStore, useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
 import { getIconEl } from "../lib/icons";
 import { describeMatch } from "../lib/rules";
 
-/** Ensures a connection's fixed source rule exists — auto-created if missing. Renders nothing; the row itself is rendered from the merged `rules` list once created. */
-function EnsureSourceRule({ connectionId }: { connectionId: string }) {
+/** Ensures a connection's fixed source rule exists — auto-created if missing. Renders nothing; the row itself is rendered from the merged `rules` list once created. Also mounted by StatsPage, which reads `rules` without ever opening this drawer. */
+export function EnsureSourceRule({ connectionId }: { connectionId: string }) {
   useSourceRule(connectionId);
   return null;
 }
@@ -36,7 +33,6 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
   const { getType, getDefaultType } = useEventTypeStore();
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
-  const { byRule } = useEventStatsByGroup();
 
   // Priority order is array order — filtering preserves it, so this is already sorted.
   const orderedRules = rules.filter((r) => r.matchType === "name" || r.matchType === "source");
@@ -81,7 +77,6 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
                 onDelete={rule.matchType === "name" ? () => removeRule(rule.id) : undefined}
                 dragProps={getDragProps(index)}
                 lockValue={rule.matchType === "source"}
-                stats={<StatTag stats={byRule.get(rule.id) ?? emptyStats()} />}
               />
             );
           })}
