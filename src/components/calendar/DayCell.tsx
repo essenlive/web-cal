@@ -376,3 +376,72 @@ export const DayCell = memo(function DayCell({
     </div>
   );
 });
+
+// ── AllDayCard ──────────────────────────────────────────────────────────────
+
+/**
+ * A day's all-day events grouped into one card for AgendaView, colored the same
+ * way as a month cell (classifyDayEvents' background/border-top/border-bottom
+ * "whole-cell" winners tint the card), but — unlike the space-constrained month
+ * grid — every event gets its own full row with title, type label and location
+ * instead of being condensed into a chip, a corner avatar, or a tooltip-only entry.
+ */
+export const AllDayCard = memo(function AllDayCard({
+  events, onEventClick, resolved,
+}: {
+  events: CalendarEvent[];
+  onEventClick: (e: CalendarEvent) => void;
+  resolved: Map<string, ResolvedEvent>;
+}) {
+  const { cellStyleEvents } = classifyDayEvents(events, resolved);
+  const backgroundWinner = cellStyleEvents.find((c) => c.style === "background");
+  const borderTopWinner = cellStyleEvents.find((c) => c.style === "border-top");
+  const borderBottomWinner = cellStyleEvents.find((c) => c.style === "border-bottom");
+
+  return (
+    <div
+      className="relative rounded-xl border border-border bg-card overflow-hidden"
+      style={backgroundWinner ? { backgroundColor: backgroundWinner.type.color + "12" } : undefined}
+    >
+      {borderTopWinner && (
+        <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: borderTopWinner.type.color }} />
+      )}
+      {borderBottomWinner && (
+        <div className="absolute inset-x-0 bottom-0 h-1" style={{ backgroundColor: borderBottomWinner.type.color }} />
+      )}
+      <div className="flex flex-col divide-y divide-border/60">
+        {events.map((e) => {
+          const type = resolved.get(e.id)?.type;
+          const color = type?.color ?? "#6366f1";
+          return (
+            <div
+              key={e.id}
+              onClick={() => onEventClick(e)}
+              className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors"
+            >
+              <div
+                className="flex items-center justify-center size-7 rounded-full shrink-0"
+                style={{ backgroundColor: color }}
+              >
+                {getBadgeContent(type, e.title, 12)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-foreground truncate">{e.title}</div>
+                {type && (
+                  <div className="text-xs font-medium truncate" style={{ color }}>
+                    {type.label}
+                  </div>
+                )}
+              </div>
+              {e.location && (
+                <span className="hidden sm:block text-xs text-muted-foreground shrink-0 max-w-40 truncate">
+                  {e.location}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});

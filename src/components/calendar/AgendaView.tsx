@@ -7,6 +7,7 @@ import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
 import { zonedNow } from "../../lib/timezone";
 import { getBadgeContent, resolveStyle } from "../events/EventChip";
+import { AllDayCard } from "./DayCell";
 import { EventDetail } from "../events/EventDetail";
 import type { CalendarEvent } from "../../types";
 
@@ -78,6 +79,8 @@ export function AgendaView() {
       {sortedKeys.map((dateKey) => {
         const dayEvents = grouped[dateKey];
         const day = new Date(dateKey + "T12:00:00");
+        const allDayEvents = dayEvents.filter((e) => e.allDay);
+        const timedEvents = dayEvents.filter((e) => !e.allDay);
         return (
           <div key={dateKey}>
             <div className="flex items-baseline gap-2 mb-2">
@@ -92,9 +95,16 @@ export function AgendaView() {
               </span>
             </div>
             <div className="space-y-2">
-              {dayEvents.map((e) => {
+              {allDayEvents.length > 0 && (
+                <AllDayCard
+                  events={allDayEvents}
+                  onEventClick={setSelectedEvent}
+                  resolved={resolved}
+                />
+              )}
+              {timedEvents.map((e) => {
                 const type = resolved.get(e.id)?.type;
-                const agendaStyle = resolveStyle(type, "agenda", e.allDay);
+                const agendaStyle = resolveStyle(type, "agenda", false);
                 // For 'background' style in agenda: color the left border of the row
                 const isDayStyle  = agendaStyle === "background";
                 const rowColor    = isDayStyle ? type?.color : undefined;
@@ -130,7 +140,7 @@ export function AgendaView() {
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-sm font-medium text-foreground truncate">{e.title}</span>
                         <span className="text-xs text-muted-foreground shrink-0">
-                          {e.allDay ? "Journée" : `${format(parseISO(e.start), use24h ? "HH:mm" : "h:mm a")} – ${format(parseISO(e.end), use24h ? "HH:mm" : "h:mm a")}`}
+                          {format(parseISO(e.start), use24h ? "HH:mm" : "h:mm a")} – {format(parseISO(e.end), use24h ? "HH:mm" : "h:mm a")}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
