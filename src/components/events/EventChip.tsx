@@ -1,6 +1,5 @@
 import { memo } from "react";
-import * as Icons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { getIconEl } from "../../lib/icons";
 import { cn, firstGrapheme } from "../../lib/utils";
 import { findMatchingRule } from "../../lib/rules";
 import { useEventTypeStore } from "../../store";
@@ -19,12 +18,6 @@ interface EventChipProps {
   listMode?: boolean;
 }
 
-function getIcon(name: string | undefined, size: number, color?: string) {
-  if (!name) return null;
-  const Icon = (Icons as unknown as Record<string, LucideIcon>)[name];
-  return Icon ? <Icon size={size} color={color} /> : null;
-}
-
 /**
  * Content shown inside an avatar-* badge circle: the event's first letter when
  * the type opts into `badgeLetter`, otherwise the type's icon (or nothing).
@@ -33,7 +26,7 @@ export function getBadgeContent(type: EventType | undefined, title: string, size
   if (type?.badgeLetter) {
     return <span style={{ color, fontSize: size, lineHeight: 1, fontWeight: 600 }}>{firstGrapheme(title).toUpperCase()}</span>;
   }
-  return getIcon(type?.icon, size, color);
+  return getIconEl(type?.icon, size, color);
 }
 
 /**
@@ -120,7 +113,7 @@ export const EventChip = memo(function EventChip({ event, eventType, onClick, co
         style={{ backgroundColor: color }}
       >
         <div className="flex items-center gap-1 min-w-0">
-          {!compact && getIcon(icon, 10, "#fff")}
+          {!compact && getIconEl(icon, 10, "#fff")}
           <span className="truncate">{event.title}</span>
         </div>
       </div>

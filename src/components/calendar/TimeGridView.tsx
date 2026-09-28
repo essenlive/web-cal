@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
-import * as Icons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { getIconEl } from "../../lib/icons";
 import { cn } from "../../lib/utils";
 import { zonedNow } from "../../lib/timezone";
 import { useUIStore } from "../../store";
@@ -97,7 +96,6 @@ const TimeEventBlock = memo(function TimeEventBlock({
   use24h: boolean;
 }) {
   const color = type?.color ?? "#6366f1";
-  const Icon = type?.icon ? (Icons as unknown as Record<string, LucideIcon>)[type.icon] : null;
   const timeFormat = use24h ? "HH:mm" : "h:mm a";
 
   return (
@@ -106,9 +104,7 @@ const TimeEventBlock = memo(function TimeEventBlock({
       style={{ backgroundColor: color }}
     >
       <div className="flex items-start gap-1 px-1.5 py-0.5 min-w-0 h-full overflow-hidden">
-        {Icon && height > 32 && (
-          <Icon size={10} color="#fff" className="shrink-0 mt-[3px]" />
-        )}
+        {height > 32 && getIconEl(type?.icon, 10, "#fff", "shrink-0 mt-[3px]")}
         <div className="min-w-0 overflow-hidden">
           <div className="text-xs font-medium text-white leading-tight truncate">
             {event.title}
