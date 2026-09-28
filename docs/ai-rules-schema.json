@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "web-cal AI-drafted rules import",
+  "description": "Shape an AI must return after the prompt in docs/ai-rules-prompt.md — the same envelope web-cal's settings export/import uses (see src/lib/settings-export.ts), restricted to the two sections this feature touches: display types and rules.",
+  "type": "object",
+  "required": ["version", "exportedAt", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "overcal:event-types": {
+          "type": "object",
+          "required": ["state", "version"],
+          "additionalProperties": false,
+          "properties": {
+            "version": { "type": "number" },
+            "state": {
+              "type": "object",
+              "required": ["types"],
+              "additionalProperties": false,
+              "properties": {
+                "types": {
+                  "type": "array",
+                  "maxItems": 8,
+                  "items": { "$ref": "#/$defs/eventType" }
+                }
+              }
+            }
+          }
+        },
+        "overcal:rules": {
+          "type": "object",
+          "required": ["state", "version"],
+          "additionalProperties": false,
+          "properties": {
+            "version": { "type": "number" },
+            "state": {
+              "type": "object",
+              "required": ["rules"],
+              "additionalProperties": false,
+              "properties": {
+                "rules": {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/rule" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "displayStyle": {
+      "enum": ["text", "avatar-tr", "avatar-bl", "avatar-br", "block", "background", "border-top", "border-bottom"]
+    },
+    "eventType": {
+      "type": "object",
+      "required": ["id", "label", "color", "icon", "allDayStyle", "timedStyle"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "icon": { "type": "string", "minLength": 1 },
+        "badgeLetter": { "type": "boolean" },
+        "allDayStyle": { "$ref": "#/$defs/displayStyle" },
+        "timedStyle": { "$ref": "#/$defs/displayStyle" }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["matchType", "matchValue", "displayTypeId"],
+      "additionalProperties": false,
+      "properties": {
+        "matchType": { "enum": ["name", "source"] },
+        "matchValue": { "type": "string", "minLength": 1 },
+        "displayTypeId": { "type": "string" },
+        "enabled": { "type": "boolean" }
+      }
+    }
+  }
+}
