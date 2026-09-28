@@ -1,17 +1,24 @@
 /**
- * Parses the JSON produced by the "prompt autonome" (see docs/ai-rules-prompt.md) —
- * a set of display types + matching rules drafted by an AI from the user's own
- * calendar sources/events — into a shape the app's stores can apply directly.
+ * Parses the JSON produced by the "prompt autonome" (see docs/ai-rules-prompt.md
+ * and its schema, docs/ai-rules-schema.json) — a set of display types + matching
+ * rules drafted by an AI from the user's own calendar sources/events. Uses the
+ * same envelope as web-cal's settings export/import (see lib/settings-export.ts:
+ * `{ version, exportedAt, data: { "overcal:event-types": {...}, "overcal:rules": {...} } }`),
+ * restricted to those two keys, so the AI's output is schema-checkable against a
+ * shape web-cal already knows how to read.
  *
- * Deliberately permissive: a malformed field degrades to a sane default with a
- * warning rather than rejecting the whole import, since the JSON comes from an
- * LLM's free-form output, not a trusted schema-validated source.
+ * Deliberately permissive on the *content* of each field: a malformed value
+ * degrades to a sane default with a warning rather than rejecting the whole
+ * import, since the JSON comes from an LLM's free-form output. The envelope
+ * shape itself (the two keys, `state.types`/`state.rules`) is checked strictly —
+ * that part is exactly what the schema documents, so a mismatch there means the
+ * AI didn't follow the prompt at all.
  */
 import type { Connection, DisplayStyle, RuleMatchType } from "../types";
 import { isValidPattern } from "./rules";
 import { ALL_ICON_NAMES } from "./icons";
 
-const DISPLAY_STYLES: DisplayStyle[] = [
+export const DISPLAY_STYLES: DisplayStyle[] = [
   "text", "avatar-tr", "avatar-bl", "avatar-br", "block", "background", "border-top", "border-bottom",
 ];
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -66,22 +73,44 @@ function resolveStyle(raw: unknown, warnings: string[], context: string): Displa
 }
 
 /**
- * Parses and validates the AI's raw JSON output. Returns `{ error }` only for
- * shape-level failures (not JSON, or missing eventTypes/rules arrays) — everything
- * else degrades field by field into `warnings`.
+ * Parses and validates the AI's raw JSON output. Returns `{ error }` for
+ * envelope-shape failures (not JSON, wrong top-level keys, missing
+ * `state.types`/`state.rules` arrays — i.e. it isn't the schema's shape at
+ * all) — everything else degrades field by field into `warnings`.
  */
-export function parseAiImport(raw: string, connections: Connection[]): ParsedAiImport | { error: string } {
-  let data: unknown;
+export function parseAiImport(
+  raw: string,
+  connections: Connection[],
+  existingTypeIds: ReadonlySet<string>,
+): ParsedAiImport | { error: string } {
+  let parsed: unknown;
   try {
-    data = JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
     return { error: "JSON invalide — vérifie que le texte collé est bien le bloc JSON complet renvoyé par l'IA." };
   }
 
-  if (typeof data !== "object" || data === null) return { error: "Le JSON doit être un objet avec les clés \"eventTypes\" et \"rules\"." };
-  const obj = data as Record<string, unknown>;
-  if (!Array.isArray(obj.eventTypes) || !Array.isArray(obj.rules)) {
-    return { error: "Le JSON doit contenir un tableau \"eventTypes\" et un tableau \"rules\"." };
+  if (typeof parsed !== "object" || parsed === null) {
+    return { error: "Le JSON doit être un objet — voir docs/ai-rules-schema.json." };
+  }
+  const envelope = parsed as Record<string, unknown>;
+  if (envelope.version !== 1 || typeof envelope.data !== "object" || envelope.data === null) {
+    return { error: "Ce n'est pas l'enveloppe attendue ({ version: 1, exportedAt, data: {...} }) — voir docs/ai-rules-schema.json." };
+  }
+  const data = envelope.data as Record<string, unknown>;
+
+  const typesEntry = data["overcal:event-types"] as Record<string, unknown> | undefined;
+  const rulesEntry = data["overcal:rules"] as Record<string, unknown> | undefined;
+  const rawTypes = (typesEntry?.state as Record<string, unknown> | undefined)?.types;
+  const rawRules = (rulesEntry?.state as Record<string, unknown> | undefined)?.rules;
+  if (typesEntry !== undefined && !Array.isArray(rawTypes)) {
+    return { error: "data[\"overcal:event-types\"].state.types doit être un tableau — voir docs/ai-rules-schema.json." };
+  }
+  if (rulesEntry !== undefined && !Array.isArray(rawRules)) {
+    return { error: "data[\"overcal:rules\"].state.rules doit être un tableau — voir docs/ai-rules-schema.json." };
+  }
+  if (!Array.isArray(rawTypes) && !Array.isArray(rawRules)) {
+    return { error: "Le JSON ne contient ni \"overcal:event-types\" ni \"overcal:rules\" — rien à importer." };
   }
 
   const warnings: string[] = [];
@@ -89,11 +118,17 @@ export function parseAiImport(raw: string, connections: Connection[]): ParsedAiI
   const seenTypeIds = new Set<string>();
 
   const eventTypes: ParsedAiEventType[] = [];
-  for (const [index, raw] of obj.eventTypes.entries()) {
-    const t = raw as Record<string, unknown>;
+  for (const [index, entry] of (Array.isArray(rawTypes) ? (rawTypes as unknown[]) : []).entries()) {
+    const t = entry as Record<string, unknown>;
     const context = `Type #${index + 1}`;
     const label = typeof t.label === "string" && t.label.trim() ? t.label.trim() : `Type ${index + 1}`;
     let originalId = typeof t.id === "string" && t.id.trim() ? t.id.trim() : label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    // The export hands the AI the user's current types; re-listing one means "reuse it",
+    // never "overwrite it" — rules may still point at it below.
+    if (existingTypeIds.has(originalId)) {
+      warnings.push(`${context} : "${label}" existe déjà (id "${originalId}"), conservé tel quel.`);
+      continue;
+    }
     if (seenTypeIds.has(originalId)) {
       warnings.push(`${context} : id "${originalId}" dupliqué, un suffixe a été ajouté.`);
       originalId = `${originalId}-${index}`;
@@ -111,8 +146,8 @@ export function parseAiImport(raw: string, connections: Connection[]): ParsedAiI
   }
 
   const rules: ParsedAiRule[] = [];
-  for (const [index, raw] of obj.rules.entries()) {
-    const r = raw as Record<string, unknown>;
+  for (const [index, entry] of (Array.isArray(rawRules) ? (rawRules as unknown[]) : []).entries()) {
+    const r = entry as Record<string, unknown>;
     const context = `Règle #${index + 1}`;
     const matchType = r.matchType;
     if (matchType !== "name" && matchType !== "source") {
@@ -130,8 +165,8 @@ export function parseAiImport(raw: string, connections: Connection[]): ParsedAiI
       continue;
     }
     const originalDisplayTypeId = typeof r.displayTypeId === "string" ? r.displayTypeId : "";
-    if (!seenTypeIds.has(originalDisplayTypeId)) {
-      warnings.push(`${context} : type d'affichage "${originalDisplayTypeId}" introuvable dans "eventTypes", règle ignorée.`);
+    if (!seenTypeIds.has(originalDisplayTypeId) && !existingTypeIds.has(originalDisplayTypeId)) {
+      warnings.push(`${context} : type d'affichage "${originalDisplayTypeId}" introuvable (ni nouveau, ni existant), règle ignorée.`);
       continue;
     }
     rules.push({ matchType, matchValue, originalDisplayTypeId, enabled: r.enabled !== false });

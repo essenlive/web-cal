@@ -3,7 +3,7 @@
 import { AlertTriangle } from "lucide-react";
 import { ItemBadge } from "../components/sidebar/ItemRow";
 import { DrawerItemRow, AddItemButton } from "../components/settings/DrawerItemRow";
-import { AiRulesImport } from "../components/settings/AiRulesImport";
+import { AiRulesAssistant } from "../components/settings/AiRulesAssistant";
 import { RuleEditRow, useSourceRule } from "../components/settings/RuleEditRow";
 import { useFilteredRuleDragReorder } from "../components/settings/EventTypeModal";
 import { PanelHeader, InlineLink } from "../components/settings/PanelHeader";
@@ -85,7 +85,7 @@ export function RulesPanel(_props: { initialEditRuleId?: string; openCreate?: bo
             label="Nouvelle règle de texte"
             onClick={() => addRule({ matchType: "name", matchValue: "", displayTypeId: defaultType.id })}
           />
-          <AiRulesImport />
+          <AiRulesAssistant />
         </div>
 
         {legacyRules.length > 0 && (

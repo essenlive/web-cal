@@ -1,67 +1,49 @@
 # Générer un jeu de règles avec une IA
 
-Un prompt à copier-coller dans Claude/ChatGPT (ou tout autre assistant) pour
-générer, à partir de tes sources de calendrier et d'un échantillon
-d'événements, un jeu de types d'affichage et de règles prêt à importer dans
-web-cal (bouton "Importer un JSON généré par IA" en bas de la page Règles).
+web-cal peut préparer un prompt, à coller dans n'importe quel assistant IA
+(Claude, ChatGPT…), qui propose des types d'affichage et des règles adaptés à
+tes calendriers. Tout se passe en bas de la page **Règles**.
 
-## Comment l'utiliser
+## Utilisation
 
-1. Copie le prompt ci-dessous dans une conversation avec ton assistant IA préféré.
-2. Colle après le prompt : la liste de tes sources (nom, id, couleur — visibles
-   dans Réglages → Sources) et un échantillon d'événements (titre, source,
-   all-day/horaire — un export ICS ou une copie de la vue agenda suffit).
-3. Réponds à ses questions de clarification.
-4. Récupère le bloc JSON final et colle-le dans le bouton d'import de la page Règles.
+1. **Exporter pour l'IA** : génère un texte contenant le prompt et tes données
+   (sources, jusqu'à 20 titres d'événements distincts par source, types et
+   règles actuels). Copie-le ou télécharge-le.
+2. Colle-le dans ton assistant IA, réponds à ses questions (5 maximum).
+3. **Importer le JSON de l'IA** : colle le bloc JSON final qu'il renvoie. Il est
+   vérifié contre [`ai-rules-schema.json`](ai-rules-schema.json), puis fusionné
+   avec tes réglages : les nouveaux types sont créés, les règles de texte
+   ajoutées, et une règle de source met à jour la règle déjà existante de cette
+   source. Rien n'est supprimé ni écrasé ; un type ou une règle identique à un
+   existant est ignoré.
 
-L'import ne touche jamais aux connexions/couleurs de sources ni à la règle
-attrape-tout ; il crée les types d'affichage proposés et ajoute les règles de
-texte, et met à jour la règle de source existante d'une connexion si l'IA
-lui a assigné un type.
+## Ce qui est exporté (et ce qui ne l'est pas)
 
-## Le prompt
+Exporté : id, nom et couleur de chaque source ; titres d'événements avec le
+moment (jour de la semaine et heure, ou "journée entière") ; types et règles
+actuels.
 
-```
-Tu configures l'affichage d'un calendrier. Je vais te donner la liste de mes
-sources de calendrier (nom, id, couleur) et un échantillon de mes événements
-(titre, source, all-day ou horaire, récurrence si connue — jusqu'à 200).
+Jamais exporté : les URL des calendriers (les liens ICS contiennent leurs propres
+clés d'accès), identifiants et mots de passe CalDAV, lieux et notes des
+événements.
 
-1. Repère les catégories récurrentes : mots-clés ou emoji dans le titre,
-   source d'origine, motif horaire (all-day vs horaire).
-2. Pose-moi jusqu'à 5 questions courtes pour trancher les cas ambigus
-   (ex: "Les événements 'Garde' doivent-ils être discrets ou bien visibles ?").
-3. Une fois les réponses obtenues, produis 4 à 8 types d'affichage maximum
-   (pas de type par défaut, il existe déjà côté app) et les règles qui y
-   mènent, de la plus spécifique à la plus générale.
+## Format de sortie
 
-Sortie JSON stricte, un seul bloc final, rien d'autre après :
+Le JSON reprend l'enveloppe de l'export de réglages web-cal
+(`src/lib/settings-export.ts`), limitée aux deux clés concernées :
 
+```json
 {
-  "eventTypes": [
-    {
-      "id": "kebab-case-id",
-      "label": "Nom court",
-      "color": "#RRGGBB",
-      "icon": "NomIconeLucide",
-      "badgeLetter": false,
-      "allDayStyle": "background",
-      "timedStyle": "block"
-    }
-  ],
-  "rules": [
-    { "matchType": "name", "matchValue": "regex insensible à la casse", "displayTypeId": "kebab-case-id", "enabled": true },
-    { "matchType": "source", "matchValue": "id-de-source-fourni", "displayTypeId": "kebab-case-id", "enabled": true }
-  ]
+  "version": 1,
+  "exportedAt": "2026-09-28T21:00:00.000Z",
+  "data": {
+    "overcal:event-types": { "version": 0, "state": { "types": [ … ] } },
+    "overcal:rules": { "version": 0, "state": { "rules": [ … ] } }
+  }
 }
-
-Contraintes :
-- allDayStyle/timedStyle ∈ {text, avatar-tr, avatar-bl, avatar-br, block, background, border-top, border-bottom}.
-- matchType ∈ {name, source} uniquement. "name" = regex testée sur le titre.
-  "source" = l'id exact d'une source que je t'ai fourni (jamais un id inventé).
-- icon = un nom d'icône lucide-react existant (ex: Cake, Bell, Briefcase,
-  Plane, Heart, Home, Users, Calendar, Star, Coffee, BookOpen...).
-- Couleurs distinctes et cohérentes avec la catégorie (ex: rouge = urgent,
-  vert = perso). Jamais deux types avec la même couleur si possible.
-- Les règles "name" sont listées de la plus spécifique (priorité haute) à la
-  plus générale (priorité basse) : l'ordre du tableau compte.
 ```
+
+Le schéma complet (champs requis, styles autorisés, format des couleurs et des
+ids) est dans [`ai-rules-schema.json`](ai-rules-schema.json). Le texte du prompt
+lui-même vit dans `src/lib/ai-prompt.ts` (`AI_RULES_PROMPT`), c'est lui que le
+bouton d'export utilise.
