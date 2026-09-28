@@ -112,7 +112,7 @@ An `EventType` ([types/index.ts](../src/types/index.ts)) defines a **color**, **
 
 Exactly one type has `isDefault: true` at all times — it's the fallback used when no rule matches (see below) and can't be deleted until another type is made default first ([store/index.ts](../src/store/index.ts) `useEventTypeStore`).
 
-Types are managed from the sidebar's **Types** section (`EventTypeModal`). The icon picker searches the full `lucide-react` icon set (~1750 icons, deduped from its export aliases at module load — [lib/icons.tsx](../src/lib/icons.tsx) `ALL_ICON_NAMES`) instead of a fixed shortlist; results are capped at 60 rendered buttons per query. Editing an existing type shows its linked rules inline — a "Textes" list (add/reorder/delete name-pattern rules) and a "Sources" list — plus a delete (click-to-confirm) button, disabled while it's the default type.
+Types are managed from the sidebar's **Types** section (`EventTypeModal`). The icon picker searches the full `lucide-react` icon set (~1750 icons) instead of a fixed shortlist; results are capped at 60 rendered buttons per query. [lib/icons.tsx](../src/lib/icons.tsx) derives `ALL_ICON_NAMES` from `lucide-react/dynamicIconImports`' kebab-case slugs (not from importing all ~1750 icon components), and `getIconEl()` renders any icon by name through `React.lazy`, code-split per icon and cached after first use — so no view that renders an icon (calendar grid, sidebar, this picker) ever ships the full icon set, only the handful actually on screen. Editing an existing type shows its linked rules inline — a "Textes" list (add/reorder/delete name-pattern rules) and a "Sources" list — plus a delete (click-to-confirm) button, disabled while it's the default type.
 
 ---
 

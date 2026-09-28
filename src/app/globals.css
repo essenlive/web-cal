@@ -1,5 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap')
-layer(base);
+/*
+ * The default DM Sans/DM Mono stylesheet is no longer pulled in here via
+ * `@import url(...)`: a CSS @import is render-blocking *and* sequential —
+ * the browser can't even start fetching it until this file has been
+ * downloaded and parsed. It's loaded instead as a regular <link> in
+ * app/layout.tsx's <head>, where the browser's preload scanner can fetch it
+ * in parallel with this stylesheet.
+ */
 @import 'tailwindcss';
 
 @plugin 'tailwindcss-animate';

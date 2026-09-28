@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { format, isSameDay, parseISO, startOfDay, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
-import * as Icons from "lucide-react";
+import { CalendarX, MapPin } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
@@ -71,7 +71,7 @@ export function AgendaView() {
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
       {Object.keys(grouped).length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <Icons.CalendarX size={40} className="mb-3 opacity-30" />
+          <CalendarX size={40} className="mb-3 opacity-30" />
           <p className="text-sm">Aucun événement à venir</p>
         </div>
       )}
@@ -155,7 +155,7 @@ export function AgendaView() {
                         )}
                         {e.location && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Icons.MapPin size={10} />
+                            <MapPin size={10} />
                             {e.location}
                           </span>
                         )}
