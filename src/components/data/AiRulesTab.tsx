@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * AiRulesAssistant — the two ends of the "prompt autonome" flow, at the bottom
- * of the Rules panel:
+ * AiRulesTab — the "prompt autonome" flow, as a tab on the Data page:
  *  - Export: builds the prompt + the user's sources, a sample of their events
  *    and their current types/rules (lib/ai-prompt.ts), to copy or download and
  *    paste into any AI assistant.
@@ -16,7 +15,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Copy, Download, Sparkles, Upload } from "lucide-react";
+import { Copy, Download, Upload } from "lucide-react";
+import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
 import { useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../../store";
 import { parseAiImport } from "../../lib/ai-import";
@@ -28,13 +28,7 @@ interface ImportSummary {
   warnings: string[];
 }
 
-type Mode = "closed" | "export" | "import";
-
-const panelButton = "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-colors";
-
-export function AiRulesAssistant() {
-  const [mode, setMode] = useState<Mode>("closed");
-  const [exportText, setExportText] = useState("");
+export function AiRulesTab() {
   const [importText, setImportText] = useState("");
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,18 +38,7 @@ export function AiRulesAssistant() {
   const { connections } = useConnectionStore();
   const { events } = useEventsStore();
 
-  function close() {
-    setMode("closed");
-    setExportText("");
-    setImportText("");
-    setSummary(null);
-    setError(null);
-  }
-
-  function openExport() {
-    setExportText(buildAiExport(connections, events, types, rules));
-    setMode("export");
-  }
+  const exportText = buildAiExport(connections, events, types, rules);
 
   async function copyExport() {
     try {
@@ -130,37 +113,20 @@ export function AiRulesAssistant() {
     }
 
     setSummary({ typesCreated: parsed.eventTypes.length, rulesApplied, warnings });
+    setImportText("");
   }
 
-  if (mode === "closed") {
-    return (
-      <div className="flex gap-2">
-        <button
-          onClick={openExport}
-          className={cn(panelButton, "border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground")}
-        >
-          <Sparkles size={14} />
-          Exporter pour l&apos;IA
-        </button>
-        <button
-          onClick={() => setMode("import")}
-          className={cn(panelButton, "border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground")}
-        >
-          <Upload size={14} />
-          Importer le JSON de l&apos;IA
-        </button>
-      </div>
-    );
-  }
-
-  if (mode === "export") {
-    return (
-      <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-        <p className="text-xs text-muted-foreground">
-          Le prompt et tes données (sources, jusqu&apos;à 20 titres d&apos;événements par source, types et règles
-          actuels — sans les URL ni identifiants des calendriers). Colle-le dans ton assistant IA, réponds à ses
-          questions, puis importe le JSON qu&apos;il renvoie.
-        </p>
+  return (
+    <div className="max-w-lg space-y-6">
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">1. Exporter pour l&apos;IA</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Le prompt et tes données (sources, jusqu&apos;à 20 titres d&apos;événements distincts par source, types et
+            règles actuels — sans les URL ni identifiants des calendriers). Colle-le dans ton assistant IA, réponds à
+            ses questions, puis importe le JSON qu&apos;il renvoie ci-dessous.
+          </p>
+        </div>
         <textarea
           readOnly
           value={exportText}
@@ -169,68 +135,56 @@ export function AiRulesAssistant() {
           aria-label="Prompt et données à copier"
           className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs font-mono outline-hidden focus:ring-2 focus:ring-primary/30 resize-none"
         />
-        <div className="flex gap-2 pt-1">
-          <button onClick={close} className={cn(panelButton, "bg-muted text-foreground hover:bg-accent")}>
-            Fermer
-          </button>
-          <button onClick={downloadExport} className={cn(panelButton, "bg-muted text-foreground hover:bg-accent")}>
-            <Download size={14} /> Télécharger
-          </button>
-          <button onClick={copyExport} className={cn(panelButton, "bg-primary text-primary-foreground hover:bg-primary/90")}>
-            <Copy size={14} /> Copier
-          </button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={downloadExport}>
+            <Download /> Télécharger
+          </Button>
+          <Button onClick={copyExport}>
+            <Copy /> Copier
+          </Button>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-      <p className="text-xs text-muted-foreground">
-        Colle ici le bloc JSON renvoyé par l&apos;IA (format des réglages web-cal, vérifié par{" "}
-        <code className="text-[11px]">docs/ai-rules-schema.json</code>). Les types et règles sont ajoutés aux tiens,
-        rien n&apos;est supprimé.
-      </p>
-      <textarea
-        value={importText}
-        onChange={(e) => setImportText(e.target.value)}
-        placeholder='{ "version": 1, "exportedAt": "…", "data": { "overcal:event-types": …, "overcal:rules": … } }'
-        rows={6}
-        aria-label="JSON renvoyé par l'IA"
-        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono outline-hidden focus:ring-2 focus:ring-primary/30 resize-none"
-      />
-
-      {error && <p className="text-xs text-destructive">{error}</p>}
-
-      {summary && (
-        <div className="rounded-lg bg-muted/50 p-2 space-y-1">
-          <p className="text-xs font-medium text-foreground">
-            {summary.typesCreated} type{summary.typesCreated > 1 ? "s" : ""} créé{summary.typesCreated > 1 ? "s" : ""}, {summary.rulesApplied} règle{summary.rulesApplied > 1 ? "s" : ""} appliquée{summary.rulesApplied > 1 ? "s" : ""}.
+      <div className="space-y-3 border-t border-border pt-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">2. Importer le JSON de l&apos;IA</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Colle ici le bloc JSON renvoyé par l&apos;IA (format des réglages web-cal, vérifié par{" "}
+            <code className="text-[11px]">docs/ai-rules-schema.json</code>). Les types et règles sont ajoutés aux
+            tiens, rien n&apos;est supprimé.
           </p>
-          {summary.warnings.length > 0 && (
-            <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5 max-h-32 overflow-y-auto">
-              {summary.warnings.map((w, i) => <li key={i}>{w}</li>)}
-            </ul>
-          )}
         </div>
-      )}
+        <textarea
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)}
+          placeholder='{ "version": 1, "exportedAt": "…", "data": { "overcal:event-types": …, "overcal:rules": … } }'
+          rows={6}
+          aria-label="JSON renvoyé par l'IA"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono outline-hidden focus:ring-2 focus:ring-primary/30 resize-none"
+        />
 
-      <div className="flex gap-2 pt-1">
-        <button onClick={close} className={cn(panelButton, "bg-muted text-foreground hover:bg-accent")}>
-          {summary ? "Fermer" : "Annuler"}
-        </button>
-        {!summary && (
-          <button
-            onClick={handleImport}
-            disabled={!importText.trim()}
-            className={cn(
-              panelButton,
-              importText.trim() ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground cursor-not-allowed"
+        {error && <p className="text-xs text-destructive">{error}</p>}
+
+        {summary && (
+          <div className="rounded-lg bg-muted/50 p-2 space-y-1">
+            <p className="text-xs font-medium text-foreground">
+              {summary.typesCreated} type{summary.typesCreated > 1 ? "s" : ""} créé{summary.typesCreated > 1 ? "s" : ""}, {summary.rulesApplied} règle{summary.rulesApplied > 1 ? "s" : ""} appliquée{summary.rulesApplied > 1 ? "s" : ""}.
+            </p>
+            {summary.warnings.length > 0 && (
+              <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5 max-h-32 overflow-y-auto">
+                {summary.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
             )}
-          >
-            Importer
-          </button>
+          </div>
         )}
+
+        <Button
+          onClick={handleImport}
+          disabled={!importText.trim()}
+          className={cn(!importText.trim() && "opacity-50 cursor-not-allowed")}
+        >
+          <Upload /> Importer
+        </Button>
       </div>
     </div>
   );

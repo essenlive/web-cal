@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { ExportTab } from "./ExportTab";
 import { ImportTab } from "./ImportTab";
+import { AiRulesTab } from "./AiRulesTab";
 import { SyncTab } from "./SyncTab";
 import { ResetTab } from "./ResetTab";
 
@@ -17,6 +18,11 @@ const TABS = [
     id: "import",
     label: "Import",
     description: "Restaure des réglages depuis un fichier JSON précédemment exporté.",
+  },
+  {
+    id: "ai",
+    label: "Règles IA",
+    description: "Génère un prompt et tes données pour une IA, puis importe le jeu de types et règles qu'elle propose.",
   },
   {
     id: "sync",
@@ -63,6 +69,7 @@ export function DataView() {
 
       {tab === "export" && <ExportTab />}
       {tab === "import" && <ImportTab />}
+      {tab === "ai" && <AiRulesTab />}
       {tab === "sync" && <SyncTab />}
       {tab === "reset" && <ResetTab />}
     </div>

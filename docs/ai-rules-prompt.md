@@ -2,7 +2,7 @@
 
 web-cal peut préparer un prompt, à coller dans n'importe quel assistant IA
 (Claude, ChatGPT…), qui propose des types d'affichage et des règles adaptés à
-tes calendriers. Tout se passe en bas de la page **Règles**.
+tes calendriers. Tout se passe dans l'onglet **Règles IA** de la page **Mes données** (`/data`).
 
 ## Utilisation
 
