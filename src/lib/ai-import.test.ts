@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { CalendarEvent, Connection, EventType, Rule } from "../types";
-import { DISPLAY_STYLES, parseAiImport } from "./ai-import";
+import { applyAiImport, DISPLAY_STYLES, parseAiImport } from "./ai-import";
+import { useConnectionStore, useEventTypeStore, usePresetStore, useRuleStore, useThemeStore } from "../store";
+import { BUILTIN_THEMES } from "./theme";
 import { AI_RULES_PROMPT, buildAiExport, SAMPLE_EVENTS_PER_SOURCE } from "./ai-prompt";
 
 const schema = JSON.parse(readFileSync(path.resolve(__dirname, "../../docs/ai-rules-schema.json"), "utf8"));
@@ -81,18 +83,84 @@ describe("schema and code stay in sync", () => {
   it("lists the same display styles and match types the importer accepts", () => {
     expect(schema.$defs.displayStyle.enum).toEqual(DISPLAY_STYLES);
     expect(schema.$defs.rule.properties.matchType.enum).toEqual(["name", "source"]);
-    expect(Object.keys(schema.properties.data.properties)).toEqual(["overcal:event-types", "overcal:rules"]);
+    expect(Object.keys(schema.properties.data.properties)).toEqual(["overcal:event-types", "overcal:rules", "overcal:presets", "overcal:themes"]);
   });
 
   it("the prompt's example output parses without warnings", () => {
     const example = AI_RULES_PROMPT.slice(AI_RULES_PROMPT.indexOf("{\n  \"version\""), AI_RULES_PROMPT.indexOf("\n\nContraintes du schéma"))
       .replace("<date ISO 8601>", "2026-09-28T21:00:00.000Z")
-      .replace("<id exact d'une de mes sources>", "src-perso")
+      .replaceAll("<id exact d'une de mes sources>", "src-perso")
       .replace("<id d'un type>", "sport");
     const result = parseAiImport(example, connections, existingIds);
     if ("error" in result) throw new Error(result.error);
     expect(result.warnings).toEqual([]);
     expect(result.rules).toHaveLength(2);
+    expect(result.presets).toHaveLength(1);
+    expect(result.themes).toHaveLength(1);
+  });
+});
+
+describe("applyAiImport", () => {
+  const classique: EventType = { id: "meeting", label: "Classique", color: "#3b82f6", icon: "Users", allDayStyle: "block", timedStyle: "block", isDefault: true };
+  const oldType: EventType = { id: "old", label: "Ancien", color: "#000000", icon: "Calendar", allDayStyle: "block", timedStyle: "block" };
+  const oldTheme = { id: "t-old", name: "Vieux", mode: "light" as const, accent: "#000000" };
+
+  beforeEach(() => {
+    useConnectionStore.setState({ connections });
+    useEventTypeStore.setState({ types: [classique, oldType] });
+    useRuleStore.setState({ rules: [
+      { id: "r-event", matchType: "event", matchValue: "e1", displayTypeId: "old", enabled: true, createdAt: 0 },
+      { id: "r-name", matchType: "name", matchValue: "vieux", displayTypeId: "old", enabled: true, createdAt: 0 },
+      { id: "r-src", matchType: "source", matchValue: "src-perso", displayTypeId: "old", enabled: true, createdAt: 0 },
+      { id: "r-all", matchType: "all", matchValue: "", displayTypeId: "meeting", enabled: true, createdAt: 0 },
+    ] });
+    usePresetStore.setState({ presets: [{ id: "p-old", name: "Perso", connections: {}, eventTypes: {} }] });
+    useThemeStore.setState({ customThemes: [...BUILTIN_THEMES, oldTheme], themeOrder: [...BUILTIN_THEMES.map((t) => t.id), "t-old"], selectedThemeId: "t-old" });
+  });
+
+  const json = JSON.stringify({
+    version: 1,
+    exportedAt: "2026-09-28T21:00:00.000Z",
+    data: {
+      "overcal:event-types": { version: 0, state: { types: [sport] } },
+      "overcal:rules": { version: 0, state: { rules: [{ matchType: "name", matchValue: "bad", displayTypeId: "sport" }] } },
+      "overcal:presets": { version: 0, state: { presets: [{ name: "Perso", connections: { "src-perso": false }, eventTypes: { sport: true }, themeId: "soir" }] } },
+      "overcal:themes": { version: 0, state: { customThemes: [{ id: "soir", name: "Soir", mode: "dark", accent: "#f59e0b" }] } },
+    },
+  });
+
+  it("merge adds alongside everything and skips a taken preset name", () => {
+    const result = applyAiImport(json, "merge");
+    if ("error" in result) throw new Error(result.error);
+    expect(useEventTypeStore.getState().types.map((t) => t.id)).toEqual(["meeting", "old", "sport"]);
+    expect(useRuleStore.getState().rules.map((r) => r.matchValue)).toEqual(["e1", "bad", "vieux", "src-perso", ""]);
+    expect(usePresetStore.getState().presets.map((p) => p.id)).toEqual(["p-old"]);
+    expect(useThemeStore.getState().customThemes).toHaveLength(4);
+    expect(useThemeStore.getState().selectedThemeId).toBe("t-old");
+  });
+
+  it("replace keeps only the undeletable parts plus the AI's version", () => {
+    const result = applyAiImport(json, "replace");
+    if ("error" in result) throw new Error(result.error);
+    expect(useEventTypeStore.getState().types.map((t) => t.id)).toEqual(["meeting", "sport"]);
+    // event + name rules dropped; the source rule survives, reset to the default type
+    expect(useRuleStore.getState().rules.map((r) => [r.matchValue, r.displayTypeId])).toEqual([["bad", "sport"], ["src-perso", "meeting"], ["", "meeting"]]);
+    const themes = useThemeStore.getState();
+    const soir = themes.customThemes.find((t) => t.name === "Soir")!;
+    expect(themes.customThemes.map((t) => t.id)).toEqual(["light", "dark", soir.id]);
+    expect(themes.themeOrder).toEqual(["light", "dark", soir.id]);
+    expect(themes.selectedThemeId).toBe(soir.id);
+    expect(usePresetStore.getState().presets).toEqual([
+      expect.objectContaining({ name: "Perso", connections: { "src-perso": false }, eventTypes: { sport: true }, themeId: soir.id }),
+    ]);
+  });
+
+  it("replace leaves sections the JSON omits untouched", () => {
+    applyAiImport(JSON.stringify({ version: 1, data: { "overcal:themes": { version: 0, state: { customThemes: [] } } } }), "replace");
+    expect(useEventTypeStore.getState().types).toHaveLength(2);
+    expect(usePresetStore.getState().presets).toHaveLength(1);
+    expect(useThemeStore.getState().customThemes.map((t) => t.id)).toEqual(["light", "dark"]);
+    expect(useThemeStore.getState().selectedThemeId).toBe("light");
   });
 });
 

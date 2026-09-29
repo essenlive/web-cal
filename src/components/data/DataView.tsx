@@ -21,8 +21,8 @@ const TABS = [
   },
   {
     id: "ai",
-    label: "Règles IA",
-    description: "Génère un prompt et tes données pour une IA, puis importe le jeu de types et règles qu'elle propose.",
+    label: "Réglages IA",
+    description: "Génère un prompt et tes données pour une IA, puis importe les types, règles, presets et thèmes qu'elle propose.",
   },
   {
     id: "sync",
