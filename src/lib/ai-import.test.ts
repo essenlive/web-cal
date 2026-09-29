@@ -4,7 +4,7 @@ import path from "node:path";
 import type { CalendarEvent, Connection, EventType, Rule } from "../types";
 import { applyAiImport, DISPLAY_STYLES, parseAiImport } from "./ai-import";
 import { useConnectionStore, useEventTypeStore, usePresetStore, useRuleStore, useThemeStore } from "../store";
-import { BUILTIN_THEMES } from "./theme";
+import { BUILTIN_THEMES, THEME_PATTERNS } from "./theme";
 import { AI_RULES_PROMPT, buildAiExport, SAMPLE_EVENTS_PER_SOURCE } from "./ai-prompt";
 
 const schema = JSON.parse(readFileSync(path.resolve(__dirname, "../../docs/ai-rules-schema.json"), "utf8"));
@@ -83,6 +83,7 @@ describe("schema and code stay in sync", () => {
   it("lists the same display styles and match types the importer accepts", () => {
     expect(schema.$defs.displayStyle.enum).toEqual(DISPLAY_STYLES);
     expect(schema.$defs.rule.properties.matchType.enum).toEqual(["name", "source"]);
+    expect(schema.$defs.pattern.enum).toEqual(THEME_PATTERNS.map((p) => p.value));
     expect(Object.keys(schema.properties.data.properties)).toEqual(["overcal:event-types", "overcal:rules", "overcal:presets", "overcal:themes"]);
   });
 

@@ -35,6 +35,8 @@ export interface EventType {
   allDayStyle: DisplayStyle;
   /** How timed (scheduled) events are displayed. Defaults to "block". */
   timedStyle: DisplayStyle;
+  /** Texture drawn in the type's color on top of the "background" style's tint; unset = plain tint. */
+  pattern?: ThemePattern;
   /** When true, events resolving to this type are excluded from all calendar views. Config is preserved. */
   hidden?: boolean;
   /** Exactly one type has this set. Undeletable; the catch-all rule always resolves to it, and broken rules fall back to it. */
@@ -83,6 +85,9 @@ export interface Rule {
 
 export type ThemeMode = "light" | "dark";
 
+/** Subtle monochrome background texture — see THEME_PATTERNS in lib/theme.ts. */
+export type ThemePattern = "none" | "dots" | "grid" | "diagonal" | "ruled";
+
 /**
  * A named, saved appearance: a base light/dark mode plus a single accent color
  * that drives the app's primary/accent/ring CSS tokens (see src/lib/theme.ts).
@@ -104,6 +109,8 @@ export interface Theme {
   fontFamily?: string;
   /** CSS length, e.g. "0.75rem". Optional for themes persisted before this field existed. */
   radius?: string;
+  /** Background texture; unset = "none". */
+  pattern?: ThemePattern;
   /** Base surface colors, hex strings. Unset falls back to the app's per-mode default (see DEFAULT_BASE_COLORS in lib/theme.ts). */
   background?: string;
   card?: string;

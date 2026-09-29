@@ -127,6 +127,13 @@
   button:not(:disabled) { cursor: pointer; }
 }
 
+/* Theme background pattern (Theme.pattern → --pattern/--pattern-size, see resolveThemeCssVars),
+   on each page's root surface so it shows through the transparent calendar cells. */
+.bg-pattern {
+  background-image: var(--pattern, none);
+  background-size: var(--pattern-size, auto);
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { border-radius: 9999px; }

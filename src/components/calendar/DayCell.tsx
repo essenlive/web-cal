@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "../../lib/utils";
+import { typePatternStyle } from "../../lib/theme";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { SimpleTooltip } from "../ui/tooltip";
@@ -228,7 +229,7 @@ export const DayCell = memo(function DayCell({
         !isCurrentMonth && "bg-muted/15",
         isToday && "bg-primary/5",
       )}
-      style={bgColor ? { backgroundColor: bgColor } : undefined}
+      style={bgColor ? { backgroundColor: bgColor, ...typePatternStyle(labelWinner?.type) } : undefined}
       onClick={goToDayView}
     >
       {borderTopWinner && (
@@ -406,7 +407,7 @@ export const AllDayCard = memo(function AllDayCard({
   return (
     <div
       className="relative rounded-xl border border-border bg-card overflow-hidden"
-      style={backgroundWinner ? { backgroundColor: backgroundWinner.type.color + "12" } : undefined}
+      style={backgroundWinner ? { backgroundColor: backgroundWinner.type.color + "12", ...typePatternStyle(backgroundWinner.type) } : undefined}
     >
       {borderTopWinner && (
         <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: borderTopWinner.type.color }} />

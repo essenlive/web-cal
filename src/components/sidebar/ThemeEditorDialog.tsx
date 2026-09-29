@@ -12,17 +12,21 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { ColorPicker } from "../settings/ColorPicker";
+import { PatternPicker } from "../settings/PatternPicker";
 import { PanelHeader, PanelFooter } from "../settings/PanelHeader";
 import { useThemeStore } from "../../store";
 import {
   THEME_ACCENT_PRESETS,
+  THEME_ACCENT_SOFT_PRESETS,
   THEME_RADIUS_PRESETS,
   DEFAULT_BASE_COLORS,
   fontFamilyCssValue,
   loadGoogleFont,
 } from "../../lib/theme";
 import { GOOGLE_FONTS } from "../../lib/google-fonts";
-import type { Theme, ThemeMode } from "../../types";
+import type { Theme, ThemeMode, ThemePattern } from "../../types";
+
+const FONT_SAMPLE = "Réunion d'équipe · 14:30 — lun. 12 oct.";
 
 const BASE_COLOR_FIELDS = [
   { key: "background", label: "Arrière-plan" },
@@ -44,7 +48,7 @@ export interface ThemeEditorDialogProps {
  * new create/edit session, so fresh initial state is simply what mounting gives us.
  */
 export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
-  const { customThemes, addTheme, updateTheme, removeTheme } = useThemeStore();
+  const { customThemes, addTheme, updateTheme, removeTheme, setPreviewTheme } = useThemeStore();
 
   const [name, setName] = useState(theme?.name ?? "");
   const [mode, setMode] = useState<ThemeMode>(theme?.mode ?? "light");
@@ -53,6 +57,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
   const [fontQuery, setFontQuery] = useState(theme?.fontFamily ?? "DM Sans");
   const [fontOpen, setFontOpen] = useState(false);
   const [radius, setRadius] = useState(theme?.radius ?? THEME_RADIUS_PRESETS[2].value);
+  const [pattern, setPattern] = useState<ThemePattern>(theme?.pattern ?? "none");
   const defaultBase = DEFAULT_BASE_COLORS[mode];
   const [background, setBackground] = useState(theme?.background ?? defaultBase.background);
   const [card, setCard] = useState(theme?.card ?? defaultBase.card);
@@ -64,11 +69,24 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
     loadGoogleFont(fontFamily);
   }, [fontFamily]);
 
+  // Live preview: the whole app wears the draft while this form is open; unmounting (save,
+  // cancel, back, closing the drawer) drops it and the selected theme comes back.
+  useEffect(() => {
+    setPreviewTheme({ id: theme?.id ?? "preview", name, mode, accent, fontFamily, radius, pattern, background, card, border, muted });
+  }, [setPreviewTheme, theme?.id, name, mode, accent, fontFamily, radius, pattern, background, card, border, muted]);
+  useEffect(() => () => setPreviewTheme(null), [setPreviewTheme]);
+
   const fontMatches = useMemo(() => {
-    const q = fontQuery.trim().toLowerCase();
+    // The box shows the chosen family; until the user types something else, list everything.
+    const q = fontQuery === fontFamily ? "" : fontQuery.trim().toLowerCase();
     const results = q ? GOOGLE_FONTS.filter((f) => f.family.toLowerCase().includes(q)) : GOOGLE_FONTS;
     return results.slice(0, 8);
-  }, [fontQuery]);
+  }, [fontQuery, fontFamily]);
+
+  // Load every suggested family so the dropdown shows each one in its own face, not a fallback.
+  useEffect(() => {
+    if (fontOpen) fontMatches.forEach((f) => loadGoogleFont(f.family));
+  }, [fontOpen, fontMatches]);
 
   /**
    * Base-color defaults differ wildly between light/dark (e.g. near-white vs
@@ -93,7 +111,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
 
   function handleSave() {
     if (!canSave) return;
-    const fields = { name: trimmed, mode, accent, fontFamily, radius, background, card, border, muted };
+    const fields = { name: trimmed, mode, accent, fontFamily, radius, pattern, background, card, border, muted };
     if (theme) {
       updateTheme({ ...theme, ...fields });
     } else {
@@ -107,7 +125,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
       <PanelHeader
         title={theme ? "Modifier le thème" : "Nouveau thème"}
         onBack={onClose}
-        description="Personnalisez le mode clair/sombre, la couleur d'accent, la police et l'arrondi."
+        description="Les changements s'appliquent en direct à toute l'application ; enregistrez pour les garder."
       />
 
       <div className="space-y-4 px-4 pb-4">
@@ -149,7 +167,7 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
             </div>
 
             {/* Accent */}
-            <ColorPicker value={accent} onChange={setAccent} colors={THEME_ACCENT_PRESETS} label="Couleur d'accent" />
+            <ColorPicker value={accent} onChange={setAccent} colors={THEME_ACCENT_PRESETS} softColors={THEME_ACCENT_SOFT_PRESETS} label="Couleur d'accent" />
 
             {/* Font */}
             <div className="relative">
@@ -170,6 +188,9 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
                   Aa
                 </span>
               </div>
+              <p className="mt-1.5 truncate text-sm text-muted-foreground" style={{ fontFamily: fontFamilyCssValue(fontFamily) }}>
+                {FONT_SAMPLE}
+              </p>
               {fontOpen && fontMatches.length > 0 && (
                 <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-border bg-popover shadow-lg">
                   {fontMatches.map((f) => (
@@ -184,11 +205,15 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
                       }}
                       style={{ fontFamily: fontFamilyCssValue(f.family) }}
                       className={cn(
-                        "block w-full truncate px-3 py-2 text-left text-sm hover:bg-muted",
+                        "block w-full px-3 py-2 text-left hover:bg-muted",
                         f.family === fontFamily && "text-primary"
                       )}
                     >
-                      {f.family}
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-sm">{f.family}</span>
+                        <span className="shrink-0 font-sans text-[10px] text-muted-foreground" style={{ fontFamily: "var(--font-sans)" }}>{f.category}</span>
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">{FONT_SAMPLE}</span>
                     </button>
                   ))}
                 </div>
@@ -249,6 +274,9 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
                 ))}
               </div>
             </div>
+
+            {/* Background pattern — tiles use stronger ink than the real 0.07 so the texture reads at tile size */}
+            <PatternPicker value={pattern} onChange={setPattern} ink="hsl(var(--foreground) / 0.3)" />
 
             <PanelFooter
               onDelete={theme && customThemes.length > 1 ? () => { removeTheme(theme.id); onClose(); } : undefined}

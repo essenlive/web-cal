@@ -14,6 +14,7 @@ import { orderThemes } from "../../lib/theme";
 import { ItemBadge } from "../sidebar/ItemRow";
 import { ThemeEditorDialog } from "../sidebar/ThemeEditorDialog";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
+import { Switch } from "../ui/switch";
 import { PanelHeader } from "./PanelHeader";
 import type { Theme } from "../../types";
 
@@ -22,7 +23,7 @@ function themeBadge(theme: Theme) {
 }
 
 export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
-  const { customThemes, themeOrder, reorderTheme, addTheme, removeTheme } = useThemeStore();
+  const { customThemes, themeOrder, reorderTheme, addTheme, removeTheme, systemThemes, setSystemThemes } = useThemeStore();
   const themes = orderThemes(customThemes, themeOrder);
   const { getDragProps } = useDragReorder(themes, (t) => t.id, reorderTheme);
 
@@ -43,9 +44,10 @@ export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: str
     <>
       <PanelHeader
         title="Thème"
-        description="Les thèmes permettent de personnaliser certains réglages de base comme la version claire ou sombre, la police, les arrondis et la couleur d'accroche. Cette personnalisation reste minime pour l'instant. Au moins un thème doit toujours exister."
+        description="Un thème règle le mode clair ou sombre, la couleur d'accent, la police et les arrondis. Au moins un thème doit toujours exister."
       />
       <div className="space-y-1.5 px-4 pb-4">
+        <SystemThemeRow themes={themes} value={systemThemes} onChange={setSystemThemes} />
         {themes.map((t, index) => (
           <DrawerItemRow
             key={t.id}
@@ -60,5 +62,41 @@ export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: str
         <AddItemButton label="Nouveau thème" onClick={() => { setEditingTheme(null); setFormOpen(true); }} />
       </div>
     </>
+  );
+}
+
+/** "Suivre le système": pick one theme per OS color scheme; Providers switches between them. */
+function SystemThemeRow({ themes, value, onChange }: {
+  themes: Theme[];
+  value: { light: string; dark: string } | null;
+  onChange: (v: { light: string; dark: string } | null) => void;
+}) {
+  const firstOf = (mode: Theme["mode"]) => (themes.find((t) => t.mode === mode) ?? themes[0]).id;
+  const select = "min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs";
+  return (
+    <div className="rounded-lg bg-muted/50 px-3 py-2.5 mb-3 space-y-2">
+      <label className="flex items-center justify-between gap-3 cursor-pointer">
+        <span>
+          <span className="block text-sm font-medium text-foreground">Suivre le système</span>
+          <span className="block text-xs text-muted-foreground">Bascule selon le mode clair/sombre de l&apos;appareil</span>
+        </span>
+        <Switch
+          checked={!!value}
+          onCheckedChange={(on) => onChange(on ? { light: firstOf("light"), dark: firstOf("dark") } : null)}
+        />
+      </label>
+      {value && (
+        <div className="flex gap-2">
+          {(["light", "dark"] as const).map((mode) => (
+            <label key={mode} className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground">
+              {mode === "light" ? <Sun size={12} /> : <Moon size={12} />}
+              <select className={select} value={value[mode]} onChange={(e) => onChange({ ...value, [mode]: e.target.value })} aria-label={mode === "light" ? "Thème clair" : "Thème sombre"}>
+                {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

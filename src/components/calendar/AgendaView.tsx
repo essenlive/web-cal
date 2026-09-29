@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { format, isSameDay, parseISO, startOfDay, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarX, MapPin } from "lucide-react";
+import { typePatternStyle } from "../../lib/theme";
 import { cn } from "../../lib/utils";
 import { useUIStore } from "../../store";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
@@ -122,6 +123,7 @@ export function AgendaView() {
                     )}
                     style={rowColor ? {
                       backgroundColor: rowColor + "12",
+                      ...typePatternStyle(type),
                       borderColor: rowColor + "60",
                       borderLeftColor: rowColor,
                       borderLeftWidth: 3,

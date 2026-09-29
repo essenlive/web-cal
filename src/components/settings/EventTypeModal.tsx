@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { cn, firstGrapheme } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { ColorPicker } from "./ColorPicker";
+import { PatternPicker } from "./PatternPicker";
 import { PanelHeader, PanelFooter, InlineLink } from "./PanelHeader";
 import { RuleEditRow, SourcesMultiSelect } from "./RuleEditRow";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
@@ -15,7 +16,8 @@ import { useUIStore, useRuleStore, useEventTypeStore, useEventsStore, useConnect
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { describeMatch } from "../../lib/rules";
 import { getIconEl, ALL_ICON_NAMES } from "../../lib/icons";
-import type { DisplayStyle, EventType, Rule } from "../../types";
+import type { DisplayStyle, EventType, Rule, ThemePattern } from "../../types";
+import { typePatternStyle } from "../../lib/theme";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -70,9 +72,9 @@ export function useFilteredRuleDragReorder(allRules: Rule[], filtered: Rule[], r
 }
 
 export function StylePreview({
-  style, color, icon, badgeLetter, label = "Titre",
+  style, color, icon, badgeLetter, label = "Titre", pattern,
 }: {
-  style: DisplayStyle; color: string; icon: string; badgeLetter?: boolean; label?: string;
+  style: DisplayStyle; color: string; icon: string; badgeLetter?: boolean; label?: string; pattern?: ThemePattern;
 }) {
   const letter = badgeLetter ? label : undefined;
 
@@ -80,7 +82,7 @@ export function StylePreview({
     return (
       <div
         className="relative w-14 h-12 rounded-lg overflow-hidden shrink-0"
-        style={{ backgroundColor: color + "28", border: `2px solid ${color}` }}
+        style={{ backgroundColor: color + "28", border: `2px solid ${color}`, ...typePatternStyle({ pattern, color }) }}
       >
         <span className="absolute top-1 left-1.5 text-[10px] font-semibold" style={{ color }}>15</span>
         <span className="absolute top-1 left-6 right-1 text-[10px] font-medium truncate" style={{ color, opacity: 0.75 }}>{label}</span>
@@ -151,6 +153,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const [allDayStyle, setAllDayStyle] = useState<DisplayStyle>(type?.allDayStyle ?? "block");
   const [timedStyle,  setTimedStyle]  = useState<DisplayStyle>(type?.timedStyle  ?? "block");
   const [isDefault,   setIsDefault]   = useState(type?.isDefault ?? false);
+  const [pattern,     setPattern]     = useState<ThemePattern>(type?.pattern ?? "none");
   // Reserved upfront (even for a not-yet-saved type) so the Règles section below
   // can link rules to it immediately instead of waiting for a first save.
   const [typeId] = useState(() => type?.id ?? crypto.randomUUID());
@@ -162,7 +165,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
   const { connections } = useConnectionStore();
   // In-progress form state as an EventType, so rules linked to this type preview it
   // correctly even before it's saved (getType(typeId) can't resolve it until then).
-  const previewType: EventType = { id: typeId, label, color, icon, badgeLetter, allDayStyle, timedStyle, isDefault };
+  const previewType: EventType = { id: typeId, label, color, icon, badgeLetter, allDayStyle, timedStyle, pattern, isDefault };
 
   const linkedRules = rules.filter((r) => r.displayTypeId === typeId && r.matchType !== "all");
   const textRules = linkedRules.filter((r) => r.matchType === "name");
@@ -182,7 +185,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
     .some((l) => l.toLowerCase() === trimmed.toLowerCase());
 
   function handleSave() {
-    onSave({ id: typeId, label: trimmed, color, icon, badgeLetter, allDayStyle, timedStyle, isDefault });
+    onSave({ id: typeId, label: trimmed, color, icon, badgeLetter, allDayStyle, timedStyle, pattern, isDefault });
     handleClose();
   }
 
@@ -280,7 +283,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
                     </button>
                   ))}
                 </div>
-                <StylePreview style={allDayStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} />
+                <StylePreview style={allDayStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} pattern={pattern} />
               </div>
             </div>
           </div>
@@ -306,10 +309,15 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
                     </button>
                   ))}
                 </div>
-                <StylePreview style={timedStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} />
+                <StylePreview style={timedStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} pattern={pattern} />
               </div>
             </div>
           </div>
+
+          {/* Only the "Fond" style has a surface to texture. */}
+          {(allDayStyle === "background" || timedStyle === "background") && (
+            <PatternPicker label="Motif du fond" value={pattern} onChange={setPattern} ink={color + "99"} />
+          )}
 
           <div>
             <label className="text-sm font-semibold text-foreground mb-1 block">Règles</label>

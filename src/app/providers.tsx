@@ -8,8 +8,19 @@ import { TooltipProvider } from "../components/ui/tooltip";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const { customThemes, selectedThemeId } = useThemeStore();
-  const activeTheme = getActiveTheme(customThemes, selectedThemeId);
+  const { customThemes, selectedThemeId, systemThemes, previewTheme } = useThemeStore();
+  const activeTheme = previewTheme ?? getActiveTheme(customThemes, selectedThemeId);
+
+  // "Suivre le système": keep selectedThemeId in step with the OS color scheme. Written via
+  // setState, not selectTheme — selectTheme is the *manual* pick, which turns this off.
+  useEffect(() => {
+    if (!systemThemes) return;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => useThemeStore.setState({ selectedThemeId: query.matches ? systemThemes.dark : systemThemes.light });
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, [systemThemes]);
 
   useEffect(() => {
     const root = document.documentElement;

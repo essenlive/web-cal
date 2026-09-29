@@ -105,7 +105,7 @@ export function CalendarPage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-screen overflow-hidden bg-background bg-pattern">
       <Header />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile backdrop — closes sidebar on tap. Starts below the header (top-14) so the

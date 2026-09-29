@@ -15,11 +15,11 @@
  * that part is exactly what the schema documents, so a mismatch there means the
  * AI didn't follow the prompt at all.
  */
-import type { Connection, DisplayStyle, Preset, Rule, RuleMatchType, Theme, ThemeMode } from "../types";
+import type { Connection, DisplayStyle, Preset, Rule, RuleMatchType, Theme, ThemeMode, ThemePattern } from "../types";
 import { isValidPattern } from "./rules";
 import { ALL_ICON_NAMES } from "./icons";
 import { GOOGLE_FONTS } from "./google-fonts";
-import { BUILTIN_THEMES, THEME_RADIUS_PRESETS } from "./theme";
+import { BUILTIN_THEMES, THEME_PATTERNS, THEME_RADIUS_PRESETS } from "./theme";
 import { useConnectionStore, useEventTypeStore, usePresetStore, useRuleStore, useThemeStore } from "../store";
 
 export const DISPLAY_STYLES: DisplayStyle[] = [
@@ -39,6 +39,7 @@ export interface ParsedAiEventType {
   badgeLetter: boolean;
   allDayStyle: DisplayStyle;
   timedStyle: DisplayStyle;
+  pattern?: ThemePattern;
 }
 
 export interface ParsedAiRule {
@@ -56,6 +57,7 @@ export interface ParsedAiTheme {
   accent: string;
   fontFamily?: string;
   radius?: string;
+  pattern?: ThemePattern;
 }
 
 export interface ParsedAiPreset {
@@ -113,6 +115,12 @@ function pickBooleans(raw: unknown, known: (id: string) => boolean, warnings: st
     else warnings.push(`${context} : "${id}" inconnu, ignoré.`);
   }
   return out;
+}
+
+function resolvePattern(raw: unknown, warnings: string[], context: string): { pattern?: ThemePattern } {
+  const pattern = THEME_PATTERNS.find((x) => x.value === raw)?.value;
+  if (raw !== undefined && !pattern) warnings.push(`${context} : motif "${String(raw)}" inconnu, aucun motif.`);
+  return pattern ? { pattern } : {};
 }
 
 function resolveStyle(raw: unknown, warnings: string[], context: string): DisplayStyle {
@@ -203,6 +211,7 @@ export function parseAiImport(
       badgeLetter: t.badgeLetter === true,
       allDayStyle: resolveStyle(t.allDayStyle, warnings, `${context} (all-day)`),
       timedStyle: resolveStyle(t.timedStyle, warnings, `${context} (horaire)`),
+      ...resolvePattern(t.pattern, warnings, context),
     });
   }
 
@@ -263,6 +272,7 @@ export function parseAiImport(
       accent: resolveColor(t.accent, warnings, context),
       ...(font ? { fontFamily: font } : {}),
       ...(radius ? { radius } : {}),
+      ...resolvePattern(t.pattern, warnings, context),
     });
   }
 

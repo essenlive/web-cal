@@ -10,7 +10,7 @@
  * nor an event's location or notes.
  */
 import type { CalendarEvent, Connection, EventType, Preset, Rule, Theme } from "../types";
-import { THEME_RADIUS_PRESETS } from "./theme";
+import { THEME_PATTERNS, THEME_RADIUS_PRESETS } from "./theme";
 
 /** Distinct titles kept per source — enough to show its categories without flooding the prompt. */
 export const SAMPLE_EVENTS_PER_SOURCE = 20;
@@ -36,7 +36,7 @@ aux miens ou de remplacer les miens par les tiens.
   un thème optionnel. L'utilisateur bascule entre presets avec les touches 1 à 9.
   Pense-les par contexte de vie (Travail, Perso, Tout sauf le secondaire…).
 - Un "thème" définit l'apparence de l'interface : mode clair/sombre, couleur
-  d'accent, police Google Fonts et arrondi. "Clair" (id "light") et "Sombre"
+  d'accent, police Google Fonts, arrondi et motif de fond. "Clair" (id "light") et "Sombre"
   (id "dark") existent déjà.
 
 ## Styles disponibles et quand les utiliser
@@ -130,7 +130,7 @@ aux miens ou de remplacer les miens par les tiens.
       "version": 0,
       "state": {
         "customThemes": [
-          { "id": "soir", "name": "Soir", "mode": "dark", "accent": "#f59e0b", "fontFamily": "Inter", "radius": "0.375rem" }
+          { "id": "soir", "name": "Soir", "mode": "dark", "accent": "#f59e0b", "fontFamily": "Inter", "radius": "0.375rem", "pattern": "dots" }
         ]
       }
     }
@@ -143,6 +143,9 @@ Contraintes du schéma :
 - icon : nom PascalCase d'une icône lucide-react existante (ex: Cake, Phone,
   Dumbbell, Bike, PartyPopper, GraduationCap, Plane, TreePalm, Briefcase,
   MessageCircleQuestion, Users, Calendar, Utensils, Music, Handshake, Luggage).
+- types[].pattern (optionnel) : motif dessiné dans la couleur du type sur le
+  fond coloré — n'a d'effet qu'avec le style background. Mêmes valeurs que
+  pour les thèmes ci-dessous.
 - allDayStyle / timedStyle : text, avatar-tr, avatar-bl, avatar-br, block,
   background, border-top ou border-bottom.
 - rules[].matchType : "name" ou "source" uniquement (pas de "all" ni "event").
@@ -156,6 +159,7 @@ Contraintes du schéma :
   "#RRGGBB". fontFamily (optionnel) : une Google Font courante (Inter, Roboto,
   Lato, Montserrat, Poppins, Nunito, Merriweather, Lora, Playfair Display,
   JetBrains Mono…). radius (optionnel) : ${THEME_RADIUS_PRESETS.map((r) => `"${r.value}"`).join(", ")}.
+  pattern (optionnel, motif de fond discret en noir et blanc) : ${THEME_PATTERNS.map((x) => `"${x.value}"`).join(", ")}.
 - Aucune autre clé que celles montrées.`;
 
 function describeTiming(e: CalendarEvent): string {
@@ -199,13 +203,14 @@ export function buildAiExport(
       icon: t.icon,
       allDayStyle: t.allDayStyle,
       timedStyle: t.timedStyle,
+      pattern: t.pattern,
       ...(t.isDefault ? { parDefaut: true } : {}),
     })),
     reglesExistantes: rules
       .filter((r) => r.matchType === "name" || r.matchType === "source")
       .map((r) => ({ matchType: r.matchType, matchValue: r.matchValue, displayTypeId: r.displayTypeId, enabled: r.enabled })),
     presetsExistants: presets.map(({ id: _, ...p }) => p),
-    themesExistants: themes.map((t) => ({ id: t.id, name: t.name, mode: t.mode, accent: t.accent, fontFamily: t.fontFamily, radius: t.radius })),
+    themesExistants: themes.map((t) => ({ id: t.id, name: t.name, mode: t.mode, accent: t.accent, fontFamily: t.fontFamily, radius: t.radius, pattern: t.pattern })),
   };
 
   return `${AI_RULES_PROMPT}\n\n## Mes données\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\`\n`;

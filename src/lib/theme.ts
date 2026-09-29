@@ -10,7 +10,7 @@
  * specs/005-global-theming/research.md (Decision 1) for the full rationale.
  */
 
-import type { Theme } from "../types";
+import type { Theme, ThemePattern } from "../types";
 import { GOOGLE_FONTS } from "./google-fonts";
 
 // ── Hex <-> HSL ────────────────────────────────────────────────────────────────
@@ -98,6 +98,34 @@ export interface ThemeCssVars {
   "--input": string;
   "--muted": string;
   "--secondary": string;
+  "--pattern": string;
+  "--pattern-size": string;
+}
+
+/** Ink for the theme's own pattern: its foreground (near-black on light, near-white on dark) at
+ *  low opacity — black-and-white and subtle whatever the accent. */
+const INK = "hsl(var(--foreground) / 0.07)";
+
+/** Background textures, drawn in any `ink` color: the theme's (via .bg-pattern, globals.css) or a
+ *  display type's own color (via patternStyle). */
+export const THEME_PATTERNS: { value: ThemePattern; label: string; image: (ink: string) => string; size: string }[] = [
+  { value: "none",     label: "Aucun",      image: () => "none", size: "auto" },
+  { value: "dots",     label: "Points",     image: (ink) => `radial-gradient(${ink} 1px, transparent 1.5px)`, size: "14px 14px" },
+  { value: "grid",     label: "Grille",     image: (ink) => `linear-gradient(${ink} 1px, transparent 1px), linear-gradient(90deg, ${ink} 1px, transparent 1px)`, size: "24px 24px" },
+  { value: "diagonal", label: "Diagonales", image: (ink) => `repeating-linear-gradient(45deg, ${ink} 0 1px, transparent 1px 9px)`, size: "auto" },
+  { value: "ruled",    label: "Lignes",     image: (ink) => `linear-gradient(${ink} 1px, transparent 1px)`, size: "100% 22px" },
+];
+
+/** A display type's pattern, in its own color at ~35% alpha — on top of the "background" style's tint. */
+export function typePatternStyle(type: { pattern?: ThemePattern; color: string } | undefined) {
+  return type ? patternStyle(type.pattern, type.color + "59") : {};
+}
+
+/** Inline style drawing `pattern` in `ink` — {} for none/unset, so it can be spread unconditionally. */
+export function patternStyle(pattern: ThemePattern | undefined, ink: string): { backgroundImage?: string; backgroundSize?: string } {
+  const p = THEME_PATTERNS.find((x) => x.value === pattern);
+  if (!p || p.value === "none") return {};
+  return { backgroundImage: p.image(ink), backgroundSize: p.size };
 }
 
 const DEFAULT_RADIUS = "0.75rem";
@@ -137,6 +165,7 @@ function hexToHslString(hex: string): string {
 export function resolveThemeCssVars(theme: Theme): ThemeCssVars {
   const { h, s } = hexToHsl(theme.accent);
   const defaults = DEFAULT_BASE_COLORS[theme.mode];
+  const pattern = THEME_PATTERNS.find((p) => p.value === theme.pattern) ?? THEME_PATTERNS[0];
   const shared = {
     "--font-sans": fontFamilyCssValue(theme.fontFamily ?? "DM Sans"),
     "--radius": theme.radius ?? DEFAULT_RADIUS,
@@ -147,6 +176,8 @@ export function resolveThemeCssVars(theme: Theme): ThemeCssVars {
     "--input": hexToHslString(theme.border ?? defaults.border),
     "--muted": hexToHslString(theme.muted ?? defaults.muted),
     "--secondary": hexToHslString(theme.muted ?? defaults.muted),
+    "--pattern": pattern.image(INK),
+    "--pattern-size": pattern.size,
   };
 
   if (theme.mode === "dark") {
@@ -175,6 +206,13 @@ export const THEME_ACCENT_PRESETS = [
   "#6366f1", "#3b82f6", "#8b5cf6", "#ec4899", "#ef4444",
   "#f59e0b", "#10b981", "#14b8a6", "#06b6d4", "#64748b",
 ];
+
+/** Softer row under the vivid one: same hues, half the saturation. resolveThemeCssVars keeps
+ *  only hue + saturation, so these render as a genuinely calmer primary, not a lighter one. */
+export const THEME_ACCENT_SOFT_PRESETS = THEME_ACCENT_PRESETS.map((hex) => {
+  const { h, s } = hexToHsl(hex);
+  return hslToHex(h, Math.round(s / 2), 65);
+});
 
 // ── Fonts ──────────────────────────────────────────────────────────────────────
 

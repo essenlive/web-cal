@@ -626,6 +626,11 @@ interface ThemeStore {
   selectedThemeId: string;
   /** Display order for all themes, by id — see lib/theme.ts orderThemes. */
   themeOrder: string[];
+  /** "Suivre le système": when set, Providers keeps selectedThemeId on `light` or `dark`
+   *  according to the OS color scheme. Cleared by any manual selectTheme. Per device, not synced. */
+  systemThemes: { light: string; dark: string } | null;
+  /** Draft theme being edited, applied app-wide instead of the selected one (live preview). Never persisted. */
+  previewTheme: Theme | null;
   /** Internal one-time migration guards — not meant to be read by UI code. */
   migratedLegacyDarkMode: boolean;
   migratedBuiltinThemes: boolean;
@@ -634,6 +639,8 @@ interface ThemeStore {
   /** No-ops when `id` is the only remaining theme — at least one theme must always exist. */
   removeTheme: (id: string) => void;
   selectTheme: (id: string) => void;
+  setSystemThemes: (v: { light: string; dark: string } | null) => void;
+  setPreviewTheme: (t: Theme | null) => void;
   /** Moves `id` to `toIndex` in the display order. */
   reorderTheme: (id: string, toIndex: number) => void;
 }
@@ -644,6 +651,8 @@ export const useThemeStore = create<ThemeStore>()(
       customThemes: [...BUILTIN_THEMES],
       selectedThemeId: BUILTIN_THEMES[0].id, // "light"
       themeOrder: BUILTIN_THEMES.map((t) => t.id),
+      systemThemes: null,
+      previewTheme: null,
       migratedLegacyDarkMode: false,
       migratedBuiltinThemes: false,
       addTheme: (t) =>
@@ -661,9 +670,12 @@ export const useThemeStore = create<ThemeStore>()(
             customThemes,
             themeOrder: s.themeOrder.filter((x) => x !== id),
             selectedThemeId: s.selectedThemeId === id ? customThemes[0].id : s.selectedThemeId,
+            systemThemes: s.systemThemes && (s.systemThemes.light === id || s.systemThemes.dark === id) ? null : s.systemThemes,
           };
         }),
-      selectTheme: (id) => set({ selectedThemeId: id }),
+      selectTheme: (id) => set({ selectedThemeId: id, systemThemes: null }),
+      setSystemThemes: (systemThemes) => set({ systemThemes }),
+      setPreviewTheme: (previewTheme) => set({ previewTheme }),
       reorderTheme: (id, toIndex) =>
         set((s) => {
           const ids = orderThemes(s.customThemes, s.themeOrder).map((t) => t.id);
@@ -681,6 +693,7 @@ export const useThemeStore = create<ThemeStore>()(
         customThemes: s.customThemes,
         selectedThemeId: s.selectedThemeId,
         themeOrder: s.themeOrder,
+        systemThemes: s.systemThemes,
         migratedLegacyDarkMode: s.migratedLegacyDarkMode,
         migratedBuiltinThemes: s.migratedBuiltinThemes,
       }),

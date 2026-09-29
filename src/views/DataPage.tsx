@@ -4,7 +4,7 @@ import { DataView } from "../components/data/DataView";
 
 export function DataPage() {
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-screen overflow-hidden bg-background bg-pattern">
       <header className="flex items-center h-14 px-4 border-b border-border bg-card shrink-0 gap-2">
         <Link href="/" className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-muted-foreground">
           <ArrowLeft size={16} />

@@ -159,7 +159,17 @@ A `Theme` ([types/index.ts](../src/types/index.ts)) is a name + base `mode` (`li
 
 **Migration**: existing users had a `darkMode: boolean` under `proton-cal:ui`. On first load after upgrade, if no theme selection exists yet, `useThemeStore` reads that legacy value once (read-only — `useUIStore`/`proton-cal:ui` are left untouched) and maps `true → "dark"`, `false/absent → "light"`.
 
-Managed via the sidebar's **Thème** section ([Settings map](#settings-map)): every theme is listed and selectable inline; editing (including the two built-ins) opens `ThemeEditorDialog` ([components/sidebar/ThemeEditorDialog.tsx](../src/components/sidebar/ThemeEditorDialog.tsx)), which also offers duplicate. Custom `background`/`card`/`border`/`muted` overrides live behind a collapsed "Avancé" toggle.
+Managed via the sidebar's **Thème** section ([Settings map](#settings-map)): every theme is listed and selectable inline; editing (including the two built-ins) opens `ThemeEditorDialog` ([components/sidebar/ThemeEditorDialog.tsx](../src/components/sidebar/ThemeEditorDialog.tsx)), which also offers duplicate. Custom `background`/`card`/`border`/`muted` overrides live behind a collapsed "Avancé" toggle. The accent picker offers a vivid row (`THEME_ACCENT_PRESETS`) and a soft row (`THEME_ACCENT_SOFT_PRESETS`, same hues at half saturation — since only hue+saturation are applied, these give a genuinely calmer primary).
+
+**Background pattern**: `Theme.pattern` (`none`/`dots`/`grid`/`diagonal`/`ruled`, `THEME_PATTERNS` in [lib/theme.ts](../src/lib/theme.ts)) becomes `--pattern`/`--pattern-size`, drawn by the `.bg-pattern` class ([globals.css](../src/app/globals.css)) on each page's root surface, so it shows through the transparent calendar cells. Every pattern is inked in `hsl(var(--foreground) / 0.07)` — near-black on light themes, near-white on dark — so it stays monochrome and subtle whatever the accent.
+
+Display types can use the same textures: `EventType.pattern` is drawn in the type's own color (~35% alpha, `typePatternStyle()`) on top of the `background` style's tint — in `DayCell` (month grid, week/day header) and `AgendaView`. The type editor only offers it when one of its two styles is "Fond", via the `PatternPicker` shared with the theme editor.
+
+**Font preview**: the font search loads every suggested family on open, so each entry renders in its own face with a sample line; the chosen font's sample shows under the field.
+
+**Live preview**: while `ThemeEditorDialog` is open it writes its draft to `useThemeStore.previewTheme` (never persisted), which `Providers` applies instead of the selected theme; unmounting the form (save, cancel, closing the drawer) clears it.
+
+**Suivre le système**: `useThemeStore.systemThemes` (`{ light, dark }` theme ids, persisted per device, not part of the sync bundle) makes `Providers` keep `selectedThemeId` in step with `prefers-color-scheme` via a `matchMedia` listener. Any manual `selectTheme` (sidebar click, preset) turns it off; deleting one of its two themes does too.
 
 ---
 
