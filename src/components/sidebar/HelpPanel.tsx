@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Bug, GitBranch } from "lucide-react";
 import { PanelHeader, InlineLink } from "../settings/PanelHeader";
 import { useUIStore } from "../../store";
+import { GettingStarted } from "./GettingStarted";
 import type { DrawerPanel } from "../../store";
 
 const REPO_URL = "https://github.com/essenlive/web-cal";
@@ -26,6 +27,7 @@ export function HelpPanel() {
       <PanelHeader title="Aide" description="Vos réglages restent dans ce navigateur, sans compte." />
 
       <div className="flex flex-col gap-3 px-4 pb-4">
+        <GettingStarted />
         <ol className="space-y-2.5">
           {STEPS.map((step, i) => (
             <li key={step.panel} className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm">

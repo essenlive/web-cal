@@ -173,7 +173,7 @@ export const useConnectionStore = create<ConnectionStore>()(
 
 // ── Event Types Store ─────────────────────────────────────────────────────────
 
-const DEFAULT_EVENT_TYPES: EventType[] = [
+export const DEFAULT_EVENT_TYPES: EventType[] = [
   { id: "meeting",    label: "Classique",  color: "#3b82f6", icon: "Users",       allDayStyle: "background", timedStyle: "block", isDefault: true },
   { id: "deadline",   label: "Deadline",   color: "#ef4444", icon: "AlertCircle", allDayStyle: "background", timedStyle: "block" },
   { id: "workshop",   label: "Workshop",   color: "#8b5cf6", icon: "Layers",      allDayStyle: "background", timedStyle: "block" },
@@ -501,6 +501,30 @@ export const usePresetStore = create<PresetStore>()(
       },
     }),
     { name: "overcal:presets", storage }
+  )
+);
+
+// ── Onboarding Store ──────────────────────────────────────────────────────────
+// Only what can't be derived from the other stores — see lib/onboarding.ts for how
+// each "Bien démarrer" step is ticked from their state.
+interface OnboardingStore {
+  /** User clicked "Masquer": the Help drawer stops opening itself on a fresh instance. */
+  dismissed: boolean;
+  /** An AI settings import succeeded at least once (not derivable from the imported data). */
+  aiImported: boolean;
+  setDismissed: (v: boolean) => void;
+  markAiImported: () => void;
+}
+
+export const useOnboardingStore = create<OnboardingStore>()(
+  persist(
+    (set) => ({
+      dismissed: false,
+      aiImported: false,
+      setDismissed: (dismissed) => set({ dismissed }),
+      markAiImported: () => set({ aiImported: true }),
+    }),
+    { name: "webcal:onboarding", storage }
   )
 );
 

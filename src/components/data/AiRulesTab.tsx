@@ -16,7 +16,7 @@ import { Copy, Download, Upload } from "lucide-react";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
 import { cn } from "../../lib/utils";
-import { useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore, usePresetStore, useThemeStore } from "../../store";
+import { useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore, usePresetStore, useThemeStore, useOnboardingStore } from "../../store";
 import { applyAiImport, type AiImportMode, type AiImportSummary } from "../../lib/ai-import";
 import { buildAiExport } from "../../lib/ai-prompt";
 
@@ -65,6 +65,7 @@ export function AiRulesTab() {
     }
     setError(null);
     setSummary(result);
+    useOnboardingStore.getState().markAiImported();
     setImportText("");
     toast.success(mode === "replace" ? "Réglages remplacés" : "Réglages ajoutés");
   }

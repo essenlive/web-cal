@@ -79,8 +79,9 @@ export async function importSettingsFile(file: File): Promise<void> {
   window.location.reload();
 }
 
-/** Wipes every persisted key and reloads, so every store re-seeds its defaults from scratch. */
+/** Wipes every persisted key and reloads, so every store re-seeds its defaults from scratch —
+ *  including the "Bien démarrer" state (not exported, but a reset instance should start over). */
 export function resetSettings(): void {
-  for (const key of SETTINGS_KEYS) localStorage.removeItem(key);
+  for (const key of [...SETTINGS_KEYS, "webcal:onboarding"]) localStorage.removeItem(key);
   window.location.reload();
 }

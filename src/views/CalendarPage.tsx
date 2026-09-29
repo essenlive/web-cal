@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { Header } from "../components/sidebar/Header";
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
 import { SettingsDrawer } from "../components/settings/SettingsDrawer";
-import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../store";
+import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore, useOnboardingStore } from "../store";
+import { useOnboardingSteps } from "../components/sidebar/GettingStarted";
+import { coreDone, isFreshInstance } from "../lib/onboarding";
 import { stepDate } from "../lib/utils";
 import { presetMatchesState } from "../lib/presets";
 import type { CalendarView } from "../types";
@@ -13,8 +16,39 @@ const VIEW_KEYS: Record<string, CalendarView> = { m: "month", w: "week", d: "day
 const VALID_VIEWS: CalendarView[] = Object.values(VIEW_KEYS);
 const DATE_FORMAT = "yyyy-MM-dd";
 
+/** Session flag: the Help drawer auto-opens at most once per tab session. */
+const HELP_AUTO_OPENED = "webcal:help-auto-opened";
+
+/**
+ * "Bien démarrer" wiring (see GettingStarted.tsx): on a fresh instance (only the demo source)
+ * whose checklist wasn't dismissed, open the Help drawer once per session; and toast when the
+ * three core steps become done — only on that transition, never on load if already done.
+ */
+function useOnboarding() {
+  const steps = useOnboardingSteps();
+  const ready = coreDone(steps);
+  const wasReady = useRef(ready);
+
+  useEffect(() => {
+    if (ready && !wasReady.current) toast.success("C'est prêt ! Tes sources, types et règles sont en place.");
+    wasReady.current = ready;
+  }, [ready]);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(HELP_AUTO_OPENED)) return;
+      if (useOnboardingStore.getState().dismissed || !isFreshInstance(useConnectionStore.getState().connections)) return;
+      sessionStorage.setItem(HELP_AUTO_OPENED, "1");
+    } catch {
+      return; // no sessionStorage (private mode…): don't risk opening on every load
+    }
+    useUIStore.getState().openDrawer("help");
+  }, []);
+}
+
 export function CalendarPage() {
   const { sidebarOpen, toggleSidebar } = useUIStore();
+  useOnboarding();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

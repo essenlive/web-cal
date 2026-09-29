@@ -173,6 +173,16 @@ Display types can use the same textures: `EventType.pattern` is drawn in the typ
 
 ---
 
+## Onboarding ("Bien démarrer")
+
+A checklist at the top of the Help drawer ([GettingStarted.tsx](../src/components/sidebar/GettingStarted.tsx)). Its steps are **derived from the stores, not tracked** ([lib/onboarding.ts](../src/lib/onboarding.ts) `onboardingSteps()`): a non-demo source exists; a type outside `DEFAULT_EVENT_TYPES`; a name/event rule whose id isn't a seeded `seed-…` one; and, as bonus steps, removing the demo source (offered once a real source exists), a preset, a custom or non-"Clair" theme, and a successful AI import. That last one is the only thing not derivable, so it's a flag in the one new persisted key, `webcal:onboarding` (`aiImported`, plus `dismissed`). Deleting what ticked a step un-ticks it, and importing settings ticks whatever they contain.
+
+`CalendarPage`'s `useOnboarding()` opens the Help drawer by itself on a fresh instance (only the demo source, not dismissed) — at most once per tab session (a `sessionStorage` flag) — and toasts "C'est prêt" on the transition to all core steps done (never on load). "Réinitialiser" clears `webcal:onboarding` too.
+
+Each open step's "Commencer" button opens the form that completes it — the same action as the matching sidebar "+" (for rules: a blank rule, edited inline in the rules drawer). No guided-tour library: an earlier driver.js version was tried and dropped as not worth the dependency.
+
+---
+
 ## Notifications
 
 Transient feedback (export/import confirmations, errors) uses [sonner](https://sonner.emilkowal.ski/) — call `toast.success(...)` / `toast.error(...)` from any client component, no plumbing needed. The host `<Toaster />` ([components/ui/sonner.tsx](../src/components/ui/sonner.tsx)) is mounted once in [app/providers.tsx](../src/app/providers.tsx), styled with the app's `popover`/`border` tokens so it matches whichever theme is active. This doesn't replace `ActionButton`'s inline armed/pending/success/error state (used for connection tests and destructive confirmations) — that pattern stays for feedback that's local to a specific button.

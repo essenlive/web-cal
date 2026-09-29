@@ -38,9 +38,11 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-/** A sync pairing link (?room=...&key=... in the hash) always opens straight into the Sync tab. */
+/** A sync pairing link (?room=...&key=... in the hash) always opens straight into the Sync tab;
+ *  `/data#ai` (the Help drawer's AI step) opens the AI tab. */
 function initialTab(): TabId {
   if (typeof window !== "undefined" && window.location.hash.includes("room=")) return "sync";
+  if (typeof window !== "undefined" && window.location.hash === "#ai") return "ai";
   return "export";
 }
 
