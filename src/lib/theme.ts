@@ -201,7 +201,7 @@ export function resolveThemeCssVars(theme: Theme): ThemeCssVars {
   };
 }
 
-/** Preset accent swatches offered in ThemeEditorDialog, matching the palette used elsewhere (SettingsPage, AddConnectionModal). */
+/** Preset accent swatches offered in ThemeForm, matching the palette used elsewhere (SettingsPage, ConnectionForm). */
 export const THEME_ACCENT_PRESETS = [
   "#6366f1", "#3b82f6", "#8b5cf6", "#ec4899", "#ef4444",
   "#f59e0b", "#10b981", "#14b8a6", "#06b6d4", "#64748b",
@@ -248,7 +248,7 @@ export function loadGoogleFont(rawFamily: string): void {
 }
 
 /**
- * Preset border-radius scale offered in ThemeEditorDialog. Every rounded-*
+ * Preset border-radius scale offered in ThemeForm. Every rounded-*
  * utility in the app (sm/md/lg/xl/2xl/3xl) derives from this single value
  * via globals.css's @theme block, so picking a tier here consistently
  * affects badges, inputs, buttons, cards and dialogs alike — not just the

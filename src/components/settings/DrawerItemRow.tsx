@@ -16,7 +16,7 @@ import { cn } from "../../lib/utils";
 import { GripVertical, Pencil, Copy, Trash2, Check, Sparkles, Plus } from "lucide-react";
 import { ActionButton } from "../ui/action-button";
 import { SimpleTooltip } from "../ui/tooltip";
-import type { DragProps } from "../sidebar/Sidebar";
+import type { DragProps } from "../../hooks/useDragReorder";
 
 export function IconButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (

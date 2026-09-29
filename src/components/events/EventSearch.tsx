@@ -25,7 +25,7 @@ const OPEN_RANGE_MONTHS = 6;
 
 /** Sorts by closeness to "now" (soonest-upcoming/most-recent first) rather than plain
  *  chronological order — a plain helper (not inlined in a memo) so the Date.now() read
- *  doesn't run during render, same pattern as Sidebar.tsx's connectionStatusDetail(). */
+ *  doesn't run during render, same pattern as lib/connection-status.ts's connectionStatusDetail(). */
 function sortByRelevance(events: CalendarEvent[]): CalendarEvent[] {
   const now = Date.now();
   return [...events].sort(

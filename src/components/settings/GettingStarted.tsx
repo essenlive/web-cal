@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Check, Circle, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
-import { cn } from "../../lib/utils";
+import { cn, SECTION_LABEL } from "../../lib/utils";
 import {
   DEFAULT_EVENT_TYPES, useConnectionStore, useEventTypeStore, useOnboardingStore, usePresetStore, useRuleStore, useThemeStore, useUIStore,
   type DrawerPanel,
@@ -99,7 +99,7 @@ export function GettingStarted() {
       )}
       {bonus.length > 0 && (
         <>
-          {!ready && <h4 className="pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Pour aller plus loin</h4>}
+          {!ready && <h4 className={cn("pt-1", SECTION_LABEL)}>Pour aller plus loin</h4>}
           <ul>{bonus.map((s) => <StepRow key={s.id} step={s} />)}</ul>
         </>
       )}

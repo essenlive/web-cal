@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PresetModal — create/edit a preset's name, description, and color.
+ * PresetForm — create/edit a preset's name, description, and color.
  * Visibility state (which connections/event types are hidden) and the active
  * theme are captured at creation time and never silently changed afterward.
  */
@@ -12,11 +12,11 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { PanelHeader, PanelFooter } from "./PanelHeader";
 import { ColorPicker } from "./ColorPicker";
-import { PRESET_COLORS } from "./EventTypeModal";
+import { PRESET_COLORS } from "./EventTypeForm";
 import { usePresetStore } from "../../store";
 import type { Preset } from "../../types";
 
-export interface PresetModalProps {
+export interface PresetFormProps {
   /** Present when editing an existing preset; absent when creating. */
   preset?: Preset;
   /** When set, editing this preset shows a delete button. Omitted when creating. */
@@ -25,7 +25,7 @@ export interface PresetModalProps {
   onClose: () => void;
 }
 
-export function PresetModal({ preset, onDelete, onClose }: PresetModalProps) {
+export function PresetForm({ preset, onDelete, onClose }: PresetFormProps) {
   const { presets, addPreset, updatePreset } = usePresetStore();
 
   const [name, setName] = useState(preset?.name ?? "");

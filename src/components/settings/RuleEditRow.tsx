@@ -7,8 +7,8 @@
  * arrow, and a display-type dropdown (badge plus the start of the type's
  * name), all committing immediately via updateRule. Shared by the main rules
  * drawer (RulesPage.tsx, everything editable) and the "rules for this item"
- * sections embedded in EventTypeModal (`lockDisplayType` — the target type is
- * implied by which form you're in) and AddConnectionModal (`lockValue` — the
+ * sections embedded in EventTypeForm (`lockDisplayType` — the target type is
+ * implied by which form you're in) and ConnectionForm (`lockValue` — the
  * source is implied to be "this connection").
  */
 
@@ -19,7 +19,7 @@ import { cn } from "../../lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent, SimpleTooltip } from "../ui/tooltip";
 import { ItemBadge } from "../sidebar/ItemRow";
-import type { DragProps } from "../sidebar/Sidebar";
+import type { DragProps } from "../../hooks/useDragReorder";
 import { DeleteButton, IconButton } from "./DrawerItemRow";
 import { useRuleStore, useEventTypeStore, useConnectionStore } from "../../store";
 import { getIconEl } from "../../lib/icons";
@@ -33,7 +33,7 @@ export type EditableMatchType = "source" | "name";
  * Ensures exactly one enabled `matchType:"source"` rule exists for `connectionId`,
  * creating one against the default display type if missing, and returns it (or
  * `undefined` for the one render before the creating effect commits). Shared by
- * AddConnectionModal's source-rule section and the standalone rules drawer's
+ * ConnectionForm's source-rule section and the standalone rules drawer's
  * "Sources" list — both need "one undeletable rule per source" without duplicating
  * the find-or-create wiring.
  */

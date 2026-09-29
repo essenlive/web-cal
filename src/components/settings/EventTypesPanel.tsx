@@ -10,7 +10,7 @@ import { useState } from "react";
 import { useUIStore, useEventTypeStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { ItemBadge } from "../sidebar/ItemRow";
-import { EventTypeModal } from "./EventTypeModal";
+import { EventTypeForm } from "./EventTypeForm";
 import { getIconEl } from "../../lib/icons";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader, InlineLink } from "./PanelHeader";
@@ -32,7 +32,7 @@ export function EventTypesPanel({ initialEditId, openCreate }: { initialEditId?:
 
   if (formOpen) {
     return (
-      <EventTypeModal
+      <EventTypeForm
         key={editingType?.id ?? "new-type"}
         type={editingType ?? undefined}
         existingLabels={types.map((t) => t.label)}

@@ -77,8 +77,6 @@ export function computeFetchKey(conn: Connection): string {
   switch (conn.type) {
     case "webcal":
       return `webcal:${conn.id}:${conn.url}:${conn.proxyUrl ?? ""}`;
-    case "caldav":
-      return `caldav:${conn.id}:${conn.url}:${conn.username}:${conn.password}:${conn.proxyUrl ?? ""}`;
     case "demo":
       return `demo:${conn.id}`;
   }

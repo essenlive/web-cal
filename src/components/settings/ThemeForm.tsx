@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * ThemeEditorDialog — create or edit a custom theme (name, base mode, accent
+ * ThemeForm — create or edit a custom theme (name, base mode, accent
  * color), and delete it. Opened from the sidebar's "Thème" section / ThemesPanel.
- * Modeled after AddConnectionModal (dialog chrome, step layout) and
+ * Modeled after ConnectionForm (dialog chrome, step layout) and
  * EventTypeForm's color-picker + duplicate-name validation.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { choiceClass, cn } from "../../lib/utils";
 import { Input } from "../ui/input";
-import { ColorPicker } from "../settings/ColorPicker";
-import { PatternPicker } from "../settings/PatternPicker";
-import { PanelHeader, PanelFooter } from "../settings/PanelHeader";
+import { ColorPicker } from "./ColorPicker";
+import { PatternPicker } from "./PatternPicker";
+import { PanelHeader, PanelFooter } from "./PanelHeader";
 import { useThemeStore } from "../../store";
 import {
   THEME_ACCENT_PRESETS,
@@ -35,7 +35,7 @@ const BASE_COLOR_FIELDS = [
   { key: "muted", label: "Atténué" },
 ] as const;
 
-export interface ThemeEditorDialogProps {
+export interface ThemeFormProps {
   /** Present when editing an existing custom theme; absent when creating. */
   theme?: Theme;
   /** Called to dismiss this panel (Cancel/X, or after a successful save/delete). */
@@ -47,7 +47,7 @@ export interface ThemeEditorDialogProps {
  * SettingsDrawer remounts this component (via `key`) each time it's opened for a
  * new create/edit session, so fresh initial state is simply what mounting gives us.
  */
-export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
+export function ThemeForm({ theme, onClose }: ThemeFormProps) {
   const { customThemes, addTheme, updateTheme, removeTheme, setPreviewTheme } = useThemeStore();
 
   const [name, setName] = useState(theme?.name ?? "");
@@ -154,10 +154,8 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
                     type="button"
                     onClick={() => handleModeChange(m)}
                     className={cn(
-                      "rounded-lg border px-3 py-2 text-sm font-medium transition-all",
-                      mode === m
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:bg-muted text-muted-foreground"
+                      "rounded-lg px-3 py-2 text-sm font-medium",
+                      choiceClass(mode === m)
                     )}
                   >
                     {m === "light" ? "Clair" : "Sombre"}
@@ -262,10 +260,8 @@ export function ThemeEditorDialog({ theme, onClose }: ThemeEditorDialogProps) {
                     type="button"
                     onClick={() => setRadius(r.value)}
                     className={cn(
-                      "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2 text-xs transition-all",
-                      radius === r.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:bg-muted text-muted-foreground"
+                      "flex flex-col items-center gap-1.5 rounded-lg px-2 py-2 text-xs",
+                      choiceClass(radius === r.value)
                     )}
                   >
                     <span className="size-5 border-2 border-current" style={{ borderRadius: r.value }} />

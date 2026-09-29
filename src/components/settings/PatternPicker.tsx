@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "../../lib/utils";
+import { choiceClass, cn } from "../../lib/utils";
 import { THEME_PATTERNS } from "../../lib/theme";
 import type { ThemePattern } from "../../types";
 
@@ -23,10 +23,8 @@ export function PatternPicker({ value, onChange, ink, label = "Motif de fond" }:
             aria-checked={value === p.value}
             onClick={() => onChange(p.value)}
             className={cn(
-              "flex flex-col items-center gap-1.5 rounded-lg border p-1.5 text-[11px] transition-all",
-              value === p.value
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border hover:bg-muted text-muted-foreground"
+              "flex flex-col items-center gap-1.5 rounded-lg p-1.5 text-[11px]",
+              choiceClass(value === p.value)
             )}
           >
             <span

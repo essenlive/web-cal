@@ -10,7 +10,6 @@ import ICAL from "ical.js";
 import { toast } from "sonner";
 import { HttpError, parseRetryAfterMs, type DataProvider } from "./data-provider";
 import type { CalendarEvent } from "../types";
-import type { WebCalSource } from "../store";
 
 // ── ICS parsing (via ical.js — RFC 5545 line folding, TZID, and escaping) ──────
 
@@ -128,6 +127,13 @@ export function parseICS(text: string, rangeStart: Date, rangeEnd: Date): Parsed
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
+
+export interface WebCalSource {
+  id: string;
+  name: string;
+  url: string;
+  color: string;
+}
 
 export class WebCalProvider implements DataProvider {
   private sources: WebCalSource[];

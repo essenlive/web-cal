@@ -2,6 +2,7 @@
 
 import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 import { usePresetStore } from "../../store";
+import { SECTION_LABEL } from "../../lib/utils";
 
 const VIEW_ROWS = [
   { keys: "M", label: "Vue mois" },
@@ -24,7 +25,7 @@ function Row({ keys, label }: { keys: string; label: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{title}</span>
+      <span className={SECTION_LABEL}>{title}</span>
       {children}
     </div>
   );

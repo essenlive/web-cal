@@ -5,7 +5,7 @@ import { Sidebar } from "../components/sidebar/Sidebar";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
 import { SettingsDrawer } from "../components/settings/SettingsDrawer";
 import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore, useOnboardingStore } from "../store";
-import { useOnboardingSteps } from "../components/sidebar/GettingStarted";
+import { useOnboardingSteps } from "../components/settings/GettingStarted";
 import { coreDone, isFreshInstance } from "../lib/onboarding";
 import { stepDate } from "../lib/utils";
 import { presetMatchesState } from "../lib/presets";
@@ -15,7 +15,7 @@ import type { CalendarView } from "../types";
 const VIEW_KEYS: Record<string, CalendarView> = { m: "month", w: "week", d: "day", a: "agenda" };
 
 /** Session flag: the Help drawer auto-opens at most once per tab session. */
-const HELP_AUTO_OPENED = "webcal:help-auto-opened";
+const HELP_AUTO_OPENED = "overcal:help-auto-opened";
 
 /**
  * "Bien démarrer" wiring (see GettingStarted.tsx): on a fresh instance (only the demo source)

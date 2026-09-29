@@ -12,11 +12,13 @@ import { useThemeStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { orderThemes } from "../../lib/theme";
 import { ItemBadge } from "../sidebar/ItemRow";
-import { ThemeEditorDialog } from "../sidebar/ThemeEditorDialog";
+import { ThemeForm } from "./ThemeForm";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { Switch } from "../ui/switch";
+import { SettingRow } from "./SettingRow";
 import { PanelHeader } from "./PanelHeader";
 import type { Theme } from "../../types";
+import { cn, NATIVE_SELECT } from "../../lib/utils";
 
 function themeBadge(theme: Theme) {
   return <ItemBadge color={theme.accent}>{theme.mode === "dark" ? <Moon size={10} color="#fff" /> : <Sun size={10} color="#fff" />}</ItemBadge>;
@@ -37,7 +39,7 @@ export function ThemesPanel({ initialEditId, openCreate }: { initialEditId?: str
   }
 
   if (formOpen) {
-    return <ThemeEditorDialog key={editingTheme?.id ?? "new-theme"} theme={editingTheme ?? undefined} onClose={back} />;
+    return <ThemeForm key={editingTheme?.id ?? "new-theme"} theme={editingTheme ?? undefined} onClose={back} />;
   }
 
   return (
@@ -72,31 +74,31 @@ function SystemThemeRow({ themes, value, onChange }: {
   onChange: (v: { light: string; dark: string } | null) => void;
 }) {
   const firstOf = (mode: Theme["mode"]) => (themes.find((t) => t.mode === mode) ?? themes[0]).id;
-  const select = "min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs";
   return (
-    <div className="rounded-lg bg-muted/50 px-3 py-2.5 mb-3 space-y-2">
-      <label className="flex items-center justify-between gap-3 cursor-pointer">
-        <span>
-          <span className="block text-sm font-medium text-foreground">Suivre le système</span>
-          <span className="block text-xs text-muted-foreground">Bascule selon le mode clair/sombre de l&apos;appareil</span>
-        </span>
+    <SettingRow
+      className="mb-3"
+      title="Suivre le système"
+      description="Bascule selon le mode clair/sombre de l'appareil"
+      control={
         <Switch
+          aria-label="Suivre le système"
           checked={!!value}
           onCheckedChange={(on) => onChange(on ? { light: firstOf("light"), dark: firstOf("dark") } : null)}
         />
-      </label>
+      }
+    >
       {value && (
         <div className="flex gap-2">
           {(["light", "dark"] as const).map((mode) => (
             <label key={mode} className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground">
               {mode === "light" ? <Sun size={12} /> : <Moon size={12} />}
-              <select className={select} value={value[mode]} onChange={(e) => onChange({ ...value, [mode]: e.target.value })} aria-label={mode === "light" ? "Thème clair" : "Thème sombre"}>
+              <select className={cn("min-w-0 flex-1", NATIVE_SELECT)} value={value[mode]} onChange={(e) => onChange({ ...value, [mode]: e.target.value })} aria-label={mode === "light" ? "Thème clair" : "Thème sombre"}>
                 {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </label>
           ))}
         </div>
       )}
-    </div>
+    </SettingRow>
   );
 }

@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { Bug, GitBranch } from "lucide-react";
-import { PanelHeader, InlineLink } from "../settings/PanelHeader";
+import { PanelHeader, InlineLink } from "./PanelHeader";
 import { useUIStore } from "../../store";
 import { GettingStarted } from "./GettingStarted";
 import type { DrawerPanel } from "../../store";

@@ -3,7 +3,7 @@
 /**
  * ConnectionsPanel — list wrapper for the "Sources" drawer, same list/edit
  * composition as RulesPanel: shows every connection first, drills into
- * AddConnectionModal (with a back-chevron) when one is opened for edit/create.
+ * ConnectionForm (with a back-chevron) when one is opened for edit/create.
  */
 
 import { useState } from "react";
@@ -13,8 +13,8 @@ import { useConnectionStore } from "../../store";
 import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync } from "../../context/DataProviderContext";
 import { useDragReorder } from "../../hooks/useDragReorder";
 import { ItemBadge } from "../sidebar/ItemRow";
-import { connectionStatusDetail, statusColor } from "../sidebar/Sidebar";
-import { AddConnectionModal } from "./AddConnectionModal";
+import { connectionStatusDetail, statusColor } from "../../lib/connection-status";
+import { ConnectionForm } from "./ConnectionForm";
 import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
 import { PanelHeader } from "./PanelHeader";
 import { ActionButton } from "../ui/action-button";
@@ -39,7 +39,7 @@ export function ConnectionsPanel({ initialEditId, openCreate }: { initialEditId?
 
   if (formOpen) {
     return (
-      <AddConnectionModal
+      <ConnectionForm
         key={editingConn?.id ?? "new-conn"}
         connection={editingConn ?? undefined}
         existingColors={connections.map((c) => c.color)}

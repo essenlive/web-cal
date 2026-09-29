@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { cn } from "../../lib/utils";
+import { cn, SECTION_LABEL } from "../../lib/utils";
 import { zonedNow } from "../../lib/timezone";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
@@ -29,6 +29,7 @@ import { ActionButton } from "../ui/action-button";
 import { useUIStore, useConnectionStore, useEventTypeStore, useRuleStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync } from "../../context/DataProviderContext";
 import { getIconEl } from "../../lib/icons";
+import { connectionStatusDetail, statusColor } from "../../lib/connection-status";
 import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
 import { PresetSelector } from "./PresetSelector";
@@ -36,51 +37,9 @@ import { SimpleTooltip } from "../ui/tooltip";
 import { orderThemes } from "../../lib/theme";
 import type { Connection, ConnectionStatus, ConnectionSyncMeta, EventType, Theme } from "../../types";
 
-/** Pointer-based (mouse + touch) drag handle wiring for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
-export interface DragProps {
-  ref: (el: HTMLElement | null) => void;
-  dragging: boolean;
-  over: boolean;
-  onHandlePointerDown: (e: React.PointerEvent) => void;
-}
-
 // ── Compact data source row ───────────────────────────────────────────────────
 
-export function statusColor(status: ConnectionStatus) {
-  switch (status) {
-    case "active":  return "bg-green-500";
-    case "error":   return "bg-amber-500";
-    case "loading": return "bg-muted-foreground animate-pulse";
-    default:        return "bg-muted-foreground/40";
-  }
-}
-
-export function statusLabel(status: ConnectionStatus) {
-  switch (status) {
-    case "active":  return "Connecté";
-    case "error":   return "Échec de connexion";
-    case "loading": return "Chargement…";
-    default:        return "Non vérifié";
-  }
-}
-
-/**
- * Full sync detail behind a connection's status dot: the last error (with when it'll
- * retry, if backed off) or, when healthy, when it last actually synced — see
- * useConnectionSyncMeta(). Falls back to the bare statusLabel() before any fetch attempt.
- */
-export function connectionStatusDetail(status: ConnectionStatus, meta?: ConnectionSyncMeta): string {
-  if (status === "error") {
-    const retrying = meta?.nextRetryAt && meta.nextRetryAt > Date.now()
-      ? ` — nouvelle tentative à ${format(meta.nextRetryAt, "HH:mm")}`
-      : "";
-    return (meta?.message ?? statusLabel(status)) + retrying;
-  }
-  if (meta?.lastSyncedAt) return `${statusLabel(status)} — synchronisé à ${format(meta.lastSyncedAt, "HH:mm")}`;
-  return statusLabel(status);
-}
-
-export function ConnectionRow({ connection, status, syncMeta, onEdit, onToggleHidden }: {
+function ConnectionRow({ connection, status, syncMeta, onEdit, onToggleHidden }: {
   connection: Connection; status: ConnectionStatus; syncMeta?: ConnectionSyncMeta; onEdit: () => void; onToggleHidden: () => void;
 }) {
   const hidden = !!connection.hidden;
@@ -104,7 +63,7 @@ export function ConnectionRow({ connection, status, syncMeta, onEdit, onToggleHi
 
 // ── Compact event type row ────────────────────────────────────────────────────
 
-export function TypeRow({ type, onEdit, onToggleHidden }: {
+function TypeRow({ type, onEdit, onToggleHidden }: {
   type: EventType; onEdit: () => void; onToggleHidden: () => void;
 }) {
   const hidden = !!type.hidden;
@@ -123,7 +82,7 @@ export function TypeRow({ type, onEdit, onToggleHidden }: {
 
 // ── Compact theme row ─────────────────────────────────────────────────────────
 
-export function ThemeRow({ theme, active, onSelect, onEdit }: {
+function ThemeRow({ theme, active, onSelect, onEdit }: {
   theme: Theme; active: boolean; onSelect: () => void; onEdit?: () => void;
 }) {
   return (
@@ -285,7 +244,7 @@ export function Sidebar() {
             </span>
             <button
               onClick={() => openDrawer("rules")}
-              className="flex-1 min-w-0 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wide truncate"
+              className={cn("flex-1 min-w-0 text-left truncate hover:text-foreground", SECTION_LABEL)}
             >
               Règles
             </button>

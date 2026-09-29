@@ -30,7 +30,7 @@ import {
   GRANULARITIES, type RangeStats, type BucketGranularity,
 } from "../lib/eventStats";
 import { describeMatch } from "../lib/rules";
-import { EnsureSourceRule } from "./RulesPage";
+import { EnsureSourceRule } from "../components/settings/RulesPanel";
 import { ItemBadge } from "../components/sidebar/ItemRow";
 import { EventPeriodPicker } from "../components/events/EventPeriodPicker";
 import { getIconEl } from "../lib/icons";

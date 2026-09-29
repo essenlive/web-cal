@@ -2,10 +2,9 @@
  * Parses the JSON produced by the "prompt autonome" (see docs/ai-rules-prompt.md
  * and its schema, docs/ai-rules-schema.json) — display types, matching rules,
  * presets and themes drafted by an AI from the user's own calendar sources/events.
- * Uses the same envelope as web-cal's settings export/import (see lib/settings-export.ts:
- * `{ version, exportedAt, data: { "overcal:event-types": {...}, "overcal:rules": {...}, ... } }`),
- * restricted to those four keys, so the AI's output is schema-checkable against a
- * shape web-cal already knows how to read. applyAiImport() below then merges it
+ * Envelope: `{ version, exportedAt, data: { "overcal:event-types": {...}, "overcal:rules": {...}, ... } }`,
+ * keyed like the stores' persisted localStorage blobs (`{ state: {...} }` per key), restricted
+ * to those four keys, so the AI's output is schema-checkable against a documented shape. applyAiImport() below then merges it
  * into, or replaces, the matching stores.
  *
  * Deliberately permissive on the *content* of each field: a malformed value

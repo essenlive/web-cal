@@ -11,12 +11,12 @@ import { Drawer, DrawerContent } from "../ui/drawer";
 import { useUIStore } from "../../store";
 import { ConnectionsPanel } from "./ConnectionsPanel";
 import { EventTypesPanel } from "./EventTypesPanel";
-import { RulesPanel } from "../../views/RulesPage";
+import { RulesPanel } from "./RulesPanel";
 import { ThemesPanel } from "./ThemesPanel";
-import { PresetsPanel } from "../sidebar/PresetsPanel";
-import { PreferencesPanel } from "../../views/SettingsPage";
-import { ShortcutsPanel } from "../sidebar/ShortcutsHelp";
-import { HelpPanel } from "../sidebar/HelpPanel";
+import { PresetsPanel } from "./PresetsPanel";
+import { PreferencesPanel } from "./PreferencesPanel";
+import { ShortcutsPanel } from "./ShortcutsPanel";
+import { HelpPanel } from "./HelpPanel";
 
 export function SettingsDrawer() {
   const { activeDrawer, closeDrawer } = useUIStore();

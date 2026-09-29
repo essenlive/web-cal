@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RefreshCw } from "lucide-react";
-import { statusColor, statusLabel } from "../sidebar/Sidebar";
+import { statusColor, statusLabel } from "../../lib/connection-status";
 import { useConnectionStore } from "../../store";
 import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync, useDebugCache } from "../../context/DataProviderContext";
-import { cn } from "../../lib/utils";
+import { cn, NATIVE_SELECT } from "../../lib/utils";
 import { ActionButton } from "../ui/action-button";
 import { CopySnapshotButton } from "./CopySnapshotButton";
 import { SortHeader, type SortDir } from "./table";
@@ -26,7 +26,7 @@ function fmt(ms: number | null) {
 }
 
 /** Plain helper (not inlined in JSX) so the Date.now() read doesn't run during render — same
- *  pattern as Sidebar.tsx's connectionStatusDetail(). */
+ *  pattern as lib/connection-status.ts's connectionStatusDetail(). */
 function retryLabel(entry?: ConnectionCacheEntry) {
   if (!entry?.nextRetryAt || entry.nextRetryAt <= Date.now()) return "—";
   return `${fmt(entry.nextRetryAt)} (backoff ${Math.round(entry.backoffMs / 1000)}s)`;
@@ -107,13 +107,12 @@ export function SourcesPanel() {
           placeholder="Rechercher par nom…"
           className="w-56 max-w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
         />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={NATIVE_SELECT}>
           <option value="all">Tous les types</option>
           <option value="webcal">webcal</option>
-          <option value="caldav">caldav</option>
           <option value="demo">demo</option>
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className={NATIVE_SELECT}>
           <option value="all">Statut : tous</option>
           <option value="active">Connecté</option>
           <option value="error">Échec de connexion</option>

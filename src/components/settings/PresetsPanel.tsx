@@ -9,11 +9,11 @@
 import { useState } from "react";
 import { usePresetStore, useUIStore } from "../../store";
 import { useDragReorder } from "../../hooks/useDragReorder";
-import { ItemBadge } from "./ItemRow";
-import { PRESET_COLORS } from "../settings/EventTypeModal";
-import { PresetModal } from "../settings/PresetModal";
-import { DrawerItemRow, AddItemButton } from "../settings/DrawerItemRow";
-import { PanelHeader, InlineLink } from "../settings/PanelHeader";
+import { ItemBadge } from "../sidebar/ItemRow";
+import { PRESET_COLORS } from "./EventTypeForm";
+import { PresetForm } from "./PresetForm";
+import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
+import { PanelHeader, InlineLink } from "./PanelHeader";
 import type { Preset } from "../../types";
 
 export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: string; openCreate?: boolean } = {}) {
@@ -32,7 +32,7 @@ export function PresetsPanel({ initialEditId, openCreate }: { initialEditId?: st
 
   if (formOpen) {
     return (
-      <PresetModal
+      <PresetForm
         key={editingPreset?.id ?? "new-preset"}
         preset={editingPreset ?? undefined}
         onDelete={editingPreset ? () => { removePreset(editingPreset.id); back(); } : undefined}

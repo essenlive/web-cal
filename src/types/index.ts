@@ -46,7 +46,7 @@ export interface EventType {
 export interface CalendarEvent {
   id: string;
   title: string;
-  /** Provider-internal collection identifier (CalDAV href, WebCal source id, etc.) */
+  /** Id of the connection this event comes from (WebCal source id, or "demo"). */
   calendarId: string;
   /** Ingestion metadata only — display style is resolved exclusively via the rules engine. */
   eventTypeId: string;
@@ -174,29 +174,6 @@ export interface WebCalConnection {
   hidden?: boolean;
 }
 
-/** CalDAV server connection (RFC 4791). Read-only in v1. */
-export interface CalDAVConnection {
-  type: "caldav";
-  /** Stable UUID generated at creation time. */
-  id: string;
-  /** User-supplied display name, e.g. "Nextcloud – Personal". */
-  name: string;
-  /** CalDAV principal or calendar collection URL. */
-  url: string;
-  /** Account username or email. */
-  username: string;
-  /** Account password or app-specific password. Stored in localStorage only. */
-  password: string;
-  /** Hex color string, e.g. "#6366f1". */
-  color: string;
-  /** Optional CORS proxy prefix URL. */
-  proxyUrl?: string;
-  /** Optional display type applied to all events from this calendar. References EventType.id. */
-  displayTypeId?: string;
-  /** When true, this connection's events are excluded from all calendar views. Config/credentials are preserved. */
-  hidden?: boolean;
-}
-
 /**
  * Local demo calendar, seeded once on first run so the app never starts on an
  * empty, sourceless calendar. Read-only and offline — events come from
@@ -216,7 +193,7 @@ export interface DemoConnection {
  * Discriminated union — use `conn.type` to narrow to the specific variant.
  * TypeScript provides exhaustive narrowing via switch/case.
  */
-export type Connection = WebCalConnection | CalDAVConnection | DemoConnection;
+export type Connection = WebCalConnection | DemoConnection;
 
 // ── Preset types ───────────────────────────────────────────────────────────────
 

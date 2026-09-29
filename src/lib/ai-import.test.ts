@@ -11,7 +11,7 @@ const schema = JSON.parse(readFileSync(path.resolve(__dirname, "../../docs/ai-ru
 
 const connections: Connection[] = [
   { type: "webcal", id: "src-perso", name: "P-Perso", url: "https://example.com/secret-token.ics", color: "#8b5cf6" },
-  { type: "caldav", id: "src-work", name: "W-Equipe", url: "https://dav.example.com", username: "me", password: "hunter2", color: "#ef4444" },
+  { type: "webcal", id: "src-work", name: "W-Equipe", url: "https://dav.example.com/token-hunter2.ics", color: "#ef4444" },
 ];
 const existingIds = new Set(["meeting"]);
 

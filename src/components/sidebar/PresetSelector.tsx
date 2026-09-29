@@ -2,7 +2,7 @@
 
 /**
  * PresetSelector — compact sidebar preview, now a `Section` like Sources/Types/Règles/Thème.
- * Creating and renaming a preset both happen in the drawer (`PresetsPanel`/`PresetModal`,
+ * Creating and renaming a preset both happen in the drawer (`PresetsPanel`/`PresetForm`,
  * see SettingsDrawer) — this component only lists presets for quick apply/clear, plus a
  * fast inline "sync with current state" action that doesn't rise to the level of "editing".
  */
@@ -11,7 +11,7 @@ import { Pencil, RefreshCw, Link } from "lucide-react";
 import { toast } from "sonner";
 import { Section } from "./Section";
 import { ItemRow, ItemBadge } from "./ItemRow";
-import { PRESET_COLORS } from "../settings/EventTypeModal";
+import { PRESET_COLORS } from "../settings/EventTypeForm";
 import { useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore } from "../../store";
 import { capturePresetState, presetMatchesState, copyPresetLink } from "../../lib/presets";
 import type { Preset } from "../../types";

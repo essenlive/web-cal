@@ -1,14 +1,14 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
-import { ItemBadge } from "../components/sidebar/ItemRow";
-import { DrawerItemRow, AddItemButton } from "../components/settings/DrawerItemRow";
-import { RuleEditRow, useSourceRule } from "../components/settings/RuleEditRow";
-import { useFilteredRuleDragReorder } from "../components/settings/EventTypeModal";
-import { PanelHeader, InlineLink } from "../components/settings/PanelHeader";
-import { useUIStore, useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../store";
-import { getIconEl } from "../lib/icons";
-import { describeMatch } from "../lib/rules";
+import { ItemBadge } from "../sidebar/ItemRow";
+import { DrawerItemRow, AddItemButton } from "./DrawerItemRow";
+import { RuleEditRow, useSourceRule } from "./RuleEditRow";
+import { useFilteredRuleDragReorder } from "./EventTypeForm";
+import { PanelHeader, InlineLink } from "./PanelHeader";
+import { useUIStore, useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore } from "../../store";
+import { getIconEl } from "../../lib/icons";
+import { describeMatch } from "../../lib/rules";
 
 /** Ensures a connection's fixed source rule exists — auto-created if missing. Renders nothing; the row itself is rendered from the merged `rules` list once created. Also mounted by StatsPage, which reads `rules` without ever opening this drawer. */
 export function EnsureSourceRule({ connectionId }: { connectionId: string }) {

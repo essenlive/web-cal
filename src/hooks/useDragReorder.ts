@@ -1,5 +1,13 @@
 import { useRef, useState } from "react";
 
+/** One row's drag wiring, as returned by getDragProps(index). Omitted where a row isn't reorderable. */
+export interface DragProps {
+  ref: (el: HTMLElement | null) => void;
+  dragging: boolean;
+  over: boolean;
+  onHandlePointerDown: (e: React.PointerEvent) => void;
+}
+
 /**
  * Pointer Events (not HTML5 native drag-and-drop) so this works with touch as
  * well as mouse — native `draggable`/`ondragstart` never fires on touch
@@ -40,7 +48,7 @@ export function useDragReorder<T>(items: T[], getId: (item: T) => string, reorde
     window.removeEventListener("pointerup", onPointerUp);
   }
 
-  function getDragProps(index: number) {
+  function getDragProps(index: number): DragProps {
     return {
       ref: (el: HTMLElement | null) => { if (el) rows.current.set(index, el); else rows.current.delete(index); },
       dragging: drag.current?.from === index,

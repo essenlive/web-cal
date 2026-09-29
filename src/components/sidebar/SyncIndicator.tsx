@@ -10,8 +10,8 @@ import {
   useConnectionStatusMap, useConnectionSyncMeta, useDebugCache, useSourceSync, windowAround,
 } from "../../context/DataProviderContext";
 import { cacheState, type CacheState } from "../../lib/event-cache";
-import { cn } from "../../lib/utils";
-import { connectionStatusDetail, statusColor } from "./Sidebar";
+import { cn, NATIVE_SELECT, SECTION_LABEL } from "../../lib/utils";
+import { connectionStatusDetail, statusColor } from "../../lib/connection-status";
 
 /**
  * Global sync state + entry point to the sync dialog. Mounted in the calendar Header and
@@ -90,8 +90,6 @@ function SyncPanel() {
   const period = useMemo(() => windowAround(currentDate), [currentDate, cacheMonths]);
   const periodRange = { start: period.start.toISOString(), end: period.end.toISOString() };
 
-  const select = "rounded-md border border-border bg-background px-2 py-1 text-xs";
-
   return (
     <>
       <DialogHeader>
@@ -103,17 +101,17 @@ function SyncPanel() {
       </DialogHeader>
 
       <section className="space-y-2">
-        <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Période en cache</h3>
+        <h3 className={SECTION_LABEL}>Période en cache</h3>
         <div className="flex flex-wrap items-center gap-2 text-xs text-foreground">
           <label className="flex items-center gap-1.5">
             Passé
-            <select className={select} value={cacheMonths.back} onChange={(e) => setCacheMonths({ ...cacheMonths, back: Number(e.target.value) })}>
+            <select className={NATIVE_SELECT} value={cacheMonths.back} onChange={(e) => setCacheMonths({ ...cacheMonths, back: Number(e.target.value) })}>
               {BACK_OPTIONS.map((n) => <option key={n} value={n}>{n} mois</option>)}
             </select>
           </label>
           <label className="flex items-center gap-1.5">
             À venir
-            <select className={select} value={cacheMonths.forward} onChange={(e) => setCacheMonths({ ...cacheMonths, forward: Number(e.target.value) })}>
+            <select className={NATIVE_SELECT} value={cacheMonths.forward} onChange={(e) => setCacheMonths({ ...cacheMonths, forward: Number(e.target.value) })}>
               {FORWARD_OPTIONS.map((n) => <option key={n} value={n}>{n} mois</option>)}
             </select>
           </label>
@@ -125,7 +123,7 @@ function SyncPanel() {
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Sources</h3>
+        <h3 className={SECTION_LABEL}>Sources</h3>
         {connections.length === 0 && <p className="text-xs text-muted-foreground">Aucune source.</p>}
         <ul className="space-y-1.5">
           {connections.map((c) => {

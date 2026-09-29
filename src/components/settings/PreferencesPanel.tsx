@@ -1,20 +1,13 @@
-import { Switch } from "../components/ui/switch";
-import { PanelHeader } from "../components/settings/PanelHeader";
-import { TimezoneSelect } from "../components/settings/TimezoneSelect";
-import { useUIStore } from "../store";
+import { Switch } from "../ui/switch";
+import { PanelHeader } from "./PanelHeader";
+import { TimezoneSelect } from "./TimezoneSelect";
+import { SettingRow } from "./SettingRow";
+import { useUIStore } from "../../store";
 
 function ToggleRow({ title, description, checked, onCheckedChange }: {
   title: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void;
 }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
-      <div className="min-w-0">
-        <div className="text-sm font-medium text-foreground">{title}</div>
-        <div className="text-xs text-muted-foreground">{description}</div>
-      </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  );
+  return <SettingRow title={title} description={description} control={<Switch aria-label={title} checked={checked} onCheckedChange={onCheckedChange} />} />;
 }
 
 /** Preferences — rendered as drawer content from the sidebar's Settings icon. */

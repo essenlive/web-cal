@@ -1,10 +1,10 @@
 /**
- * EventTypeModal — popup create/edit form for a single event type.
+ * EventTypeForm — popup create/edit form for a single event type.
  * Used from the sidebar's compact event-type preview.
  */
 
-import { useMemo, useState } from "react";
-import { cn, firstGrapheme } from "../../lib/utils";
+import { useMemo, useState, type ReactNode } from "react";
+import { choiceClass, cn, firstGrapheme } from "../../lib/utils";
 import { Input } from "../ui/input";
 import { ColorPicker } from "./ColorPicker";
 import { PatternPicker } from "./PatternPicker";
@@ -128,9 +128,37 @@ export function StylePreview({
   );
 }
 
+/** One row of display-style options (all-day or timed), with its live preview as `children`. */
+function StylePicker({ label, value, onChange, children }: {
+  label: string; value: DisplayStyle; onChange: (s: DisplayStyle) => void; children: ReactNode;
+}) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-muted-foreground mb-2 block">{label}</label>
+      <div className="rounded-lg border border-border bg-background p-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-1 flex-wrap">
+            {STYLE_OPTIONS.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => onChange(s.id)}
+                title={s.title}
+                className={cn("px-2.5 py-1 rounded-md text-xs font-medium", choiceClass(value === s.id))}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
-export interface EventTypeModalProps {
+export interface EventTypeFormProps {
   type?: EventType;
   existingLabels?: string[];
   onSave: (t: Omit<EventType, "id"> & { id?: string }) => void;
@@ -144,7 +172,7 @@ export interface EventTypeModalProps {
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, deleteDisabledReason, onClose }: EventTypeModalProps) {
+export function EventTypeForm({ type, existingLabels = [], onSave, onDelete, deleteDisabledReason, onClose }: EventTypeFormProps) {
   const [label,       setLabel]       = useState(type?.label       ?? "");
   const [color,       setColor]       = useState(type?.color       ?? PRESET_COLORS[0]);
   const [icon,        setIcon]        = useState(type?.icon        ?? "Calendar");
@@ -242,7 +270,7 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
                   key={i}
                   onClick={() => setIcon(i)}
                   title={i}
-                  className={cn("p-1.5 rounded-lg border transition-all shrink-0", icon === i ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}
+                  className={cn("p-1.5 rounded-lg shrink-0", choiceClass(icon === i))}
                 >
                   {getIconEl(i, 14)}
                 </button>
@@ -262,57 +290,13 @@ export function EventTypeModal({ type, existingLabels = [], onSave, onDelete, de
             </label>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Style — journée entière</label>
-            <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex gap-1 flex-wrap">
-                  {STYLE_OPTIONS.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setAllDayStyle(s.id)}
-                      title={s.title}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
-                        allDayStyle === s.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-                <StylePreview style={allDayStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} pattern={pattern} />
-              </div>
-            </div>
-          </div>
+          <StylePicker label="Style — journée entière" value={allDayStyle} onChange={setAllDayStyle}>
+            <StylePreview style={allDayStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} pattern={pattern} />
+          </StylePicker>
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Style — événements horaires</label>
-            <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex gap-1 flex-wrap">
-                  {STYLE_OPTIONS.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setTimedStyle(s.id)}
-                      title={s.title}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
-                        timedStyle === s.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-                <StylePreview style={timedStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} pattern={pattern} />
-              </div>
-            </div>
-          </div>
+          <StylePicker label="Style — événements horaires" value={timedStyle} onChange={setTimedStyle}>
+            <StylePreview style={timedStyle} color={color} icon={icon} badgeLetter={badgeLetter} label={trimmed || "Titre"} pattern={pattern} />
+          </StylePicker>
 
           {/* Only the "Fond" style has a surface to texture. */}
           {(allDayStyle === "background" || timedStyle === "background") && (

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { cn } from "../../lib/utils";
+import { cn, NATIVE_SELECT } from "../../lib/utils";
 import { useConnectionStore, useEventTypeStore, useEventsStore, useRuleStore } from "../../store";
 import { describeMatch, findMatchingRule } from "../../lib/rules";
 import { SortHeader, ColorDot, type SortDir } from "./table";
@@ -118,17 +118,17 @@ export function RulesPanel() {
           placeholder="Rechercher par cible ou type…"
           className="w-56 max-w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
         />
-        <select value={matchTypeFilter} onChange={(e) => setMatchTypeFilter(e.target.value as typeof matchTypeFilter)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={matchTypeFilter} onChange={(e) => setMatchTypeFilter(e.target.value as typeof matchTypeFilter)} className={NATIVE_SELECT}>
           <option value="all">Tous les types</option>
           {(Object.keys(MATCH_TYPE_LABEL) as Rule["matchType"][]).map((t) => <option key={t} value={t}>{MATCH_TYPE_LABEL[t]}</option>)}
         </select>
-        <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value as typeof stateFilter)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value as typeof stateFilter)} className={NATIVE_SELECT}>
           <option value="all">État : tous</option>
           <option value="ok">OK</option>
           <option value="dead">Inactive</option>
           <option value="broken">Type supprimé</option>
         </select>
-        <select value={enabledFilter} onChange={(e) => setEnabledFilter(e.target.value as typeof enabledFilter)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={enabledFilter} onChange={(e) => setEnabledFilter(e.target.value as typeof enabledFilter)} className={NATIVE_SELECT}>
           <option value="all">Activée : toutes</option>
           <option value="on">Oui</option>
           <option value="off">Non</option>

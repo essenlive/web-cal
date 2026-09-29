@@ -8,20 +8,14 @@ import { Download } from "lucide-react";
 import { Button } from "../ui/button";
 import { captureBundle } from "../../lib/sync/bundle";
 import { getSettingsUpdatedAt } from "../../lib/sync/clock";
+import { downloadFile } from "../../lib/utils";
 
 export function ExportTab() {
   const [downloaded, setDownloaded] = useState(false);
   const updatedAt = getSettingsUpdatedAt();
 
   function handleExport() {
-    const bundle = captureBundle();
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `overcal-settings-${format(new Date(), "yyyy-MM-dd-HHmm")}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(`overcal-settings-${format(new Date(), "yyyy-MM-dd-HHmm")}.json`, JSON.stringify(captureBundle(), null, 2), "application/json");
     setDownloaded(true);
     toast.success("Réglages exportés");
   }

@@ -1,5 +1,5 @@
 /**
- * Curated list of Google Fonts offered by the font search in ThemeEditorDialog.
+ * Curated list of Google Fonts offered by the font search in ThemeForm.
  * Not the full Google Fonts catalog (that requires an API key to query live) —
  * a large static set (~140 families) covering the popular fonts across every
  * category, searched client-side by substring and loaded on demand via the

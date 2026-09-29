@@ -7,6 +7,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Border + colors of one option in a pick-one group (mode, radius, pattern, display style, icon…). */
+export function choiceClass(selected: boolean): string {
+  return cn("border transition-all", selected ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground");
+}
+
+/** Small uppercase heading for a group of controls (sidebar sections, drawer/dialog sub-sections). */
+export const SECTION_LABEL = "text-[10px] font-semibold uppercase tracking-wide text-muted-foreground";
+
+/** Native <select> styling, shared by every compact dropdown (filters, cache period, theme pickers). */
+export const NATIVE_SELECT = "rounded-md border border-border bg-background px-2 py-1.5 text-xs";
+
+/** Saves `content` as a file named `filename` via a temporary object URL. */
+export function downloadFile(filename: string, content: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** First user-perceived character of `text` — a grapheme cluster, so multi-codepoint
  *  emoji (flags, ZWJ sequences, skin-tone modifiers) survive intact instead of the
  *  `.charAt(0)` half-surrogate you'd get by slicing UTF-16 code units. */

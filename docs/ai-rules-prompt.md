@@ -38,8 +38,8 @@ clés d'accès), identifiants et mots de passe CalDAV, lieux et notes des
 
 ## Format de sortie
 
-Le JSON reprend l'enveloppe de l'export de réglages web-cal
-(`src/lib/settings-export.ts`), limitée aux quatre clés concernées :
+Le JSON est une enveloppe dont chaque clé reprend le format enregistré par
+le store correspondant (`{ "state": { … } }`), limitée aux quatre clés concernées :
 
 ```json
 {

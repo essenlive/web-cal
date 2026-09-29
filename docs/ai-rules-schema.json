@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "web-cal AI-drafted settings import",
-  "description": "Shape an AI must return after the prompt in docs/ai-rules-prompt.md — the same envelope web-cal's settings export/import uses (see src/lib/settings-export.ts), restricted to the four sections this feature touches: display types, rules, presets and themes.",
+  "description": "Shape an AI must return after the prompt in docs/ai-rules-prompt.md — an envelope whose keys mirror the stores' persisted localStorage blobs ({ state: {...} } per key), restricted to the four sections this feature touches: display types, rules, presets and themes.",
   "type": "object",
   "required": [
     "version",

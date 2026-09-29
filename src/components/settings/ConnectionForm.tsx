@@ -1,10 +1,8 @@
 /**
- * AddConnectionModal — dialog for adding or editing a calendar connection.
+ * ConnectionForm — dialog for adding or editing a calendar connection.
  *
- * New connections are ICS/WebCal feeds only (name, URL, colour, optional proxy).
- * CalDAV is no longer offered for new connections, but a connection already
- * persisted with type "caldav" still opens its original form (name, URL,
- * username, password, colour, optional proxy) so existing sources keep working.
+ * Connections are ICS/WebCal feeds (name, URL, colour, optional proxy); the seeded
+ * demo connection opens a reduced form (name, colour).
  *
  * The [Test] button validates connectivity without saving — it sits right next
  * to the URL field it tests, rather than down in the footer.
@@ -21,8 +19,7 @@ import { ColorPicker } from "./ColorPicker";
 import { PanelHeader, PanelFooter } from "./PanelHeader";
 import { DisplayTypeSelect, useSourceRule } from "./RuleEditRow";
 import { useConnectionStore, useRuleStore } from "../../store";
-import type { CalDAVConnection, Connection, DemoConnection, WebCalConnection } from "../../types";
-import { CalDAVProvider } from "../../lib/caldav-provider";
+import type { Connection, DemoConnection, WebCalConnection } from "../../types";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +82,7 @@ function Field({
   );
 }
 
-/** The "Tester" action for a WebCal/CalDAV URL field — validates connectivity without saving. */
+/** The "Tester" action for the WebCal URL field — validates connectivity without saving. */
 function TestButton({ onTest }: { onTest: () => Promise<void> }) {
   return (
     <ActionButton
@@ -159,7 +156,7 @@ function SourceRuleSection({ connectionId }: { connectionId: string }) {
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
-export interface AddConnectionModalProps {
+export interface ConnectionFormProps {
   onAdd: (conn: Omit<Connection, "id"> & { id?: string }) => void;
   /**
    * Colors already used by existing connections.
@@ -180,13 +177,12 @@ export interface AddConnectionModalProps {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate, onDelete, onClose }: AddConnectionModalProps) {
+export function ConnectionForm({ onAdd, existingColors, connection, onUpdate, onDelete, onClose }: ConnectionFormProps) {
   const editing = !!connection;
-  // Never changed after mount — new connections are always "webcal"; an existing
-  // "caldav" connection keeps its type (there's no UI to convert one to the other).
-  // "demo" is never created here either — it only ever comes pre-seeded (see
-  // useConnectionStore) and can only be edited (name/colour) or deleted.
-  const type: "webcal" | "caldav" | "demo" = connection?.type ?? "webcal";
+  // Never changed after mount — new connections are always "webcal"; "demo" is never
+  // created here — it only ever comes pre-seeded (see useConnectionStore) and can only
+  // be edited (name/colour) or deleted.
+  const type: Connection["type"] = connection?.type ?? "webcal";
   // Reserved upfront (even for a not-yet-saved connection) so the Règles
   // section below can link its one rule to it immediately.
   const [connId] = useState(() => connection?.id ?? crypto.randomUUID());
@@ -201,11 +197,6 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
   // WebCal-specific
   const [wcUrl, setWcUrl] = useState(connection?.type === "webcal" ? connection.url : "");
 
-  // CalDAV-specific
-  const [cdUrl, setCdUrl]   = useState(connection?.type === "caldav" ? connection.url : "");
-  const [cdUser, setCdUser] = useState(connection?.type === "caldav" ? connection.username : "");
-  const [cdPass, setCdPass] = useState(connection?.type === "caldav" ? connection.password : "");
-
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -217,11 +208,6 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
     if (type === "webcal") {
       if (!wcUrl.trim()) errs.wcUrl = "L'URL du calendrier est requise.";
       else if (!isValidWebCalUrl(wcUrl)) errs.wcUrl = "Doit commencer par https://, http:// ou webcal://";
-    } else if (type === "caldav") {
-      if (!cdUrl.trim()) errs.cdUrl = "L'URL du serveur est requise.";
-      else if (!isValidHttpUrl(cdUrl)) errs.cdUrl = "Doit commencer par https:// ou http://";
-      if (!cdUser.trim()) errs.cdUser = "Le nom d'utilisateur est requis.";
-      if (!cdPass.trim()) errs.cdPass = "Le mot de passe est requis.";
     }
 
     if (proxyUrl.trim() && !isValidHttpUrl(proxyUrl)) {
@@ -234,20 +220,15 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
 
   async function testConnection() {
     if (!validate()) throw new Error("Corrigez les champs en surbrillance");
-    if (type === "webcal") {
-      const url = wcUrl.trim().replace(/^webcal:\/\//i, "https://");
-      // Same default as WebCalProvider.getEvents: route through the app's
-      // own same-origin proxy unless an external proxy is configured,
-      // since most .ics hosts don't send CORS headers.
-      const fetchUrl = proxyUrl.trim()
-        ? `${proxyUrl.trim()}${encodeURIComponent(url)}`
-        : `/api/proxy?url=${encodeURIComponent(url)}`;
-      const res = await fetch(fetchUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } else {
-      const p = new CalDAVProvider(cdUrl.trim(), cdUser.trim(), cdPass, proxyUrl.trim());
-      await p.getCalendars();
-    }
+    const url = wcUrl.trim().replace(/^webcal:\/\//i, "https://");
+    // Same default as WebCalProvider.getEvents: route through the app's
+    // own same-origin proxy unless an external proxy is configured,
+    // since most .ics hosts don't send CORS headers.
+    const fetchUrl = proxyUrl.trim()
+      ? `${proxyUrl.trim()}${encodeURIComponent(url)}`
+      : `/api/proxy?url=${encodeURIComponent(url)}`;
+    const res = await fetch(fetchUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
   }
 
   function handleAdd() {
@@ -259,18 +240,6 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
       };
       if (editing) onUpdate?.({ ...conn, id: connection!.id });
       else onAdd({ ...conn, id: connId });
-    } else if (type === "caldav") {
-      const conn: Omit<CalDAVConnection, "id"> = {
-        type: "caldav",
-        name: name.trim(),
-        url: cdUrl.trim(),
-        username: cdUser.trim(),
-        password: cdPass,
-        color,
-        proxyUrl: proxy,
-      };
-      if (editing) onUpdate?.({ ...conn, id: connection!.id });
-      else onAdd(conn);
     } else {
       const conn: DemoConnection = { type: "demo", id: connection!.id, name: name.trim(), color, hidden: connection!.hidden };
       onUpdate?.(conn);
@@ -288,12 +257,10 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
 
   const canAdd = type === "webcal"
     ? name.trim() && isValidWebCalUrl(wcUrl)
-    : type === "caldav"
-    ? name.trim() && isValidHttpUrl(cdUrl) && cdUser.trim() && cdPass.trim()
     : !!name.trim();
 
   const title = editing
-    ? `Modifier la source ${type === "webcal" ? "WebCal" : type === "caldav" ? "CalDAV" : "de démonstration"}`
+    ? `Modifier la source ${type === "webcal" ? "WebCal" : "de démonstration"}`
     : "Ajouter une source de calendrier";
 
   return (
@@ -342,47 +309,6 @@ export function AddConnectionModal({ onAdd, existingColors, connection, onUpdate
                 saveDisabled={!canAdd}
                 saveLabel={editing ? "Enregistrer" : "Ajouter la source"}
               />
-            </div>
-          )}
-
-          {/* CalDAV form — only reachable when editing a connection already persisted as CalDAV */}
-          {editing && type === "caldav" && (
-            <div className="space-y-4 px-4 pb-4">
-              <Field
-                label="Nom *"
-                placeholder="Nextcloud – Personnel"
-                value={name}
-                onChange={setName}
-                error={errors.name}
-              />
-              <Field
-                label="URL du serveur *"
-                placeholder="https://nextcloud.example.com/dav/"
-                value={cdUrl}
-                onChange={setCdUrl}
-                error={errors.cdUrl}
-                action={<TestButton onTest={testConnection} />}
-              />
-              <Field
-                label="Nom d'utilisateur *"
-                placeholder="user@example.com"
-                value={cdUser}
-                onChange={setCdUser}
-                error={errors.cdUser}
-              />
-              <Field
-                label="Mot de passe / mot de passe d'application *"
-                placeholder="••••••••"
-                type="password"
-                value={cdPass}
-                onChange={setCdPass}
-                error={errors.cdPass}
-              />
-              <ColorPicker value={color} onChange={setColor} colors={PALETTE} />
-              <SourceRuleSection connectionId={connId} />
-              <AdvancedSection proxyUrl={proxyUrl} onProxyChange={setProxy} />
-
-              <PanelFooter onDelete={onDelete} onCancel={handleClose} onSave={handleAdd} saveDisabled={!canAdd} saveLabel="Enregistrer" />
             </div>
           )}
 

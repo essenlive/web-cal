@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { cn } from "../../lib/utils";
+import { cn, NATIVE_SELECT } from "../../lib/utils";
 import { useConnectionStore, useEventTypeStore, useEventsStore, useRuleStore } from "../../store";
 import { describeMatch, findMatchingRule } from "../../lib/rules";
 import { useResolvedEvents } from "../../hooks/useResolvedEvents";
@@ -124,15 +124,15 @@ export function EventsPanel() {
           placeholder="Rechercher par titre ou id…"
           className="w-56 max-w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
         />
-        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className={NATIVE_SELECT}>
           <option value="all">Toutes les sources</option>
           {connections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={NATIVE_SELECT}>
           <option value="all">Tous les types</option>
           {types.map((t) => <option key={t.id} value={t.label}>{t.label}</option>)}
         </select>
-        <select value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as typeof visibilityFilter)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as typeof visibilityFilter)} className={NATIVE_SELECT}>
           <option value="all">Visibilité : toutes</option>
           <option value="visible">Visible</option>
           <option value="hidden">Masqué</option>

@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, NATIVE_SELECT } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { SortHeader, type SortDir } from "./table";
 import { CopySnapshotButton } from "./CopySnapshotButton";
 
-const KNOWN_PREFIXES = ["overcal:", "webcal:", "proton-cal:"];
+const KNOWN_PREFIXES = ["overcal:"];
 
 interface Row {
   key: string;
@@ -85,7 +85,7 @@ export function StoragePanel() {
           placeholder="Rechercher par clé…"
           className="w-56 max-w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
         />
-        <select value={prefixFilter} onChange={(e) => setPrefixFilter(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+        <select value={prefixFilter} onChange={(e) => setPrefixFilter(e.target.value)} className={NATIVE_SELECT}>
           <option value="all">Tous les préfixes</option>
           {KNOWN_PREFIXES.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>

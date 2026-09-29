@@ -10,8 +10,7 @@ import {
 } from "react";
 import { addMonths, subMonths } from "date-fns";
 import { toast } from "sonner";
-import type { DataProvider } from "../lib/data-provider";
-import { MultiSourceProvider, fetchConnectionEvents } from "../lib/multi-source-provider";
+import { fetchConnectionEvents } from "../lib/multi-source-provider";
 import {
   applyBackoff,
   computeFetchKey,
@@ -66,7 +65,6 @@ type SyncConnectionFn = (
   onStatusChangeOverride?: (id: string, status: ConnectionStatus) => void
 ) => Promise<void>;
 
-const DataCtx = createContext<DataProvider | null>(null);
 const StatusCtx = createContext<ConnectionStatusMap>({});
 const SyncMetaCtx = createContext<Record<string, ConnectionSyncMeta>>({});
 /** Read-only escape hatch onto the session cache (see cacheRef below), for the /debug page only. */
@@ -155,19 +153,9 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
   // uses for its own revert timer.
   const syncConnectionRef = useRef<SyncConnectionFn | undefined>(undefined);
 
-  // Provider-recreation key: every connection's fetch-relevant fields (id, type, url,
-  // proxyUrl, username/password), not just its id. Fixes a pre-existing bug where editing
-  // a connection's URL/proxy never re-instantiated the provider because the old key only
-  // tracked the id list — see research.md Decision E. Exported via useDataProvider(); not
-  // used by the cache-aware loading below, which talks to each connection's own provider
-  // directly (see loadWindow).
+  // Every connection's fetch-relevant fields (id, type, url, proxyUrl), not just its id —
+  // so editing a connection's URL/proxy re-runs the load effect below (research.md Decision E).
   const connectionKey = connections.map((c) => computeFetchKey(c)).join("|");
-
-  const provider = useMemo<DataProvider>(
-    () => new MultiSourceProvider(connections, handleStatusChange),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [connectionKey, handleStatusChange]
-  );
 
   const notifyBackgroundRefreshChange = useCallback(() => {
     setIsBackgroundRefreshing(backgroundRefreshingRef.current.size > 0);
@@ -523,18 +511,12 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       <StatusCtx.Provider value={statusMap}>
         <SyncMetaCtx.Provider value={syncMeta}>
           <CacheCtx.Provider value={getCache}>
-            <DataCtx.Provider value={provider}>{children}</DataCtx.Provider>
+            {children}
           </CacheCtx.Provider>
         </SyncMetaCtx.Provider>
       </StatusCtx.Provider>
     </SyncCtx.Provider>
   );
-}
-
-export function useDataProvider(): DataProvider {
-  const ctx = useContext(DataCtx);
-  if (!ctx) throw new Error("useDataProvider must be used within DataProviderContext");
-  return ctx;
 }
 
 /** Returns live connection status map. Updates on every fetch attempt. */

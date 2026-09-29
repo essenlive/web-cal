@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Same-origin fetch relay for CalDAV/WebCal sources that don't send CORS
+ * Same-origin fetch relay for WebCal (.ics) sources that don't send CORS
  * headers. Only reachable targets are public http(s) hosts — anything that
  * looks like it points back into this server's own network is rejected so
  * the route can't be used to probe internal infrastructure or the cloud
@@ -71,46 +71,4 @@ function relayHeaders(upstream: Response, defaultContentType: string): HeadersIn
   const retryAfter = upstream.headers.get("retry-after");
   if (retryAfter) headers["Retry-After"] = retryAfter;
   return headers;
-}
-
-const TUNNELED_METHODS = new Set(["PROPFIND", "REPORT", "PUT", "DELETE"]);
-
-interface TunnelPayload {
-  method?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  body?: string;
-}
-
-/**
- * JSON tunnel for CalDAV's WebDAV verbs (PROPFIND, REPORT) and authenticated
- * PUT/DELETE — Next.js route handlers only dispatch on standard HTTP method
- * exports, so non-standard verbs travel as a POST envelope instead.
- */
-export async function POST(req: NextRequest) {
-  const payload = (await req.json().catch(() => null)) as TunnelPayload | null;
-  if (!payload) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-
-  const method = payload.method?.toUpperCase() ?? "";
-  if (!TUNNELED_METHODS.has(method)) {
-    return NextResponse.json({ error: "Unsupported method" }, { status: 400 });
-  }
-
-  let target: URL;
-  try {
-    target = validateTarget(payload.url ?? null);
-  } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
-  }
-
-  const upstream = await fetch(target, {
-    method,
-    headers: payload.headers,
-    body: payload.body,
-  });
-  const text = await upstream.text();
-  return new NextResponse(text, {
-    status: upstream.status,
-    headers: relayHeaders(upstream, "application/xml"),
-  });
 }

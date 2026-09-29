@@ -10,6 +10,7 @@
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useUIStore } from "../../store";
+import { cn, SECTION_LABEL } from "../../lib/utils";
 
 export function Section({ id, label, onOpen, onAdd, extra, children }: { id: string; label: string; onOpen: () => void; onAdd?: () => void; extra?: ReactNode; children: ReactNode }) {
   const { collapsedSections, toggleSection } = useUIStore();
@@ -27,7 +28,7 @@ export function Section({ id, label, onOpen, onAdd, extra, children }: { id: str
         </button>
         <button
           onClick={onOpen}
-          className="flex-1 min-w-0 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wide truncate"
+          className={cn("flex-1 min-w-0 text-left truncate hover:text-foreground", SECTION_LABEL)}
         >
           {label}
         </button>

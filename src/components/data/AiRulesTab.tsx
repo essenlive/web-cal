@@ -5,7 +5,7 @@
  *  - Export: builds the prompt + the user's sources, a sample of their events
  *    and their current types/rules/presets/themes (lib/ai-prompt.ts), to copy
  *    or download and paste into any AI assistant.
- *  - Import: takes the JSON the AI returns (settings-export envelope, checked
+ *  - Import: takes the JSON the AI returns (envelope checked
  *    against docs/ai-rules-schema.json) and either merges it in or replaces
  *    the sections it contains — see applyAiImport in lib/ai-import.ts.
  */
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Copy, Download, Upload } from "lucide-react";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
-import { cn } from "../../lib/utils";
+import { choiceClass, cn, downloadFile } from "../../lib/utils";
 import { useRuleStore, useEventTypeStore, useConnectionStore, useEventsStore, usePresetStore, useThemeStore, useOnboardingStore } from "../../store";
 import { applyAiImport, type AiImportMode, type AiImportSummary } from "../../lib/ai-import";
 import { buildAiExport } from "../../lib/ai-prompt";
@@ -47,13 +47,7 @@ export function AiRulesTab() {
   }
 
   function downloadExport() {
-    const blob = new Blob([exportText], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `webcal-prompt-reglages-${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(`overcal-prompt-reglages-${new Date().toISOString().slice(0, 10)}.md`, exportText, "text/markdown");
   }
 
   function handleImport() {
@@ -118,10 +112,7 @@ export function AiRulesTab() {
               role="radio"
               aria-checked={mode === value}
               onClick={() => setMode(value)}
-              className={cn(
-                "rounded-lg border px-3 py-2 text-left transition-colors",
-                mode === value ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50",
-              )}
+              className={cn("rounded-lg px-3 py-2 text-left", choiceClass(mode === value))}
             >
               <div className="text-xs font-medium text-foreground">{title}</div>
               <div className="text-[11px] text-muted-foreground">{text}</div>
