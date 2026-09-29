@@ -15,9 +15,7 @@ import {
   Plus,
   Sun,
   Moon,
-  Bug,
-  MonitorSmartphone,
-  GitBranch,
+  CircleHelp,
   BarChart3,
 } from "lucide-react";
 import Link from "next/link";
@@ -25,6 +23,8 @@ import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { zonedNow } from "../../lib/timezone";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
+import { TimezoneSelect } from "../settings/TimezoneSelect";
 import { ActionButton } from "../ui/action-button";
 import { useUIStore, useConnectionStore, useEventTypeStore, useRuleStore, useThemeStore } from "../../store";
 import { useConnectionStatusMap, useConnectionSyncMeta, useSourceSync } from "../../context/DataProviderContext";
@@ -35,8 +35,6 @@ import { PresetSelector } from "./PresetSelector";
 import { SimpleTooltip } from "../ui/tooltip";
 import { orderThemes } from "../../lib/theme";
 import type { Connection, ConnectionStatus, ConnectionSyncMeta, EventType, Theme } from "../../types";
-
-const REPO_URL = "https://github.com/essenlive/web-cal";
 
 /** Pointer-based (mouse + touch) drag handle wiring for one row — see src/hooks/useDragReorder.ts. Omitted where a row isn't reorderable. */
 export interface DragProps {
@@ -139,8 +137,22 @@ export function ThemeRow({ theme, active, onSelect, onEdit }: {
   );
 }
 
+// ── Compact preference toggle ─────────────────────────────────────────────────
+
+function PrefToggle({ label, checked, onCheckedChange }: { label: string; checked: boolean; onCheckedChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-2 px-2 py-1 rounded-md text-xs text-foreground hover:bg-muted cursor-pointer">
+      <span className="truncate">{label}</span>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} className="scale-75 origin-right" />
+    </label>
+  );
+}
+
 export function Sidebar() {
-  const { currentDate, setCurrentDate, weekStartsOnMonday, sidebarOpen, openDrawer, openNewItemDrawer, timezone } = useUIStore();
+  const {
+    currentDate, setCurrentDate, weekStartsOnMonday, toggleWeekStart, use24h, setUse24h, dateFormatEU, setDateFormatEU,
+    sidebarOpen, openDrawer, openNewItemDrawer, timezone,
+  } = useUIStore();
   const [miniDate, setMiniDate] = useState(currentDate);
   const weekStart = weekStartsOnMonday ? 1 : 0;
 
@@ -365,22 +377,22 @@ export function Sidebar() {
             />
           ))}
         </Section>
+
+        <div className="border-t border-border" />
+
+        {/* Preferences — every option lives right here; the label opens the same
+          options in the full drawer, with descriptions. */}
+        <Section id="preferences" label="Réglages" onOpen={() => openDrawer("preferences")}>
+          <PrefToggle label="Semaine dès lundi" checked={weekStartsOnMonday} onCheckedChange={toggleWeekStart} />
+          <PrefToggle label="Format 24h" checked={use24h} onCheckedChange={setUse24h} />
+          <PrefToggle label="Date européenne" checked={dateFormatEU} onCheckedChange={setDateFormatEU} />
+          <TimezoneSelect compact />
+        </Section>
       </div>
 
       {/* Bottom toolbar — outside the scroll container above, so it stays visible
           regardless of how much sidebar content there is to scroll through. */}
       <div className="shrink-0 border-t border-border px-2 py-2 flex items-center justify-around">
-        <SimpleTooltip label="Réglages">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground"
-            onClick={() => openDrawer("preferences")}
-            aria-label="Réglages"
-          >
-            <Settings size={16} />
-          </Button>
-        </SimpleTooltip>
         <SimpleTooltip label="Raccourcis clavier">
           <Button
             variant="ghost"
@@ -392,7 +404,7 @@ export function Sidebar() {
             <Keyboard size={16} />
           </Button>
         </SimpleTooltip>
-        <SimpleTooltip label="Synchroniser">
+        <SimpleTooltip label="Mes données">
           <Button
             variant="ghost"
             size="icon"
@@ -401,7 +413,7 @@ export function Sidebar() {
             aria-label="Mes données"
           >
             <Link href="/data">
-              <MonitorSmartphone size={16} />
+              <Settings size={16} />
             </Link>
           </Button>
         </SimpleTooltip>
@@ -418,30 +430,15 @@ export function Sidebar() {
             </Link>
           </Button>
         </SimpleTooltip>
-        <SimpleTooltip label="Debug">
+        <SimpleTooltip label="Aide">
           <Button
             variant="ghost"
             size="icon"
             className="text-muted-foreground"
-            asChild
-            aria-label="Debug"
+            onClick={() => openDrawer("help")}
+            aria-label="Aide"
           >
-            <Link href="/debug">
-              <Bug size={16} />
-            </Link>
-          </Button>
-        </SimpleTooltip>
-        <SimpleTooltip label="Dépôt GitHub">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground"
-            asChild
-            aria-label="Dépôt GitHub"
-          >
-            <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
-              <GitBranch size={16} />
-            </a>
+            <CircleHelp size={16} />
           </Button>
         </SimpleTooltip>
       </div>

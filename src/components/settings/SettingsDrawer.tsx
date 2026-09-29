@@ -16,6 +16,7 @@ import { ThemesPanel } from "./ThemesPanel";
 import { PresetsPanel } from "../sidebar/PresetsPanel";
 import { PreferencesPanel } from "../../views/SettingsPage";
 import { ShortcutsPanel } from "../sidebar/ShortcutsHelp";
+import { HelpPanel } from "../sidebar/HelpPanel";
 
 export function SettingsDrawer() {
   const { activeDrawer, closeDrawer } = useUIStore();
@@ -36,6 +37,8 @@ export function SettingsDrawer() {
         {activeDrawer?.panel === "preferences" && <PreferencesPanel />}
 
         {activeDrawer?.panel === "shortcuts" && <ShortcutsPanel />}
+
+        {activeDrawer?.panel === "help" && <HelpPanel />}
       </DrawerContent>
     </Drawer>
   );

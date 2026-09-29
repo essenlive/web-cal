@@ -6,7 +6,8 @@ import { cn } from "../../lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Input } from "../ui/input";
 
-export function TimezoneSelect() {
+/** `compact`: one-line sidebar row (Réglages section) instead of the drawer's described card. */
+export function TimezoneSelect({ compact = false }: { compact?: boolean }) {
   const { timezone, setTimezone } = useUIStore();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -24,16 +25,23 @@ export function TimezoneSelect() {
   const selected = options.find((o) => o.value === timezone);
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
-      <div className="min-w-0">
-        <div className="text-sm font-medium text-foreground">Fuseau horaire</div>
-        <div className="text-xs text-muted-foreground">Fuseau utilisé pour afficher les événements</div>
-      </div>
+    <div className={cn("flex items-center justify-between", compact ? "gap-2 px-2 py-1 text-xs text-foreground" : "gap-3 rounded-lg bg-muted/50 px-3 py-2.5")}>
+      {compact ? (
+        <span className="shrink-0">Fuseau</span>
+      ) : (
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-foreground">Fuseau horaire</div>
+          <div className="text-xs text-muted-foreground">Fuseau utilisé pour afficher les événements</div>
+        </div>
+      )}
       <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQuery(""); }}>
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-9 max-w-[55%] shrink-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+            className={cn(
+              "flex items-center justify-between gap-2 rounded-md border border-input bg-transparent shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+              compact ? "h-6 min-w-0 flex-1 px-2 text-[11px]" : "h-9 max-w-[55%] shrink-0 px-3 py-1.5 text-xs",
+            )}
           >
             <span className="truncate">{selected?.label ?? timezone}</span>
             <ChevronDown size={14} className="shrink-0 text-muted-foreground" />

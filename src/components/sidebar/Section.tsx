@@ -4,14 +4,14 @@
  * Collapsible sidebar section header, shared by Sources/Types/Règles/Thème/Presets.
  * Chevron toggles the compact row list (state in useUIStore.collapsedSections,
  * persisted); clicking the label opens the section's management drawer (list);
- * "+" opens the same drawer straight into the new-item form.
+ * "+" (omitted for Réglages) opens the same drawer straight into the new-item form.
  */
 
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useUIStore } from "../../store";
 
-export function Section({ id, label, onOpen, onAdd, extra, children }: { id: string; label: string; onOpen: () => void; onAdd: () => void; extra?: ReactNode; children: ReactNode }) {
+export function Section({ id, label, onOpen, onAdd, extra, children }: { id: string; label: string; onOpen: () => void; onAdd?: () => void; extra?: ReactNode; children: ReactNode }) {
   const { collapsedSections, toggleSection } = useUIStore();
   const collapsed = !!collapsedSections[id];
 
@@ -32,9 +32,11 @@ export function Section({ id, label, onOpen, onAdd, extra, children }: { id: str
           {label}
         </button>
         {extra}
-        <button onClick={onAdd} className="text-muted-foreground hover:text-foreground shrink-0" aria-label={`Ajouter : ${label}`}>
-          <Plus size={12} />
-        </button>
+        {onAdd && (
+          <button onClick={onAdd} className="text-muted-foreground hover:text-foreground shrink-0" aria-label={`Ajouter : ${label}`}>
+            <Plus size={12} />
+          </button>
+        )}
       </div>
       {!collapsed && <div className="space-y-0.5">{children}</div>}
     </div>

@@ -530,7 +530,7 @@ export const useEventsStore = create<EventsStore>()((set) => ({
 // ── UI Store ──────────────────────────────────────────────────────────────────
 
 /** Which settings drawer panel is currently open, if any. See specs/007-settings-side-drawer. */
-export type DrawerPanel = "connection" | "eventType" | "rules" | "preset" | "theme" | "preferences" | "shortcuts";
+export type DrawerPanel = "connection" | "eventType" | "rules" | "preset" | "theme" | "preferences" | "shortcuts" | "help";
 
 export interface ActiveDrawer {
   panel: DrawerPanel;
