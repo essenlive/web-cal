@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { format, parse } from "date-fns";
 import { Header } from "../components/sidebar/Header";
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
@@ -10,11 +9,10 @@ import { useOnboardingSteps } from "../components/sidebar/GettingStarted";
 import { coreDone, isFreshInstance } from "../lib/onboarding";
 import { stepDate } from "../lib/utils";
 import { presetMatchesState } from "../lib/presets";
+import { formatUrlDate, fromSearch, historyAction, toSearch, type UrlState } from "../lib/url-state";
 import type { CalendarView } from "../types";
 
 const VIEW_KEYS: Record<string, CalendarView> = { m: "month", w: "week", d: "day", a: "agenda" };
-const VALID_VIEWS: CalendarView[] = Object.values(VIEW_KEYS);
-const DATE_FORMAT = "yyyy-MM-dd";
 
 /** Session flag: the Help drawer auto-opens at most once per tab session. */
 const HELP_AUTO_OPENED = "webcal:help-auto-opened";
@@ -93,49 +91,72 @@ export function CalendarPage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Keeps the URL's ?view=&date=&preset= in sync with the store, in both
-  // directions: hydrate store from URL once on mount, then push store
-  // changes back to the URL (via replaceState, so navigation doesn't spam
-  // history) for every store this page's shortcuts/UI can mutate.
+  // URL ⇄ app state, in both directions (lib/url-state.ts): hydrate the store from the URL on
+  // mount, then record every store change in browser history — a new entry for navigation
+  // (view, period, a preset becoming active, opening a drawer), a replace for tweaks — and
+  // restore the popped state on Back/Forward.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const path = window.location.pathname;
+    /** history.state marker on entries pushed for an open drawer — closing it then steps back. */
+    const DRAWER_ENTRY = { webcalDrawer: true };
+    let restoring = false;
 
-    const viewParam = params.get("view") as CalendarView | null;
-    if (viewParam && VALID_VIEWS.includes(viewParam)) {
-      useUIStore.getState().setView(viewParam);
-    }
-
-    const dateParam = params.get("date");
-    if (dateParam) {
-      const parsed = parse(dateParam, DATE_FORMAT, new Date());
-      if (!isNaN(parsed.getTime())) useUIStore.getState().setCurrentDate(parsed);
-    }
-
-    const presetParam = params.get("preset");
-    if (presetParam) {
-      const preset = usePresetStore.getState().presets.find((p) => p.id === presetParam);
-      if (preset) usePresetStore.getState().applyPreset(preset.id);
-    }
-
-    function syncUrl() {
-      const { view, currentDate } = useUIStore.getState();
+    function current(): UrlState {
+      const { view, currentDate, activeDrawer } = useUIStore.getState();
       const { presets } = usePresetStore.getState();
       const { connections } = useConnectionStore.getState();
       const { types } = useEventTypeStore.getState();
       const { selectedThemeId } = useThemeStore.getState();
       const active = presets.find((p) => presetMatchesState(p, connections, types, selectedThemeId));
-
-      const next = new URLSearchParams();
-      next.set("view", view);
-      next.set("date", format(currentDate, DATE_FORMAT));
-      if (active) next.set("preset", active.id);
-      window.history.replaceState(null, "", `${window.location.pathname}?${next}`);
+      return { view, date: formatUrlDate(currentDate), presetId: active?.id, drawer: activeDrawer ?? undefined };
     }
-    syncUrl();
-    const unsubs = [useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore].map((s) =>
-      s.subscribe(syncUrl)
-    );
-    return () => unsubs.forEach((unsub) => unsub());
+
+    /** Applies whatever `search` validly encodes. A missing preset can't be "un-applied" (the URL
+     *  doesn't hold the visibility it replaced), so only a present one is restored. */
+    function apply(search: string, closeMissingDrawer: boolean) {
+      const url = fromSearch(search);
+      const ui = useUIStore.getState();
+      if (url.view && url.view !== ui.view) ui.setView(url.view);
+      if (url.dateValue && url.date !== formatUrlDate(ui.currentDate)) ui.setCurrentDate(url.dateValue);
+      if (url.presetId && url.presetId !== current().presetId) {
+        const preset = usePresetStore.getState().presets.find((p) => p.id === url.presetId);
+        if (preset) usePresetStore.getState().applyPreset(preset.id);
+      }
+      if (url.drawer) useUIStore.setState({ activeDrawer: url.drawer });
+      else if (closeMissingDrawer && ui.activeDrawer) ui.closeDrawer();
+    }
+
+    apply(window.location.search, false);
+    let last = current();
+    window.history.replaceState(null, "", path + toSearch(last));
+
+    function sync() {
+      const next = current();
+      if (!restoring) {
+        const url = path + toSearch(next);
+        switch (historyAction(last, next, window.history.state?.webcalDrawer === true)) {
+          case "push": window.history.pushState(next.drawer ? DRAWER_ENTRY : null, "", url); break;
+          case "replace": window.history.replaceState(next.drawer ? window.history.state : null, "", url); break;
+          case "back": window.history.back(); break; // its popstate restores the entry below
+        }
+      }
+      last = next;
+    }
+
+    function onPopState() {
+      restoring = true;
+      try { apply(window.location.search, true); } finally { restoring = false; }
+      last = current();
+      // Canonicalize: the popped URL may lack what couldn't be restored (e.g. a preset).
+      window.history.replaceState(window.history.state, "", path + toSearch(last));
+    }
+
+    const unsubs = [useUIStore, usePresetStore, useConnectionStore, useEventTypeStore, useThemeStore].map((st) => st.subscribe(sync));
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+      window.removeEventListener("popstate", onPopState);
+    };
   }, []);
 
   return (

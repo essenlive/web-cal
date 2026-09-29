@@ -73,6 +73,14 @@ for await (const raw of rl) {
     } else if (cmd === "resize") {
       const [w, h] = arg.split(" ").map(Number);
       await page.setViewportSize({ width: w, height: h });
+    } else if (cmd === "back") {
+      await page.goBack();
+    } else if (cmd === "forward") {
+      await page.goForward();
+    } else if (cmd === "press") {
+      await page.keyboard.press(arg);
+    } else if (cmd === "url") {
+      console.log(`url -> ${page.url()}`);
     } else if (cmd === "console") {
       console.log("ERRORS:", JSON.stringify(errors));
     } else {

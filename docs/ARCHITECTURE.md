@@ -183,6 +183,18 @@ Each open step's "Commencer" button opens the form that completes it — the sam
 
 ---
 
+## URL & browser history
+
+The calendar page's URL encodes `?view=&date=&preset=` plus the open settings drawer (`panel=`, `edit=`, `new=1`) — [lib/url-state.ts](../src/lib/url-state.ts) `toSearch`/`fromSearch`, wired in `CalendarPage`. On mount the store is hydrated from the URL (so any of those is deep-linkable); after that every store change is recorded in browser history per `historyAction()`, so Back/Forward step through app states instead of leaving the page:
+
+- **push** — opening a drawer, changing view or period, a preset becoming active;
+- **replace** — everything else (visibility tweaks that make a preset stop matching, switching panels inside an open drawer);
+- **back** — closing a drawer whose entry we pushed (marked `history.state.webcalDrawer`), so the next Back doesn't reopen it.
+
+`popstate` re-applies the popped URL with store subscriptions muted (`restoring`), then canonicalizes the URL. One known gap: an entry without `preset=` can't *un-apply* a preset, since the URL doesn't hold the visibility the preset replaced.
+
+---
+
 ## Notifications
 
 Transient feedback (export/import confirmations, errors) uses [sonner](https://sonner.emilkowal.ski/) — call `toast.success(...)` / `toast.error(...)` from any client component, no plumbing needed. The host `<Toaster />` ([components/ui/sonner.tsx](../src/components/ui/sonner.tsx)) is mounted once in [app/providers.tsx](../src/app/providers.tsx), styled with the app's `popover`/`border` tokens so it matches whichever theme is active. This doesn't replace `ActionButton`'s inline armed/pending/success/error state (used for connection tests and destructive confirmations) — that pattern stays for feedback that's local to a specific button.

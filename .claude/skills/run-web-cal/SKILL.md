@@ -71,6 +71,9 @@ relative to its own file location, not the caller's cwd.
 | `hover <selector>` | Hover the first match — this app opens some popovers on hover, not click |
 | `click <selector>` | Click the first match |
 | `screenshot <name>` | Full-page PNG → `shots/<name>.png` |
+| `press <key>` | Keyboard press, e.g. `press w`, `press ArrowRight` |
+| `back` / `forward` | Browser history navigation |
+| `url` | Print the current URL |
 | `console` | Print collected `pageerror`/console-error text |
 
 There's a real, useful test route baked into the app: `/dev` (a
