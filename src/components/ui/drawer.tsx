@@ -65,6 +65,12 @@ function DrawerContent({
         data-vaul-no-drag
         className={cn(
           "group/drawer-content fixed z-50 flex h-auto flex-col overflow-x-hidden bg-background",
+          // vaul injects `[data-vaul-drawer] { touch-action: none }` at runtime, on this very
+          // element — which is also the one that scrolls. touch-action none on the scroll
+          // container forbids the native touch pan, so a finger could never scroll a left/right
+          // drawer on mobile (data-vaul-no-drag above only stops vaul's JS drag, not this CSS).
+          // `!` because vaul's stylesheet is appended after ours with equal specificity.
+          "data-[vaul-drawer-direction=right]:touch-pan-y! data-[vaul-drawer-direction=left]:touch-pan-y!",
           "data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-lg data-[vaul-drawer-direction=top]:border-b",
           "data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[80vh] data-[vaul-drawer-direction=bottom]:rounded-t-lg data-[vaul-drawer-direction=bottom]:border-t",
           // h-dvh (not just inset-y-0's implicit height) so the drawer tracks the mobile
