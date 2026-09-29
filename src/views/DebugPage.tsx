@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { DebugView } from "../components/debug/DebugView";
+import { SyncIndicator } from "../components/sidebar/SyncIndicator";
 
 export function DebugPage() {
   return (
@@ -11,7 +12,8 @@ export function DebugPage() {
           Calendrier
         </Link>
         <span className="text-border">/</span>
-        <h1 className="text-sm font-bold text-foreground">Debug</h1>
+        <h1 className="text-sm font-bold text-foreground flex-1">Debug</h1>
+        <SyncIndicator />
       </header>
       <main className="flex-1 overflow-auto">
         <DebugView />

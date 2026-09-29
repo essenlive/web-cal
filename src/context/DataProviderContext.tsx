@@ -28,17 +28,20 @@ import { readPersistedCache, writePersistedCache } from "../lib/event-cache-pers
 import { useConnectionStore, useEventsStore, useUIStore } from "../store";
 import type { Connection, ConnectionStatus, ConnectionStatusMap, ConnectionSyncMeta, SyncState } from "../types";
 
-/** How many months on each side of a center date count as "nearby enough to keep warm" —
- *  aggressively wider than the single visible month, so a normal amount of navigation in
- *  either direction stays served from cache instead of hitting a genuine gap (and, on reload,
- *  a normal amount of *time* passing before the tab is reopened doesn't invalidate the
- *  persisted snapshot either — see computePersistWindow). */
-export const WINDOW_MONTHS_BACK = 2;
-export const WINDOW_MONTHS_FORWARD = 3;
-
+/** The cache period around a center date: `useUIStore.cacheMonths` (user-set in the sync
+ *  dialog, default −2/+3) months on each side — aggressively wider than the single visible
+ *  month, so a normal amount of navigation in either direction stays served from cache
+ *  instead of hitting a genuine gap (and, on reload, a normal amount of *time* passing before
+ *  the tab is reopened doesn't invalidate the persisted snapshot either — see
+ *  computePersistWindow). Read at call time, so every caller sees the current setting. */
 export function windowAround(centerDate: Date): { start: Date; end: Date } {
-  return { start: subMonths(centerDate, WINDOW_MONTHS_BACK), end: addMonths(centerDate, WINDOW_MONTHS_FORWARD) };
+  const { back, forward } = useUIStore.getState().cacheMonths;
+  return { start: subMonths(centerDate, back), end: addMonths(centerDate, forward) };
 }
+
+/** How often the background loop re-checks every source — same as the staleness TTL, so each
+ *  tick finds whatever went stale since the last one. */
+const BACKGROUND_SYNC_MS = STALE_TTL_MS;
 
 /** Outer span of a cache entry's coveredRanges (already sorted/merged — see event-cache.ts's
  *  unionRange), or null if nothing's been fetched yet. Used to surface "cached period" in the
@@ -105,7 +108,7 @@ function useConnectionsHydrated() {
 export function DataProviderContext({ children }: { children: ReactNode }) {
   const { connections } = useConnectionStore();
   const { setEvents } = useEventsStore();
-  const { currentDate } = useUIStore();
+  const { currentDate, cacheMonths } = useUIStore();
   const [statusMap, setStatusMap] = useState<ConnectionStatusMap>({});
   const [syncMeta, setSyncMeta] = useState<Record<string, ConnectionSyncMeta>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -471,7 +474,27 @@ export function DataProviderContext({ children }: { children: ReactNode }) {
       loadWindow(start, end).catch(console.error);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDate, connectionKey, hydrated]);
+  }, [currentDate, connectionKey, hydrated, cacheMonths]);
+
+  // Background loop: without it, a stale source only refreshes when the user navigates. Every
+  // BACKGROUND_SYNC_MS, and whenever the tab becomes visible again, re-run the ordinary
+  // unforced load of the current window — its existing staleness/backoff logic decides what
+  // actually needs fetching (usually nothing, or a quiet background refresh). Skipped while
+  // hidden: the visibility listener catches up on return.
+  useEffect(() => {
+    if (!hydrated) return;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      const { start, end } = windowAround(useUIStore.getState().currentDate);
+      loadWindow(start, end).catch(console.error);
+    };
+    const interval = setInterval(tick, BACKGROUND_SYNC_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [hydrated, loadWindow]);
 
   const syncState = useMemo<SyncState>(() => {
     const statuses = Object.values(statusMap);
@@ -532,7 +555,7 @@ export function useSourceSync(): SyncCtxValue {
 }
 
 /** Getter for the live per-connection range cache (coveredRanges, backoffMs, fetchSeq…) —
- *  for the /debug page only. Re-invoke inside a memo keyed on useConnectionSyncMeta()/
+ *  for the /debug page and the sync dialog only. Re-invoke inside a memo keyed on useConnectionSyncMeta()/
  *  useSourceSync().lastUpdated to stay in sync, since the getter itself isn't reactive. */
 export function useDebugCache(): () => Map<string, ConnectionCacheEntry> {
   return useContext(CacheCtx);

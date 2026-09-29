@@ -552,6 +552,8 @@ interface UIStore {
   activeDrawer: ActiveDrawer | null;
   /** Sidebar section id → collapsed state. Missing id = expanded. */
   collapsedSections: Record<string, boolean>;
+  /** Months kept in the event cache on each side of the viewed date — see windowAround in DataProviderContext. Per device, not synced. */
+  cacheMonths: { back: number; forward: number };
   setView: (v: CalendarView) => void;
   setCurrentDate: (d: Date) => void;
   toggleSidebar: () => void;
@@ -563,6 +565,7 @@ interface UIStore {
   openNewItemDrawer: (panel: DrawerPanel) => void;
   closeDrawer: () => void;
   toggleSection: (id: string) => void;
+  setCacheMonths: (v: { back: number; forward: number }) => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -581,6 +584,7 @@ export const useUIStore = create<UIStore>()(
       timezone: "system",
       activeDrawer: null,
       collapsedSections: {},
+      cacheMonths: { back: 2, forward: 3 },
       setView: (view) => set({ view }),
       setCurrentDate: (currentDate) => set({ currentDate }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -592,6 +596,7 @@ export const useUIStore = create<UIStore>()(
       openNewItemDrawer: (panel) => set({ activeDrawer: { panel, create: true } }),
       closeDrawer: () => set({ activeDrawer: null }),
       toggleSection: (id) => set((s) => ({ collapsedSections: { ...s.collapsedSections, [id]: !s.collapsedSections[id] } })),
+      setCacheMonths: (cacheMonths) => set({ cacheMonths }),
     }),
     {
       name: "overcal:ui",
@@ -603,6 +608,7 @@ export const useUIStore = create<UIStore>()(
         dateFormatEU: s.dateFormatEU,
         timezone: s.timezone,
         collapsedSections: s.collapsedSections,
+        cacheMonths: s.cacheMonths,
       }),
     }
   )

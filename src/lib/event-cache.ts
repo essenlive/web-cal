@@ -188,3 +188,13 @@ export function clampEntryToWindow(entry: ConnectionCacheEntry, windowRange: Dat
   const events = entry.events.filter((e) => eventOverlaps(e, start, end));
   return { ...entry, coveredRanges, events };
 }
+
+/** How much of `windowRange` a connection's cache holds, for the sync dialog. Staleness wins
+ *  over coverage: a fully-covered but stale entry is still "stale" (it'll be refreshed). */
+export type CacheState = "empty" | "partial" | "full" | "stale";
+
+export function cacheState(entry: ConnectionCacheEntry | undefined, windowRange: DateRange, ttlMs: number = STALE_TTL_MS): CacheState {
+  if (!entry || entry.coveredRanges.length === 0) return "empty";
+  if (isStale(entry, ttlMs)) return "stale";
+  return computeGaps(entry.coveredRanges, windowRange).length === 0 ? "full" : "partial";
+}
