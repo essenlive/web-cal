@@ -6,3 +6,6 @@ next-env.d.ts
 *.local
 *.tsbuildinfo
 .claude/skills/run-web-cal/shots
+*.sqlite
+*.sqlite3
+*.db

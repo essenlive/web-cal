@@ -17,9 +17,9 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 
 **Purpose**: Scaffolding for the new server slice, isolated from existing client code
 
-- [ ] T001 Create the `src/server/{aggregation,rules,feeds,config}/` directory structure per plan.md's Project Structure (empty `.gitkeep`-free — populated by Phase 2 tasks)
-- [ ] T002 [P] Add `better-sqlite3` to `package.json` (research.md Decision C) and install — no `.ics`-writing dependency needed, `ical.js` already in `package.json` covers it (research.md Decision D)
-- [ ] T003 [P] Create `tests/server/` directory, confirm the existing root `vitest.config.ts` already picks it up (no new Vitest config needed — verify with an empty placeholder test)
+- [x] T001 Create the `src/server/{aggregation,rules,feeds,config}/` directory structure per plan.md's Project Structure (empty `.gitkeep`-free — populated by Phase 2 tasks)
+- [x] T002 [P] Add `better-sqlite3` to `package.json` (research.md Decision C) and install — no `.ics`-writing dependency needed, `ical.js` already in `package.json` covers it (research.md Decision D)
+- [x] T003 [P] Create `tests/server/` directory, confirm the existing root `vitest.config.ts` already picks it up (no new Vitest config needed — verify with an empty placeholder test)
 
 **Checkpoint**: New directories and dependencies exist; nothing functional yet.
 
