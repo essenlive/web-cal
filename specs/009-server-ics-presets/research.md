@@ -50,3 +50,7 @@
 - *Build real auth now instead of a token*: rejected — out of scope for this phase per the spec's own Assumptions (auth is phase 4); a token is the minimum viable protection until then.
 
 All unknowns from the Technical Context are resolved above; no `NEEDS CLARIFICATION` markers remain.
+
+## Revision 2026-11-15: keeper.sh replaced by connectors
+
+Decision (Quentin): keeper.sh brings far more than needed (accounts, billing, MCP, web UI, Postgres + Redis, AGPL). The server now reads and writes through its own small *connectors* (`src/server/connectors/`): ICS/WebCal (read-only, reusing the shared `src/lib/ics-parse.ts`) and CalDAV (read + create, via `tsdav`, verified against a real Radicale). Endpoint credentials are attached to a connection id through an `endpoints` array in the import JSON and stored encrypted (AES-256-GCM, `SECRET_KEY`). `POST /api/events` creates an event on a writable endpoint. Anything above that mentions keeper.sh, `KEEPER_*` or `keeper-client.ts` is superseded by this section; Google/Microsoft OAuth endpoints, update and delete are deferred.

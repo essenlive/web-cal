@@ -96,3 +96,7 @@ tests/
 No unjustified Constitution Check violations — every N/A above is a gate that doesn't describe this feature (no UI added), and every new dependency is justified inline in Technical Context. Nothing to track here.
 
 **Post-Phase 1 re-check**: design (data-model.md, contracts/, quickstart.md) introduced nothing beyond what Technical Context already declared — same two new dependencies (`ical-generator`, `better-sqlite3`), same reuse of `src/lib/rules.ts`/`src/types`, one extraction (`resolveEventType`/`isEventHidden` made store-free, research.md Decision A). Constitution Check verdict is unchanged.
+
+## Revision 2026-11-15: keeper.sh replaced by connectors
+
+Decision (Quentin): keeper.sh brings far more than needed (accounts, billing, MCP, web UI, Postgres + Redis, AGPL). The server now reads and writes through its own small *connectors* (`src/server/connectors/`): ICS/WebCal (read-only, reusing the shared `src/lib/ics-parse.ts`) and CalDAV (read + create, via `tsdav`, verified against a real Radicale). Endpoint credentials are attached to a connection id through an `endpoints` array in the import JSON and stored encrypted (AES-256-GCM, `SECRET_KEY`). `POST /api/events` creates an event on a writable endpoint. Anything above that mentions keeper.sh, `KEEPER_*` or `keeper-client.ts` is superseded by this section; Google/Microsoft OAuth endpoints, update and delete are deferred.

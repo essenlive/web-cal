@@ -10,6 +10,8 @@
 import type { SqliteDb } from "./db";
 import { ensureToken, pruneTokens } from "../feeds/tokens";
 import { pruneSnapshots } from "../aggregation/snapshot-store";
+import { decryptSecret, encryptSecret } from "./secrets";
+import type { CaldavEndpoint } from "../connectors/types";
 import type { Connection, EventType, Preset, Rule } from "../../types";
 
 export const BUNDLE_VERSION = 1;
@@ -21,6 +23,8 @@ export interface ImportableConfig {
   eventTypes: EventType[];
   rules: Rule[];
   presets: Preset[];
+  /** Server-only: read/write endpoints attached to connections by id (not part of the client export). */
+  endpoints?: CaldavEndpoint[];
 }
 
 /**
@@ -38,7 +42,13 @@ export function isImportableConfig(value: unknown): value is ImportableConfig {
     Array.isArray(b.connections) &&
     Array.isArray(b.eventTypes) &&
     Array.isArray(b.rules) &&
-    Array.isArray(b.presets)
+    Array.isArray(b.presets) &&
+    (b.endpoints === undefined ||
+      (Array.isArray(b.endpoints) &&
+        b.endpoints.every((e) => {
+          const ep = e as Record<string, unknown>;
+          return ep && ep.kind === "caldav" && typeof ep.connectionId === "string" && typeof ep.url === "string" && typeof ep.username === "string" && typeof ep.password === "string";
+        })))
   );
 }
 
@@ -48,7 +58,7 @@ export interface ImportResult {
   feedUrls: Array<{ presetId: string; presetName: string; url: string }>;
 }
 
-export function getConfig(db: SqliteDb, key: "connections" | "eventTypes" | "rules" | "presets"): unknown[] {
+export function getConfig(db: SqliteDb, key: "connections" | "eventTypes" | "rules" | "presets" | "endpoints"): unknown[] {
   const row = db.prepare("SELECT json FROM config WHERE key = ?").get(key) as { json: string } | undefined;
   return row ? (JSON.parse(row.json) as unknown[]) : [];
 }
@@ -60,6 +70,8 @@ export function importConfig(db: SqliteDb, config: ImportableConfig): ImportResu
     upsert.run("eventTypes", JSON.stringify(cfg.eventTypes));
     upsert.run("rules", JSON.stringify(cfg.rules));
     upsert.run("presets", JSON.stringify(cfg.presets));
+    const endpoints = (cfg.endpoints ?? []).map((e) => ({ ...e, password: encryptSecret(e.password) }));
+    upsert.run("endpoints", JSON.stringify(endpoints));
   });
   setConfig(config);
 
@@ -76,4 +88,8 @@ export function importConfig(db: SqliteDb, config: ImportableConfig): ImportResu
     importedConnections: config.connections.length,
     feedUrls,
   };
+}
+
+export function getEndpoints(db: SqliteDb): CaldavEndpoint[] {
+  return (getConfig(db, "endpoints") as CaldavEndpoint[]).map((e) => ({ ...e, password: decryptSecret(e.password) }));
 }

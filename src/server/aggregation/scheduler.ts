@@ -1,63 +1,43 @@
 /**
- * Recurring aggregation cycle: fetches each webcal connection's events through
- * keeper.sh and writes one SourceSnapshot per connection. A failing source never
- * blocks the others and keeps its last-known-good events (spec FR-010).
- * Convention: a connection is matched to the keeper.sh calendar with the same name
- * (falling back to the same id).
+ * Recurring aggregation cycle: reads each connection's events through its connector
+ * and writes one SourceSnapshot per connection. A failing source never blocks the
+ * others and keeps its last-known-good events (spec FR-010).
  */
 
 import type { SqliteDb } from "../config/db";
 import { getConfig } from "../config/import";
-import { getEvents, getKeeperConfig, listCalendars, type KeeperConfig, type KeeperEvent } from "./keeper-client";
+import { connectorFor } from "../connectors";
+import type { Connector, TimeRange } from "../connectors/types";
 import { recordFailure, recordSuccess } from "./snapshot-store";
 import type { CalendarEvent, Connection } from "../../types";
 
 export interface CycleDeps {
-  keeper?: KeeperConfig | null;
-  fetchEvents?: (config: KeeperConfig, calendarId: string) => Promise<KeeperEvent[]>;
-  calendars?: Array<{ id: string; name: string }>;
+  connectorFor?: (db: SqliteDb, conn: Connection) => Connector | null;
   now?: () => number;
 }
 
-export async function runAggregationCycle(db: SqliteDb, deps: CycleDeps = {}): Promise<void> {
-  const keeper = deps.keeper === undefined ? getKeeperConfig() : deps.keeper;
-  if (!keeper) return;
-  const fetchEvents = deps.fetchEvents ?? getEvents;
-  const now = deps.now ?? Date.now;
+const DAY = 86_400_000;
 
-  const connections = getConfig(db, "connections") as Connection[];
-  let calendars = deps.calendars;
-  if (!calendars) {
-    try {
-      calendars = await listCalendars(keeper);
-    } catch (err) {
-      for (const conn of connections) {
-        if (conn.type === "webcal") recordFailure(db, conn.id, err instanceof Error ? err.message : String(err));
-      }
-      return;
-    }
+export function defaultRange(now = Date.now()): TimeRange {
+  return { start: new Date(now - 30 * DAY), end: new Date(now + 365 * DAY) };
+}
+
+export async function refreshConnection(db: SqliteDb, conn: Connection, deps: CycleDeps = {}): Promise<void> {
+  const now = deps.now ?? Date.now;
+  try {
+    const connector = (deps.connectorFor ?? connectorFor)(db, conn);
+    if (!connector) return;
+    const raw = await connector.getEvents(defaultRange(now()));
+    const events: CalendarEvent[] = raw.map((e) => ({ ...e, calendarId: conn.id, eventTypeId: "" }));
+    recordSuccess(db, conn.id, events, now());
+  } catch (err) {
+    recordFailure(db, conn.id, err instanceof Error ? err.message : String(err));
   }
-  for (const conn of connections) {
-    if (conn.type !== "webcal") continue;
-    try {
-      const calendar = calendars.find((c) => c.name === conn.name) ?? calendars.find((c) => c.id === conn.id);
-      if (!calendar) throw new Error(`No keeper.sh calendar named "${conn.name}"`);
-      const raw = await fetchEvents(keeper, calendar.id);
-      const events: CalendarEvent[] = raw.map((e) => ({
-        id: e.id,
-        title: e.title,
-        calendarId: conn.id,
-        eventTypeId: "",
-        start: e.start,
-        end: e.end,
-        allDay: e.allDay,
-        location: e.location,
-        notes: e.notes,
-      }));
-      recordSuccess(db, conn.id, events, now());
-    } catch (err) {
-      recordFailure(db, conn.id, err instanceof Error ? err.message : String(err));
-    }
+}
+
+export async function runAggregationCycle(db: SqliteDb, deps: CycleDeps = {}): Promise<void> {
+  for (const conn of getConfig(db, "connections") as Connection[]) {
+    await refreshConnection(db, conn, deps);
   }
 }
 

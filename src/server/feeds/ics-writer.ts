@@ -39,6 +39,15 @@ function addEvent(vcalendar: ICAL.Component, event: CalendarEvent): void {
   vcalendar.addSubcomponent(vevent);
 }
 
+/** One-event VCALENDAR, e.g. for writing a new event to a CalDAV endpoint. */
+export function buildEventCalendar(event: CalendarEvent): string {
+  const vcalendar = new ICAL.Component("vcalendar");
+  vcalendar.addPropertyWithValue("prodid", "-//overcal//server feed//FR");
+  vcalendar.addPropertyWithValue("version", "2.0");
+  addEvent(vcalendar, event);
+  return vcalendar.toString();
+}
+
 /** Builds an empty-but-valid VCALENDAR (spec FR-007). */
 export function buildEmptyCalendar(): string {
   const vcalendar = new ICAL.Component("vcalendar");

@@ -176,3 +176,14 @@ Task: "Unit test ics-writer output in tests/server/ics-writer.test.ts"
 - [P] tasks touch different files with no dependency between them.
 - Every task names its exact file path per plan.md's Project Structure.
 - Commit after each task or logical group, per the constitution's Commit Standards (conventional commit format, e.g. `feat(server): add ics-writer`).
+
+---
+
+## Phase 7: Replace keeper.sh with connectors (2026-11-15)
+
+- [x] T027 Extract `parseICS` into the pure `src/lib/ics-parse.ts`, shared by the browser provider and the server
+- [x] T028 Define the `Connector` interface and ICS/CalDAV connectors in `src/server/connectors/` (`tsdav` added)
+- [x] T029 Encrypted storage of CalDAV endpoint credentials (`src/server/config/secrets.ts`, `endpoints` in the import JSON)
+- [x] T030 Scheduler reads through connectors; remove `keeper-client.ts` and the `KEEPER_*` variables
+- [x] T031 `POST /api/events` creates an event on a writable endpoint (admin token)
+- [x] T032 Tests: scheduler isolation with fake connectors, secrets round-trip, CalDAV create/read against a real Radicale (`CALDAV_TEST_URL`)

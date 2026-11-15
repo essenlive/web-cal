@@ -229,10 +229,11 @@ Everything below opens in one shared side drawer (`SettingsDrawer`, [components/
 
 ## Server feed (009-server-ics-presets)
 
-Optional read-only server slice under `src/server/`. Environment variables:
+Optional read/write server slice under `src/server/`. Sources are read through *connectors* (`src/server/connectors/`): ICS/WebCal (read-only) and CalDAV (read and create, e.g. Radicale, Nextcloud, iCloud, Fastmail). Environment variables:
 
-- `KEEPER_BASE_URL`, `KEEPER_API_TOKEN` — self-hosted keeper.sh instance; without them the scheduler does not start.
+- `ADMIN_TOKEN` — bearer token for `POST /api/admin/import` and `POST /api/events` (both disabled when unset).
+- `SECRET_KEY` — encrypts endpoint passwords stored in SQLite (required to import `endpoints`).
 - `WEBCAL_SERVER_DB_PATH` — SQLite file (default `./webcal-server.sqlite`).
 - `AGGREGATION_INTERVAL_MS` — aggregation cadence (default 5 min).
 
-`POST /api/admin/import` takes a settings-export JSON and returns each preset's feed URL; `GET /api/feed/[token]` serves it as `.ics`. A connection is matched to the keeper.sh calendar with the same name.
+`POST /api/admin/import` takes a settings-export JSON, optionally with an `endpoints` array (`{ connectionId, kind: "caldav", url, username, password, calendar? }`) that attaches a CalDAV endpoint to a connection by id, and returns each preset's feed URL. `GET /api/feed/[token]` serves a preset as `.ics`. `POST /api/events` (`{ connectionId, calendarId?, event: { title, start, end, allDay? } }`) creates an event on a writable endpoint.
