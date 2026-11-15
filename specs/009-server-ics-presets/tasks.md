@@ -51,15 +51,15 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Unit test in `tests/server/rules-resolve.test.ts`: the extracted `src/server/rules/resolve.ts` produces identical results to the existing `EventChip.tsx` `resolveEventType`/`isEventHidden` for the same event/rules/type-map fixtures
-- [ ] T012 [P] [US1] Unit test in `tests/server/ics-writer.test.ts`: given a fixed set of resolved (visible/hidden) events, the generated `.ics` string contains exactly the visible ones and round-trips cleanly back through `ical.js`'s own parser
+- [x] T011 [P] [US1] Unit test in `tests/server/rules-resolve.test.ts`: the extracted `src/server/rules/resolve.ts` produces identical results to the existing `EventChip.tsx` `resolveEventType`/`isEventHidden` for the same event/rules/type-map fixtures
+- [x] T012 [P] [US1] Unit test in `tests/server/ics-writer.test.ts`: given a fixed set of resolved (visible/hidden) events, the generated `.ics` string contains exactly the visible ones and round-trips cleanly back through `ical.js`'s own parser
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement `src/server/feeds/ics-writer.ts`: given a preset, resolve each event in its sources' `SourceSnapshot`s via `rules/resolve.ts`, and build a `.ics` string with `ical.js`'s `ICAL.Component`/`ICAL.Property` tree containing only visible events (depends on T005, T007)
-- [ ] T014 [US1] Implement `GET /api/feed/[token]` in `src/app/api/feed/[token]/route.ts`: look up the preset via `tokens.ts`, return `404` if unknown, else call `ics-writer.ts` and return `text/calendar; charset=utf-8` — including a valid empty calendar when zero events are visible (spec FR-007) (depends on T010, T013)
-- [ ] T015 [US1] Implement `src/server/aggregation/scheduler.ts` with a single `runAggregationCycle()` function that fetches every connection via `keeper-client.ts` and writes each result through `snapshot-store.ts`; call it once, synchronously, right after a successful `POST /api/admin/import` so a freshly imported preset has non-empty data to serve (depends on T006, T007, T009) — the *recurring* timer around this same function is User Story 2's job, not this one
-- [ ] T016 [US1] Manual validation: run quickstart.md steps 1–4 end to end (import → wait for the one-off cycle from T015 → fetch feed → subscribe from a real calendar app) and confirm parity with the client app for the same preset/sources
+- [x] T013 [US1] Implement `src/server/feeds/ics-writer.ts`: given a preset, resolve each event in its sources' `SourceSnapshot`s via `rules/resolve.ts`, and build a `.ics` string with `ical.js`'s `ICAL.Component`/`ICAL.Property` tree containing only visible events (depends on T005, T007)
+- [x] T014 [US1] Implement `GET /api/feed/[token]` in `src/app/api/feed/[token]/route.ts`: look up the preset via `tokens.ts`, return `404` if unknown, else call `ics-writer.ts` and return `text/calendar; charset=utf-8` — including a valid empty calendar when zero events are visible (spec FR-007) (depends on T010, T013)
+- [x] T015 [US1] Implement `src/server/aggregation/scheduler.ts` with a single `runAggregationCycle()` function that fetches every connection via `keeper-client.ts` and writes each result through `snapshot-store.ts`; call it once, synchronously, right after a successful `POST /api/admin/import` so a freshly imported preset has non-empty data to serve (depends on T006, T007, T009) — the *recurring* timer around this same function is User Story 2's job, not this one
+- [x] T016 [US1] Manual validation: run quickstart.md steps 1–4 end to end (import → wait for the one-off cycle from T015 → fetch feed → subscribe from a real calendar app) and confirm parity with the client app for the same preset/sources
 
 **Checkpoint**: User Story 1 is fully functional — importing a config produces working, correct feed URLs.
 
@@ -73,13 +73,13 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Unit test in `tests/server/scheduler.test.ts`: when one connection's fetch throws, `runAggregationCycle()` still updates every other connection's `SourceSnapshot`, and the failing connection's previous `events`/`lastSyncedAt` are left untouched while `lastError` is set (spec FR-010)
+- [x] T017 [P] [US2] Unit test in `tests/server/scheduler.test.ts`: when one connection's fetch throws, `runAggregationCycle()` still updates every other connection's `SourceSnapshot`, and the failing connection's previous `events`/`lastSyncedAt` are left untouched while `lastError` is set (spec FR-010)
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Extend `scheduler.ts` so `runAggregationCycle()` wraps each connection's fetch in its own try/catch (one failure never aborts the cycle for other connections) and exposes a `startScheduler(intervalMs)` that re-invokes the cycle on a recurring timer, independent of any HTTP request (depends on T015)
-- [ ] T019 [US2] Confirm (and adjust if needed) that `GET /api/feed/[token]` (T014) never itself triggers a fetch — it must only ever read the latest `SourceSnapshot`, so a calendar app polling every minute doesn't cause redundant source fetches (spec edge case)
-- [ ] T020 [US2] Wire `startScheduler()` to run for the lifetime of the server process (e.g. a Next.js `instrumentation.ts` hook, appropriate for the single-container self-hosted deployment target), started once at boot rather than per-request (depends on T018)
+- [x] T018 [US2] Extend `scheduler.ts` so `runAggregationCycle()` wraps each connection's fetch in its own try/catch (one failure never aborts the cycle for other connections) and exposes a `startScheduler(intervalMs)` that re-invokes the cycle on a recurring timer, independent of any HTTP request (depends on T015)
+- [x] T019 [US2] Confirm (and adjust if needed) that `GET /api/feed/[token]` (T014) never itself triggers a fetch — it must only ever read the latest `SourceSnapshot`, so a calendar app polling every minute doesn't cause redundant source fetches (spec edge case)
+- [x] T020 [US2] Wire `startScheduler()` to run for the lifetime of the server process (e.g. a Next.js `instrumentation.ts` hook, appropriate for the single-container self-hosted deployment target), started once at boot rather than per-request (depends on T018)
 
 **Checkpoint**: Feeds now update on their own over time; a single source outage is isolated.
 
@@ -93,9 +93,9 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Confirm `ics-writer.ts`/the feed route re-run rules resolution against the CURRENT config on every request rather than any cached resolved-event list (adjust if T013/T014 cached anything beyond the raw `SourceSnapshot`)
-- [ ] T022 [US3] In `config/import.ts` (T008), ensure a re-import diffs the previous preset set against the new one: presets no longer present have their `FeedToken` row deleted (so `GET /api/feed/[token]` starts returning `404` immediately, per spec FR-008), while presets still present keep their existing token (URL stability, spec FR-006)
-- [ ] T023 [US3] Manual validation: re-import with one rule/preset-visibility change and confirm the same feed URL's content changes; re-import with one preset removed and confirm its old feed URL now 404s
+- [x] T021 [US3] Confirm `ics-writer.ts`/the feed route re-run rules resolution against the CURRENT config on every request rather than any cached resolved-event list (adjust if T013/T014 cached anything beyond the raw `SourceSnapshot`)
+- [x] T022 [US3] In `config/import.ts` (T008), ensure a re-import diffs the previous preset set against the new one: presets no longer present have their `FeedToken` row deleted (so `GET /api/feed/[token]` starts returning `404` immediately, per spec FR-008), while presets still present keep their existing token (URL stability, spec FR-006)
+- [x] T023 [US3] Manual validation: re-import with one rule/preset-visibility change and confirm the same feed URL's content changes; re-import with one preset removed and confirm its old feed URL now 404s
 
 **Checkpoint**: All three user stories work independently and together — feeds are correct, current, and stay stable across edits.
 
@@ -103,9 +103,9 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T024 [P] Document the new environment variables (`KEEPER_BASE_URL`, `KEEPER_API_TOKEN`) and the admin-import workflow, extending `docs/planning/server-sync-architecture.md` (or a new `docs/server-setup.md` if it grows beyond a short section)
-- [ ] T025 Run `tsc -b`, `npm run lint`, and `npm run build` to confirm the new `src/server/*` code satisfies the project's existing quality gates (constitution's Quality Gates principle)
-- [ ] T026 Run quickstart.md's full 6-step validation end to end as a final acceptance pass
+- [x] T024 [P] Document the new environment variables (`KEEPER_BASE_URL`, `KEEPER_API_TOKEN`) and the admin-import workflow, extending `docs/planning/server-sync-architecture.md` (or a new `docs/server-setup.md` if it grows beyond a short section)
+- [x] T025 Run `tsc -b`, `npm run lint`, and `npm run build` to confirm the new `src/server/*` code satisfies the project's existing quality gates (constitution's Quality Gates principle)
+- [x] T026 Run quickstart.md's full 6-step validation end to end as a final acceptance pass
 
 ---
 

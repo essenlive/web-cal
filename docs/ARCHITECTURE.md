@@ -226,3 +226,13 @@ Everything below opens in one shared side drawer (`SettingsDrawer`, [components/
 - **Thème** — sidebar **Thème** section: every theme, including the two built-ins, is listed and selectable inline; editing opens the same drawer. See [Global theming](#global-theming).
 - **Réglages** — sidebar **Réglages** section (toggles and timezone inline); its label opens `PreferencesPanel` ([components/settings/PreferencesPanel.tsx](../src/components/settings/PreferencesPanel.tsx)) with the same options described. Export, import, AI settings, sync and reset live on the `/data` page. `/settings` is kept only as a redirect (`src/app/settings/page.tsx`) that opens this panel then bounces to `/`.
 - **Aide** — sidebar footer "?" button: the "Bien démarrer" checklist and how the app fits together (`HelpPanel`).
+
+## Server feed (009-server-ics-presets)
+
+Optional read-only server slice under `src/server/`. Environment variables:
+
+- `KEEPER_BASE_URL`, `KEEPER_API_TOKEN` — self-hosted keeper.sh instance; without them the scheduler does not start.
+- `WEBCAL_SERVER_DB_PATH` — SQLite file (default `./webcal-server.sqlite`).
+- `AGGREGATION_INTERVAL_MS` — aggregation cadence (default 5 min).
+
+`POST /api/admin/import` takes a settings-export JSON and returns each preset's feed URL; `GET /api/feed/[token]` serves it as `.ics`. A connection's keeper.sh calendar id is the connection's own id.

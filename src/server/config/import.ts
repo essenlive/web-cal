@@ -48,9 +48,7 @@ export interface ImportResult {
   feedUrls: Array<{ presetId: string; presetName: string; url: string }>;
 }
 
-const CONFIG_KEYS = ["connections", "eventTypes", "rules", "presets"] as const;
-
-export function getConfig<K extends (typeof CONFIG_KEYS)[number]>(db: SqliteDb, key: K): unknown[] {
+export function getConfig(db: SqliteDb, key: "connections" | "eventTypes" | "rules" | "presets"): unknown[] {
   const row = db.prepare("SELECT json FROM config WHERE key = ?").get(key) as { json: string } | undefined;
   return row ? (JSON.parse(row.json) as unknown[]) : [];
 }
