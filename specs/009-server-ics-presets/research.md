@@ -31,12 +31,13 @@
 
 ## Decision D — Generating valid `.ics` output
 
-**Decision**: Use `ical-generator` (a small, focused RFC 5545 writer) rather than hand-building ICS text.
+**Decision**: Build the output `VCALENDAR` with `ical.js`'s `ICAL.Component`/`ICAL.Property` API (`comp.addSubcomponent(vevent)`, `comp.toString()`) — no new dependency.
 
-**Rationale**: The existing codebase only *parses* ICS (`webcal-provider.ts`'s `parseICS`) — it has no writer, and RFC 5545's escaping/folding/timezone rules are exactly the kind of text-format detail that's easy to get subtly wrong by hand (and hard to notice until some calendar client chokes on it). A small, single-purpose library is a justified exception to "no new dependency," per the constitution's Simplicity principle, which asks for dependencies to be justified by concrete need rather than banning them outright.
+**Rationale**: `ical.js` is already a dependency, used today for *parsing* (`webcal-provider.ts`'s `parseICS`). It turns out to be a general RFC 5545 library, not a parse-only one: it exposes the same component/property tree for building a calendar as for reading one, and `Component#toString()` serializes it back through the library's own (already correctness-tested, already in use) escaping/folding logic. Reaching for a second, separate library (`ical-generator`) to do the inverse of what an existing dependency already can do would violate the Simplicity/YAGNI principle's "dependencies justified by concrete need" — here the need is already met.
 
 **Alternatives considered**:
-- *Hand-write the ICS string*: rejected — correctness risk (escaping, line folding, `VALARM`/recurrence edge cases) for no real savings over a small library.
+- *Add `ical-generator` (a dedicated writer library)*: rejected on reflection, once it was clear `ical.js` already covers this — it would duplicate functionality already in the dependency tree for a more convenient but otherwise equivalent API.
+- *Hand-write the ICS string*: rejected — correctness risk (escaping, line folding, `VALARM`/recurrence edge cases) for no real savings over using the library already in place.
 
 ## Decision E — Feed URL protection (no auth exists yet)
 

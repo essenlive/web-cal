@@ -18,7 +18,7 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 **Purpose**: Scaffolding for the new server slice, isolated from existing client code
 
 - [ ] T001 Create the `src/server/{aggregation,rules,feeds,config}/` directory structure per plan.md's Project Structure (empty `.gitkeep`-free — populated by Phase 2 tasks)
-- [ ] T002 [P] Add `better-sqlite3` and `ical-generator` to `package.json` (research.md Decisions C and D) and install
+- [ ] T002 [P] Add `better-sqlite3` to `package.json` (research.md Decision C) and install — no `.ics`-writing dependency needed, `ical.js` already in `package.json` covers it (research.md Decision D)
 - [ ] T003 [P] Create `tests/server/` directory, confirm the existing root `vitest.config.ts` already picks it up (no new Vitest config needed — verify with an empty placeholder test)
 
 **Checkpoint**: New directories and dependencies exist; nothing functional yet.
@@ -52,11 +52,11 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 ### Tests for User Story 1
 
 - [ ] T011 [P] [US1] Unit test in `tests/server/rules-resolve.test.ts`: the extracted `src/server/rules/resolve.ts` produces identical results to the existing `EventChip.tsx` `resolveEventType`/`isEventHidden` for the same event/rules/type-map fixtures
-- [ ] T012 [P] [US1] Unit test in `tests/server/ics-writer.test.ts`: given a fixed set of resolved (visible/hidden) events, the generated `.ics` string contains exactly the visible ones and parses as valid RFC 5545
+- [ ] T012 [P] [US1] Unit test in `tests/server/ics-writer.test.ts`: given a fixed set of resolved (visible/hidden) events, the generated `.ics` string contains exactly the visible ones and round-trips cleanly back through `ical.js`'s own parser
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement `src/server/feeds/ics-writer.ts`: given a preset, resolve each event in its sources' `SourceSnapshot`s via `rules/resolve.ts`, and build a `.ics` string with `ical-generator` containing only visible events (depends on T005, T007)
+- [ ] T013 [US1] Implement `src/server/feeds/ics-writer.ts`: given a preset, resolve each event in its sources' `SourceSnapshot`s via `rules/resolve.ts`, and build a `.ics` string with `ical.js`'s `ICAL.Component`/`ICAL.Property` tree containing only visible events (depends on T005, T007)
 - [ ] T014 [US1] Implement `GET /api/feed/[token]` in `src/app/api/feed/[token]/route.ts`: look up the preset via `tokens.ts`, return `404` if unknown, else call `ics-writer.ts` and return `text/calendar; charset=utf-8` — including a valid empty calendar when zero events are visible (spec FR-007) (depends on T010, T013)
 - [ ] T015 [US1] Implement `src/server/aggregation/scheduler.ts` with a single `runAggregationCycle()` function that fetches every connection via `keeper-client.ts` and writes each result through `snapshot-store.ts`; call it once, synchronously, right after a successful `POST /api/admin/import` so a freshly imported preset has non-empty data to serve (depends on T006, T007, T009) — the *recurring* timer around this same function is User Story 2's job, not this one
 - [ ] T016 [US1] Manual validation: run quickstart.md steps 1–4 end to end (import → wait for the one-off cycle from T015 → fetch feed → subscribe from a real calendar app) and confirm parity with the client app for the same preset/sources
