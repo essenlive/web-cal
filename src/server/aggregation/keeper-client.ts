@@ -45,11 +45,35 @@ async function keeperFetch<T>(config: KeeperConfig, path: string): Promise<T> {
 
 /** Lists the calendars keeper.sh currently knows about (one per configured source). */
 export async function listCalendars(config: KeeperConfig): Promise<Array<{ id: string; name: string }>> {
-  return keeperFetch(config, "/api/v1/calendars");
+  const data = await keeperFetch<unknown>(config, "/api/v1/calendars");
+  const list = Array.isArray(data) ? data : ((data as { calendars?: unknown[] })?.calendars ?? []);
+  return (list as Array<Record<string, unknown>>).map((c) => ({ id: String(c.id), name: String(c.name ?? c.title ?? c.id) }));
 }
 
-/** Fetches a single calendar's events from keeper.sh, for the connection identified by `calendarId`. */
+function pick(e: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const k of keys) if (e[k] !== undefined && e[k] !== null) return e[k];
+  return undefined;
+}
+
+/**
+ * Fetches a calendar's events from GET /api/v1/events (calendarId, from, to).
+ * keeper.sh's README documents the query but not the response shape, so field
+ * names are read tolerantly (title|summary, start|startTime, ...).
+ */
 export async function getEvents(config: KeeperConfig, calendarId: string): Promise<KeeperEvent[]> {
-  const path = `/api/v1/calendars/${encodeURIComponent(calendarId)}/events`;
-  return keeperFetch(config, path);
+  const day = 86_400_000;
+  const from = new Date(Date.now() - 30 * day).toISOString();
+  const to = new Date(Date.now() + 365 * day).toISOString();
+  const query = new URLSearchParams({ calendarId, from, to });
+  const data = await keeperFetch<unknown>(config, `/api/v1/events?${query}`);
+  const list = Array.isArray(data) ? data : ((data as { events?: unknown[] })?.events ?? []);
+  return (list as Array<Record<string, unknown>>).map((e) => ({
+    id: String(pick(e, "id", "uid")),
+    title: String(pick(e, "title", "summary", "name") ?? ""),
+    start: String(pick(e, "start", "startTime", "startAt")),
+    end: String(pick(e, "end", "endTime", "endAt", "start", "startTime")),
+    allDay: Boolean(pick(e, "allDay", "isAllDay")),
+    location: pick(e, "location") as string | undefined,
+    notes: (pick(e, "description", "notes") as string | undefined) ?? undefined,
+  }));
 }

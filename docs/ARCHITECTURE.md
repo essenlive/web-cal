@@ -235,4 +235,4 @@ Optional read-only server slice under `src/server/`. Environment variables:
 - `WEBCAL_SERVER_DB_PATH` — SQLite file (default `./webcal-server.sqlite`).
 - `AGGREGATION_INTERVAL_MS` — aggregation cadence (default 5 min).
 
-`POST /api/admin/import` takes a settings-export JSON and returns each preset's feed URL; `GET /api/feed/[token]` serves it as `.ics`. A connection's keeper.sh calendar id is the connection's own id.
+`POST /api/admin/import` takes a settings-export JSON and returns each preset's feed URL; `GET /api/feed/[token]` serves it as `.ics`. A connection is matched to the keeper.sh calendar with the same name.
