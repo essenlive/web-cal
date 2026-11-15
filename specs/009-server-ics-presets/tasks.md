@@ -31,13 +31,13 @@ Single project (existing repo) — see plan.md's Project Structure. New code liv
 
 **⚠️ CRITICAL**: No user story task can start until this phase is complete
 
-- [ ] T004 Define the SQLite schema (connections/types/rules/presets tables, `FeedToken`, `SourceSnapshot`) in `src/server/config/db.ts` per data-model.md
-- [ ] T005 [P] Extract `resolveEventType`/`isEventHidden` out of `src/components/events/EventChip.tsx` into a store-free `src/server/rules/resolve.ts` that takes the default `EventType` as a parameter (research.md Decision A); update `EventChip.tsx`'s own call site to pass `useEventTypeStore.getState().getDefaultType()` explicitly so client behavior is unchanged
-- [ ] T006 [P] Implement `src/server/aggregation/keeper-client.ts`: a `fetch`-based adapter over keeper.sh's REST API (`list_calendars`, `get_events`), reading `KEEPER_BASE_URL`/`KEEPER_API_TOKEN` from the server environment (research.md Decision B)
-- [ ] T007 Implement `src/server/aggregation/snapshot-store.ts`: read/write one `SourceSnapshot` row per connection (depends on T004)
-- [ ] T008 Implement `src/server/config/import.ts`: parse a settings-export JSON (same shape the client's `/data` export produces), write connections/types/rules/presets into SQLite, and create/delete `FeedToken` rows to match the imported preset set (depends on T004)
-- [ ] T009 Implement `POST /api/admin/import` in `src/app/api/admin/import/route.ts` wiring to `import.ts`, returning the `{ importedPresets, importedConnections, feedUrls }` shape from contracts/feed-api.md (depends on T008)
-- [ ] T010 [P] Implement `src/server/feeds/tokens.ts`: generate a unique opaque token per preset and look up a preset by token (depends on T004; research.md Decision E — token is independent of the preset's own id)
+- [x] T004 Define the SQLite schema (connections/types/rules/presets tables, `FeedToken`, `SourceSnapshot`) in `src/server/config/db.ts` per data-model.md
+- [x] T005 [P] Extract `resolveEventType`/`isEventHidden` out of `src/components/events/EventChip.tsx` into a store-free `src/server/rules/resolve.ts` that takes the default `EventType` as a parameter (research.md Decision A); update `EventChip.tsx`'s own call site to pass `useEventTypeStore.getState().getDefaultType()` explicitly so client behavior is unchanged
+- [x] T006 [P] Implement `src/server/aggregation/keeper-client.ts`: a `fetch`-based adapter over keeper.sh's REST API (`list_calendars`, `get_events`), reading `KEEPER_BASE_URL`/`KEEPER_API_TOKEN` from the server environment (research.md Decision B)
+- [x] T007 Implement `src/server/aggregation/snapshot-store.ts`: read/write one `SourceSnapshot` row per connection (depends on T004)
+- [x] T008 Implement `src/server/config/import.ts`: parse a settings-export JSON (same shape the client's `/data` export produces), write connections/types/rules/presets into SQLite, and create/delete `FeedToken` rows to match the imported preset set (depends on T004)
+- [x] T009 Implement `POST /api/admin/import` in `src/app/api/admin/import/route.ts` wiring to `import.ts`, returning the `{ importedPresets, importedConnections, feedUrls }` shape from contracts/feed-api.md (depends on T008)
+- [x] T010 [P] Implement `src/server/feeds/tokens.ts`: generate a unique opaque token per preset and look up a preset by token (depends on T004; research.md Decision E — token is independent of the preset's own id)
 
 **Checkpoint**: Config can be imported and stored; sources can be fetched from keeper.sh; the rules engine can run outside the browser. No feed exists yet.
 
