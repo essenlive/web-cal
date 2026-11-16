@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { DataProviderContext } from "../context/DataProviderContext";
 import { CalendarSkeleton } from "../components/calendar/CalendarSkeleton";
+import { SessionSync } from "../components/data/SessionSync";
 
 /**
  * Every persisted Zustand store (connections, event types, rules, themes,
@@ -27,6 +28,7 @@ const CalendarPage = dynamic(() => import("../views/CalendarPage").then((m) => m
 export default function Page() {
   return (
     <DataProviderContext>
+      <SessionSync />
       <CalendarPage />
     </DataProviderContext>
   );

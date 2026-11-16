@@ -9,6 +9,7 @@ import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useConnectionStore, useServerStore } from "../../store";
+import { serverHeaders } from "../../lib/server-api";
 import { useSourceSync } from "../../context/DataProviderContext";
 
 interface WritableConnection {
@@ -25,9 +26,10 @@ export function buildNewEventPayload(f: { title: string; allDay: boolean; start:
   return { title: f.title.trim(), start, end, allDay: f.allDay, ...(f.location.trim() ? { location: f.location.trim() } : {}) };
 }
 
-/** "+" button in the header: creates an event on a connection the server can write to. Only shown once a server token is set. */
+/** "+" button in the header: creates an event on a connection the server can write to. Only shown once linked to the server. */
 export function NewEventButton() {
   const token = useServerStore((s) => s.token);
+  const session = useServerStore((s) => s.session);
   const connections = useConnectionStore((s) => s.connections);
   const { refresh } = useSourceSync();
   const [open, setOpen] = useState(false);
@@ -46,15 +48,15 @@ export function NewEventButton() {
     location: "",
   });
 
-  if (!token) return null;
+  if (!token && !session) return null;
 
   async function openDialog() {
     setOpen(true);
     setError(null);
     try {
       const at = new Date().toISOString();
-      const res = await fetch(`/api/events?${new URLSearchParams({ from: at, to: at })}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error(res.status === 401 ? "Jeton refusé par le serveur." : `Le serveur a répondu HTTP ${res.status}.`);
+      const res = await fetch(`/api/events?${new URLSearchParams({ from: at, to: at })}`, { headers: serverHeaders(token) });
+      if (!res.ok) throw new Error(res.status === 401 ? "Accès refusé par le serveur." : `Le serveur a répondu HTTP ${res.status}.`);
       const body = (await res.json()) as { connections: Record<string, { writable: boolean }> };
       const list = connections.filter((c) => body.connections[c.id]?.writable).map((c) => ({ id: c.id, name: c.name }));
       setWritable(list);
@@ -72,7 +74,7 @@ export function NewEventButton() {
     try {
       const res = await fetch("/api/events", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: serverHeaders(token, { "Content-Type": "application/json" }),
         body: JSON.stringify({ connectionId: form.connectionId, event: buildNewEventPayload(form) }),
       });
       if (!res.ok) {
