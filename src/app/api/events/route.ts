@@ -3,17 +3,31 @@ import { getDb } from "../../../server/config/db";
 import { getConfig } from "../../../server/config/import";
 import { connectorFor } from "../../../server/connectors";
 import { refreshConnection } from "../../../server/aggregation/scheduler";
+import { checkAdmin } from "../../../server/auth";
+import { listServerEvents } from "../../../server/events/query";
 import type { Connection } from "../../../types";
 
 export const dynamic = "force-dynamic";
 
+/** Snapshot events per connection for ?from=&to= (ISO), optionally limited to ?connectionId=. */
+export async function GET(request: Request) {
+  const denied = checkAdmin(request);
+  if (denied) return denied;
+
+  const params = new URL(request.url).searchParams;
+  const start = new Date(params.get("from") ?? "");
+  const end = new Date(params.get("to") ?? "");
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return NextResponse.json({ error: "Expected ?from=<ISO date>&to=<ISO date>" }, { status: 400 });
+  }
+  const connections = listServerEvents(getDb(), { start, end }, params.get("connectionId") ?? undefined);
+  return NextResponse.json({ connections });
+}
+
 /** Creates an event on a connection's endpoint. Body: { connectionId, calendarId?, event }. */
 export async function POST(request: Request) {
-  const adminToken = process.env.ADMIN_TOKEN;
-  if (!adminToken) return NextResponse.json({ error: "ADMIN_TOKEN is not configured on the server" }, { status: 503 });
-  if (request.headers.get("authorization") !== `Bearer ${adminToken}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = checkAdmin(request);
+  if (denied) return denied;
 
   let body: { connectionId?: unknown; calendarId?: unknown; event?: Record<string, unknown> };
   try {

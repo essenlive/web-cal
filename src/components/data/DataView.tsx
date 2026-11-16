@@ -6,6 +6,7 @@ import { ExportTab } from "./ExportTab";
 import { ImportTab } from "./ImportTab";
 import { AiRulesTab } from "./AiRulesTab";
 import { SyncTab } from "./SyncTab";
+import { ServerTab } from "./ServerTab";
 import { ResetTab } from "./ResetTab";
 
 const TABS = [
@@ -28,6 +29,11 @@ const TABS = [
     id: "sync",
     label: "Synchroniser",
     description: "Connecte cet appareil à un autre en direct (pair-à-pair, chiffré) pour transférer les réglages.",
+  },
+  {
+    id: "server",
+    label: "Serveur",
+    description: "Lit tes calendriers depuis le serveur Overcal qui sert cette page, avec ton jeton d'administration.",
   },
   {
     id: "reset",
@@ -73,6 +79,7 @@ export function DataView() {
       {tab === "import" && <ImportTab />}
       {tab === "ai" && <AiRulesTab />}
       {tab === "sync" && <SyncTab />}
+      {tab === "server" && <ServerTab />}
       {tab === "reset" && <ResetTab />}
     </div>
   );
