@@ -9,6 +9,8 @@ import { isWithinInterval, parseISO } from "date-fns";
 import { HttpError, type DataProvider } from "./data-provider";
 import type { CalendarEvent, Connection, ConnectionStatus } from "../types";
 import { WebCalProvider } from "./webcal-provider";
+import { ServerProvider } from "./server-provider";
+import { useServerStore } from "../store/server";
 import { generateSeedEvents } from "./mock-seed";
 
 /** Local, offline provider backing the seeded "demo" connection — see DemoConnection in types. */
@@ -24,11 +26,15 @@ const demoProvider: DataProvider = {
 /** Build a sub-provider from a connection config. */
 function makeProvider(conn: Connection): DataProvider {
   switch (conn.type) {
-    case "webcal":
-      return new WebCalProvider(
+    case "webcal": {
+      const direct = new WebCalProvider(
         [{ id: conn.id, name: conn.name, url: conn.url, color: conn.color }],
         conn.proxyUrl ?? ""
       );
+      // With a server token set, read the server's aggregated snapshot (falls back to `direct`).
+      const token = useServerStore.getState().token;
+      return token ? new ServerProvider(conn.id, token, direct) : direct;
+    }
     case "demo":
       return demoProvider;
   }
