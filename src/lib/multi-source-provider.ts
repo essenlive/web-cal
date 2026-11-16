@@ -27,12 +27,20 @@ const demoProvider: DataProvider = {
 function makeProvider(conn: Connection): DataProvider {
   switch (conn.type) {
     case "webcal": {
+      const token = useServerStore.getState().token;
+      if (conn.serverOnly) {
+        const unavailable: DataProvider = {
+          async getEvents() {
+            throw new Error("Cette source n'est lisible que via le serveur : renseigne le jeton dans Données › Serveur.");
+          },
+        };
+        return token ? new ServerProvider(conn.id, token, unavailable) : unavailable;
+      }
       const direct = new WebCalProvider(
         [{ id: conn.id, name: conn.name, url: conn.url, color: conn.color }],
         conn.proxyUrl ?? ""
       );
       // With a server token set, read the server's aggregated snapshot (falls back to `direct`).
-      const token = useServerStore.getState().token;
       return token ? new ServerProvider(conn.id, token, direct) : direct;
     }
     case "demo":

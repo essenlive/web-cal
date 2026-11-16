@@ -172,6 +172,8 @@ export interface WebCalConnection {
   displayTypeId?: string;
   /** When true, this connection's events are excluded from all calendar views. Config/credentials are preserved. */
   hidden?: boolean;
+  /** Added from the Overcal server's source list: events are only readable through the server (no usable `url` here). */
+  serverOnly?: boolean;
 }
 
 /**

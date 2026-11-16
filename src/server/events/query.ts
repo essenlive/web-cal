@@ -5,6 +5,8 @@ import type { CalendarEvent, Connection } from "../../types";
 
 /** What the web client needs about one connection, read from the aggregation snapshot. */
 export interface ServerConnectionEvents {
+  name: string;
+  color: string;
   events: CalendarEvent[];
   lastSyncedAt: number | null;
   lastError: string | null;
@@ -37,6 +39,8 @@ export function listServerEvents(
         eventTypeId: e.eventTypeId || "meeting",
       }));
     result[conn.id] = {
+      name: conn.name,
+      color: conn.color,
       events,
       lastSyncedAt: snapshot?.lastSyncedAt ?? null,
       lastError: snapshot?.lastError ?? null,
