@@ -231,7 +231,7 @@ Everything below opens in one shared side drawer (`SettingsDrawer`, [components/
 
 Optional read/write server slice under `src/server/`. Sources are read through *connectors* (`src/server/connectors/`): ICS/WebCal (read-only) and CalDAV (read and create, e.g. Radicale, Nextcloud, iCloud, Fastmail). Environment variables:
 
-- `ADMIN_TOKEN` — bearer token for `POST /api/admin/import` and `POST /api/events` (both disabled when unset).
+- `ADMIN_TOKEN` — bearer token for `POST /api/admin/import` and `POST /api/events` (both disabled when unset). It is also the switch for server mode: without it, the aggregation scheduler is not started and the SQLite file is never opened, so a client-only instance behaves exactly as before.
 - `SECRET_KEY` — encrypts endpoint passwords stored in SQLite (required to import `endpoints`).
 - `WEBCAL_SERVER_DB_PATH` — SQLite file (default `./webcal-server.sqlite`).
 - `AGGREGATION_INTERVAL_MS` — aggregation cadence (default 5 min).
