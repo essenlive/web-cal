@@ -64,14 +64,30 @@ export function getConfig(db: SqliteDb, key: "connections" | "eventTypes" | "rul
 }
 
 export function importConfig(db: SqliteDb, config: ImportableConfig): ImportResult {
+  // A client may only know some sources as `serverOnly` (no usable url of its own): keep the
+  // server's own definition for those, and drop any it doesn't have.
+  const existing = new Map((getConfig(db, "connections") as Connection[]).map((c) => [c.id, c]));
+  const keepEndpoints = config.endpoints === undefined;
+  config = {
+    ...config,
+    connections: config.connections.flatMap((c) => {
+      if (!(c as { serverOnly?: boolean }).serverOnly) return [c];
+      const known = existing.get(c.id);
+      return known ? [known] : [];
+    }),
+  };
+
   const setConfig = db.transaction((cfg: ImportableConfig) => {
     const upsert = db.prepare("INSERT INTO config (key, json) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET json = excluded.json");
     upsert.run("connections", JSON.stringify(cfg.connections));
     upsert.run("eventTypes", JSON.stringify(cfg.eventTypes));
     upsert.run("rules", JSON.stringify(cfg.rules));
     upsert.run("presets", JSON.stringify(cfg.presets));
-    const endpoints = (cfg.endpoints ?? []).map((e) => ({ ...e, password: encryptSecret(e.password) }));
-    upsert.run("endpoints", JSON.stringify(endpoints));
+    // Endpoints are server-only: a client bundle that carries none must not wipe the ones already attached.
+    if (!keepEndpoints) {
+      const endpoints = (cfg.endpoints ?? []).map((e) => ({ ...e, password: encryptSecret(e.password) }));
+      upsert.run("endpoints", JSON.stringify(endpoints));
+    }
   });
   setConfig(config);
 
