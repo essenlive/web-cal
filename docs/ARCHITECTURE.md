@@ -226,3 +226,14 @@ Everything below opens in one shared side drawer (`SettingsDrawer`, [components/
 - **Thème** — sidebar **Thème** section: every theme, including the two built-ins, is listed and selectable inline; editing opens the same drawer. See [Global theming](#global-theming).
 - **Réglages** — sidebar **Réglages** section (toggles and timezone inline); its label opens `PreferencesPanel` ([components/settings/PreferencesPanel.tsx](../src/components/settings/PreferencesPanel.tsx)) with the same options described. Export, import, AI settings, sync and reset live on the `/data` page. `/settings` is kept only as a redirect (`src/app/settings/page.tsx`) that opens this panel then bounces to `/`.
 - **Aide** — sidebar footer "?" button: the "Bien démarrer" checklist and how the app fits together (`HelpPanel`).
+
+## Server feed (009-server-ics-presets)
+
+Optional read/write server slice under `src/server/`. Sources are read through *connectors* (`src/server/connectors/`): ICS/WebCal (read-only) and CalDAV (read and create, e.g. Radicale, Nextcloud, iCloud, Fastmail). Environment variables:
+
+- `ADMIN_TOKEN` — bearer token for `POST /api/admin/import` and `POST /api/events` (both disabled when unset). It is also the switch for server mode: without it, the aggregation scheduler is not started and the SQLite file is never opened, so a client-only instance behaves exactly as before.
+- `SECRET_KEY` — encrypts endpoint passwords stored in SQLite (required to import `endpoints`).
+- `WEBCAL_SERVER_DB_PATH` — SQLite file (default `./webcal-server.sqlite`).
+- `AGGREGATION_INTERVAL_MS` — aggregation cadence (default 5 min).
+
+`POST /api/admin/import` takes a settings-export JSON, optionally with an `endpoints` array (`{ connectionId, kind: "caldav", url, username, password, calendar? }`) that attaches a CalDAV endpoint to a connection by id, and returns each preset's feed URL. `GET /api/feed/[token]` serves a preset as `.ics`. `POST /api/events` (`{ connectionId, calendarId?, event: { title, start, end, allDay? } }`) creates an event on a writable endpoint.

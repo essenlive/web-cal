@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { getIconEl } from "../../lib/icons";
 import { cn, firstGrapheme } from "../../lib/utils";
-import { findMatchingRule } from "../../lib/rules";
 import { useEventTypeStore } from "../../store";
+import { resolveEventType as resolveEventTypeShared, isEventHidden as isEventHiddenShared } from "../../server/rules/resolve";
 import { SimpleTooltip } from "../ui/tooltip";
 import type { CalendarEvent, CalendarView, Connection, DisplayStyle, EventType, Rule } from "../../types";
 
@@ -40,9 +40,7 @@ export function resolveEventType(
   getType: (id: string) => EventType | undefined,
   rules: Rule[],
 ): EventType {
-  const matched = findMatchingRule(event, rules);
-  if (matched.matchType === "all") return useEventTypeStore.getState().getDefaultType();
-  return getType(matched.displayTypeId) ?? useEventTypeStore.getState().getDefaultType();
+  return resolveEventTypeShared(event, getType, rules, useEventTypeStore.getState().getDefaultType());
 }
 
 /**
@@ -57,9 +55,7 @@ export function isEventHidden(
   getConnection: (calendarId: string) => Connection | undefined,
   rules: Rule[],
 ): boolean {
-  if (getConnection(event.calendarId)?.hidden) return true;
-  const type = resolveEventType(event, getType, rules);
-  return !!type?.hidden;
+  return isEventHiddenShared(event, getType, getConnection, rules, useEventTypeStore.getState().getDefaultType());
 }
 
 /** Timed events use the type's timedStyle. All-day events use the type's allDayStyle. Both are fully configurable. */
