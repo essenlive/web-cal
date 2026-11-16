@@ -3,7 +3,7 @@ import { getDb } from "../../../server/config/db";
 import { getConfig } from "../../../server/config/import";
 import { connectorFor } from "../../../server/connectors";
 import { refreshConnection } from "../../../server/aggregation/scheduler";
-import { checkAdmin } from "../../../server/auth";
+import { checkAuth } from "../../../server/auth";
 import { listServerEvents } from "../../../server/events/query";
 import type { Connection } from "../../../types";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 /** Snapshot events per connection for ?from=&to= (ISO), optionally limited to ?connectionId=. */
 export async function GET(request: Request) {
-  const denied = checkAdmin(request);
+  const denied = checkAuth(request);
   if (denied) return denied;
 
   const params = new URL(request.url).searchParams;
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
 /** Creates an event on a connection's endpoint. Body: { connectionId, calendarId?, event }. */
 export async function POST(request: Request) {
-  const denied = checkAdmin(request);
+  const denied = checkAuth(request);
   if (denied) return denied;
 
   let body: { connectionId?: unknown; calendarId?: unknown; event?: Record<string, unknown> };

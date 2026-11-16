@@ -21,6 +21,24 @@ CREATE TABLE IF NOT EXISTS feed_tokens (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS auth (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  token_hash TEXT NOT NULL UNIQUE,
+  device_name TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pairing_codes (
+  code_hash TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS source_snapshots (
   connection_id TEXT PRIMARY KEY,
   events_json TEXT NOT NULL,

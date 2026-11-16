@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getDb } from "../../../server/config/db";
 import { getConfig } from "../../../server/config/import";
-import { checkAdmin } from "../../../server/auth";
+import { checkAuth } from "../../../server/auth";
 
 export const dynamic = "force-dynamic";
 
 /** The server's configuration (connections, types, rules, presets) so a client can pull it. Endpoint credentials are never included. */
 export async function GET(request: Request) {
-  const denied = checkAdmin(request);
+  const denied = checkAuth(request);
   if (denied) return denied;
   const db = getDb();
   return NextResponse.json({

@@ -7,6 +7,7 @@
 
 import { HttpError, parseRetryAfterMs, type DataProvider } from "./data-provider";
 import type { CalendarEvent } from "../types";
+import { serverHeaders } from "./server-api";
 
 interface ServerEventsResponse {
   connections?: Record<string, { events: CalendarEvent[]; lastSyncedAt: number | null } | undefined>;
@@ -23,7 +24,7 @@ export class ServerProvider implements DataProvider {
     const params = new URLSearchParams({ from: start.toISOString(), to: end.toISOString(), connectionId: this.connectionId });
     let res: Response;
     try {
-      res = await fetch(`/api/events?${params}`, { headers: { Authorization: `Bearer ${this.token}` } });
+      res = await fetch(`/api/events?${params}`, { headers: serverHeaders(this.token) });
     } catch {
       return this.fallback.getEvents(start, end);
     }
