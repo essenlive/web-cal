@@ -1,11 +1,14 @@
 import { format } from "date-fns";
 import DOMPurify from "dompurify";
+import { useState } from "react";
 import { MapPin, StickyNote, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useEventTypeStore, useUIStore, useRuleStore, useEventsStore, useConnectionStore } from "../../store";
 import { resolveEventType } from "./EventChip";
 import { findMatchingRule, describeMatch } from "../../lib/rules";
 import { getIconEl } from "../../lib/icons";
 import { ItemBadge } from "../sidebar/ItemRow";
+import { EventEditDialog } from "./EventEditDialog";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -27,13 +30,16 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   }
 });
 
-/** Read-only event view — sources are read-only, so there is no edit/save/delete here (FR-016). */
+/** Event view. Read-only except for sources the server can write to (CalDAV): those get an edit/delete dialog. */
 export function EventDetail({ event, onClose }: EventDetailProps) {
   const { getType } = useEventTypeStore();
   const { dateFormatEU, openDrawer } = useUIStore();
   const { rules, addRule } = useRuleStore();
   const { events } = useEventsStore();
   const { connections } = useConnectionStore();
+  const [editing, setEditing] = useState(false);
+  // `events` holds the unshifted copy: edit from it, not from the timezone-shifted one shown here.
+  const rawEvent = events.find((e) => e.id === event.id) ?? event;
 
   const type = resolveEventType(event, getType, rules);
   const source = connections.find((c) => c.id === event.calendarId);
@@ -139,8 +145,15 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
               <Plus size={12} /> Créer une règle
             </button>
           </div>
+
+          {rawEvent.writable && (
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Pencil size={13} /> Modifier l&rsquo;événement
+            </Button>
+          )}
         </div>
       </DialogContent>
+      {editing && <EventEditDialog event={rawEvent} onClose={() => { setEditing(false); onClose(); }} />}
     </Dialog>
   );
 }
