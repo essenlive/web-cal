@@ -250,3 +250,12 @@ Sources with a CalDAV endpoint are writable. The snapshot keeps each event's Cal
 ## Client backend interface
 
 All client → server calls for events and settings go through `ServerBackend` ([lib/backend.ts](../src/lib/backend.ts)): `events`, `createEvent`, `updateEvent`, `deleteEvent`, `getSettings`, `putSection`, with one `BackendError` (status, Retry-After). `useBackend()` returns it while the browser is linked and `null` in client-only mode, so components just test for `null`. The sources' direct fetching (`WebCalProvider`) stays a separate path for client-only. Login, pairing and device management (`/api/auth/*`) stay in the Server tab since they run before any session exists.
+
+## Server URL and bearer sessions
+
+Any client can talk to any Overcal server. The Server tab has an "Adresse du serveur" field ([store/server.ts](../src/store/server.ts) `serverUrl`): empty means the server that serves the page (same origin, as before), otherwise the base URL of another server. `ServerBackend`, `ServerProvider`, the status probe and the P2P relay all prefix their requests with it.
+
+- **No admin token in the browser.** `ADMIN_TOKEN` is typed once, only to define the passphrase on a fresh server (`POST /api/auth/setup`), and is never persisted. Persisted state from older versions is migrated by dropping the old `token` field.
+- **Bearer sessions.** `login`, `setup` and `redeem` return `{ ok, session, token }` in addition to setting the cookie. The token is the same device-session token (only its sha256 is stored server-side); the client keeps it and sends `Authorization: Bearer`, which works across origins where the cookie does not. `sessionTokenOf` reads the bearer unless it equals `ADMIN_TOKEN`, then the cookie. Revoking the device in "Appareils connectés" invalidates both; a client that finds its bearer revoked forgets it.
+- **Cross-origin is opt-in.** [proxy.ts](../src/proxy.ts) adds CORS headers to `/api/*` only when `CORS_ORIGINS` lists origins (comma-separated, or `*`). Credentials are never requested cross-origin, so allowing an origin grants no ambient access: a page still needs a valid session token. An `https` page cannot call an `http` server (mixed content); use `https`.
+- QR pairing links point at `serverUrl || origin`.

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Code invalide ou expiré" }, { status: 401 });
   }
   const { token, session } = createSession(db, typeof body?.deviceName === "string" ? body.deviceName : "");
-  const res = NextResponse.json({ ok: true, session });
+  const res = NextResponse.json({ ok: true, session, token });
   res.headers.append("Set-Cookie", sessionCookie(request, token));
   return res;
 }

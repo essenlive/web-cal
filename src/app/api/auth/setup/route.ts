@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const db = getDb();
   setPassphrase(db, passphrase);
   const { token, session } = createSession(db, typeof body?.deviceName === "string" ? body.deviceName : "");
-  const res = NextResponse.json({ ok: true, session });
+  const res = NextResponse.json({ ok: true, session, token });
   res.headers.append("Set-Cookie", sessionCookie(request, token));
   return res;
 }

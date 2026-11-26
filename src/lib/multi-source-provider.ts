@@ -10,7 +10,7 @@ import { HttpError, type DataProvider } from "./data-provider";
 import type { CalendarEvent, Connection, ConnectionStatus } from "../types";
 import { WebCalProvider } from "./webcal-provider";
 import { ServerProvider } from "./server-provider";
-import { useServerStore } from "../store/server";
+import { serverConnection } from "../store/server";
 import { generateSeedEvents } from "./mock-seed";
 
 /** Local, offline provider backing the seeded "demo" connection — see DemoConnection in types. */
@@ -27,22 +27,21 @@ const demoProvider: DataProvider = {
 function makeProvider(conn: Connection): DataProvider {
   switch (conn.type) {
     case "webcal": {
-      const { token, session } = useServerStore.getState();
-      const linked = Boolean(token) || session;
+      const { base, token, linked } = serverConnection();
       if (conn.serverOnly) {
         const unavailable: DataProvider = {
           async getEvents() {
             throw new Error("Cette source n'est lisible que via le serveur : renseigne le jeton dans Données › Serveur.");
           },
         };
-        return linked ? new ServerProvider(conn.id, token, unavailable) : unavailable;
+        return linked ? new ServerProvider(conn.id, token, unavailable, base) : unavailable;
       }
       const direct = new WebCalProvider(
         [{ id: conn.id, name: conn.name, url: conn.url, color: conn.color }],
         conn.proxyUrl ?? ""
       );
       // Linked to the server (admin token or device session), read the server's aggregated snapshot (falls back to `direct`).
-      return linked ? new ServerProvider(conn.id, token, direct) : direct;
+      return linked ? new ServerProvider(conn.id, token, direct, base) : direct;
     }
     case "demo":
       return demoProvider;

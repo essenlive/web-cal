@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useConnectionStore, useServerStore } from "../../store";
 import { useSourceSync } from "../../context/DataProviderContext";
 import { BackendError, ServerBackend } from "../../lib/backend";
-import { defaultDeviceName, fetchServerStatus, serverHeaders, type ServerStatus } from "../../lib/server-api";
+import { defaultDeviceName, fetchServerStatus, normalizeServerUrl, serverHeaders, type ServerStatus } from "../../lib/server-api";
 
 type Detection = "checking" | "available" | "absent";
 interface ServerSource {
@@ -31,10 +31,10 @@ export function missingSources(server: Record<string, { name: string; color: str
     .map(([id, c]) => ({ id, name: c.name, color: c.color }));
 }
 
-async function queryServer(token: string) {
+async function queryServer(token: string, base: string) {
   const now = new Date();
   try {
-    return await new ServerBackend(token).events(now, new Date(now.getTime() + 86_400_000));
+    return await new ServerBackend(token, base).events(now, new Date(now.getTime() + 86_400_000));
   } catch (err) {
     if (err instanceof BackendError && err.status === 401) throw new Error("Accès refusé par le serveur.", { cause: err });
     if (err instanceof BackendError) throw new Error(`Le serveur a répondu HTTP ${err.status}.`, { cause: err });
@@ -57,64 +57,68 @@ async function readError(res: Response, fallback: string): Promise<string> {
 const formatDate = (ms: number) => new Date(ms).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 
 /**
- * Connects this page to the Overcal server it is served from. First launch: the admin token
- * defines a passphrase. Afterwards each device signs in with the passphrase (or is paired by QR
- * code from an already-connected device) and keeps a session that never expires until revoked.
- * The admin token stays available as an advanced alternative.
+ * Connects this browser to an Overcal server: the one serving this page (empty URL) or any other
+ * reachable one (its URL). First launch: the admin token, typed once and never stored, defines a
+ * passphrase. Afterwards each device signs in with the passphrase (or is paired by QR code from an
+ * already-connected device) and keeps a bearer session that never expires until revoked.
  */
 export function ServerTab() {
-  const { token, setToken, session, setSession } = useServerStore();
+  const { serverUrl, setServerUrl, sessionToken, setSessionToken, session, setSession } = useServerStore();
+  const token = sessionToken;
+  const base = serverUrl;
   const { refresh } = useSourceSync();
-  const { connections, addConnection } = useConnectionStore();
+  const { addConnection } = useConnectionStore();
   const [status, setStatus] = useState<ServerStatus | null | "checking">("checking");
-  const [draft, setDraft] = useState(token);
+  const [draft, setDraft] = useState("");
+  const [urlDraft, setUrlDraft] = useState(serverUrl);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [showAdmin, setShowAdmin] = useState(false);
   const [test, setTest] = useState<TestState>({ phase: "idle" });
   const [devices, setDevices] = useState<{ list: Device[]; currentId: string | null } | null>(null);
   const [pairing, setPairing] = useState<{ qr: string; expiresAt: number } | null>(null);
 
-  const linked = Boolean(token) || session;
+  const linked = Boolean(token) || (base === "" && session);
   const detection: Detection = status === "checking" ? "checking" : status?.enabled ? "available" : "absent";
 
   const loadStatus = useCallback(async () => {
-    const next = await fetchServerStatus();
+    const { serverUrl: b, sessionToken: t } = useServerStore.getState();
+    const next = await fetchServerStatus(b, t);
     setStatus(next);
-    if (next?.enabled) setSession(next.authenticated);
+    if (next?.enabled && b === "") setSession(next.authenticated);
     return next;
   }, [setSession]);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchServerStatus().then((next) => {
+    const { serverUrl: b, sessionToken: t } = useServerStore.getState();
+    void fetchServerStatus(b, t).then((next) => {
       if (cancelled) return;
       setStatus(next);
-      if (next?.enabled) useServerStore.getState().setSession(next.authenticated);
+      if (next?.enabled && b === "") useServerStore.getState().setSession(next.authenticated);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  async function check(candidate: string, persist: boolean) {
-    setTest({ phase: "testing" });
-    try {
-      const server = await queryServer(candidate);
-      const entries = Object.values(server);
-      if (persist) setToken(candidate);
-      setTest({
-        phase: "ok",
-        known: entries.length,
-        writable: entries.filter((c) => c.writable).length,
-        missing: missingSources(server, connections.map((c) => c.id)),
-      });
-      if (persist) void refresh();
-    } catch (err) {
-      setTest({ phase: "error", message: err instanceof Error ? err.message : "Connexion impossible." });
+  async function applyUrl() {
+    const normalized = normalizeServerUrl(urlDraft);
+    if (normalized === null) return setUrlError("Adresse invalide : attendu http(s)://hôte.");
+    setUrlError(null);
+    if (normalized !== serverUrl) {
+      setServerUrl(normalized);
+      setTest({ phase: "idle" });
+      setDevices(null);
+      setPairing(null);
     }
+    setUrlDraft(normalized);
+    setStatus("checking");
+    const next = await loadStatus();
+    if (!next) setUrlError("Serveur injoignable (adresse, CORS_ORIGINS côté serveur, ou contenu mixte http/https).");
+    void refresh();
   }
 
   function addMissing(missing: ServerSource[]) {
@@ -127,7 +131,7 @@ export function ServerTab() {
   useEffect(() => {
     if (!linked || detection !== "available") return;
     let cancelled = false;
-    queryServer(token)
+    queryServer(token, base)
       .then((server) => {
         if (cancelled) return;
         const entries = Object.values(server);
@@ -142,11 +146,12 @@ export function ServerTab() {
     return () => {
       cancelled = true;
     };
-  }, [detection, linked, token]);
+  }, [detection, linked, token, base]);
 
   const loadDevices = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/sessions", { headers: serverHeaders(useServerStore.getState().token) });
+      const { serverUrl: b, sessionToken: t } = useServerStore.getState();
+      const res = await fetch(`${b}/api/auth/sessions`, { headers: serverHeaders(t) });
       if (!res.ok) return;
       const body = (await res.json()) as { sessions: Device[]; currentId: string | null };
       setDevices({ list: body.sessions, currentId: body.currentId });
@@ -168,7 +173,7 @@ export function ServerTab() {
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/auth/${path}`, {
+      const res = await fetch(`${base}/api/auth/${path}`, {
         method: "POST",
         headers: serverHeaders(path === "setup" ? draft.trim() : "", { "Content-Type": "application/json" }),
         body: JSON.stringify({ passphrase, deviceName: defaultDeviceName() }),
@@ -177,7 +182,9 @@ export function ServerTab() {
       setPassphrase("");
       setConfirmation("");
       setDraft("");
-      setSession(true);
+      const body = (await res.json().catch(() => null)) as { token?: string } | null;
+      if (body?.token) setSessionToken(body.token);
+      if (base === "") setSession(true);
       await loadStatus();
       void refresh();
       toast.success(path === "setup" ? "Passphrase définie, cet appareil est connecté" : "Appareil connecté");
@@ -189,9 +196,9 @@ export function ServerTab() {
   }
 
   async function logout() {
-    if (session) await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    if (linked) await fetch(`${base}/api/auth/logout`, { method: "POST", headers: serverHeaders(token) }).catch(() => {});
     setSession(false);
-    setToken("");
+    setSessionToken("");
     setDraft("");
     setDevices(null);
     setPairing(null);
@@ -201,7 +208,7 @@ export function ServerTab() {
   }
 
   async function revoke(id: string) {
-    const res = await fetch(`/api/auth/sessions?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: serverHeaders(token) });
+    const res = await fetch(`${base}/api/auth/sessions?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: serverHeaders(token) });
     if (!res.ok) return toast.error(await readError(res, "Révocation impossible"));
     if (id === devices?.currentId) return void logout();
     void loadDevices();
@@ -209,11 +216,11 @@ export function ServerTab() {
 
   async function startPairing() {
     try {
-      const res = await fetch("/api/auth/pair", { method: "POST", headers: serverHeaders(token) });
+      const res = await fetch(`${base}/api/auth/pair`, { method: "POST", headers: serverHeaders(token) });
       if (!res.ok) throw new Error(await readError(res, "Jumelage impossible"));
       const { code, expiresAt } = (await res.json()) as { code: string; expiresAt: number };
       // The code travels in the URL fragment so it never reaches server or proxy logs.
-      const qr = await QRCode.toDataURL(`${window.location.origin}/pair#${code}`, { margin: 1, width: 220 });
+      const qr = await QRCode.toDataURL(`${base || window.location.origin}/pair#${code}`, { margin: 1, width: 220 });
       setPairing({ qr, expiresAt });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Jumelage impossible.");
@@ -225,21 +232,41 @@ export function ServerTab() {
   return (
     <div className="space-y-4 max-w-lg">
       <p className="text-sm text-muted-foreground">
-        Si cette page est servie par un serveur Overcal, tes calendriers peuvent être lus depuis ses données déjà agrégées, sans passer par le relais du navigateur. Les sources inconnues du serveur continuent d&rsquo;être lues directement.
+        Connecte cette application à un serveur Overcal : celui qui sert cette page, ou n&rsquo;importe quel autre. Tes calendriers sont alors lus depuis ses données déjà agrégées. Les sources inconnues du serveur continuent d&rsquo;être lues directement.
       </p>
+
+      <div className="space-y-1">
+        <label className="block text-sm font-medium" htmlFor="server-url">Adresse du serveur</label>
+        <div className="flex gap-2">
+          <Input
+            id="server-url"
+            inputMode="url"
+            autoComplete="off"
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void applyUrl()}
+            placeholder="vide = ce site, ou https://cal.exemple.fr"
+          />
+          <Button variant="outline" onClick={() => void applyUrl()}>Vérifier</Button>
+        </div>
+        {urlError && <p className="text-sm text-destructive flex items-center gap-2"><AlertCircle className="size-4" /> {urlError}</p>}
+        {urlDraft.trim() && urlDraft.trim().startsWith("http:") && typeof window !== "undefined" && window.location.protocol === "https:" && (
+          <p className="text-xs text-muted-foreground">Une page https ne peut pas joindre un serveur http : utilise une adresse https.</p>
+        )}
+      </div>
 
       {detection === "checking" && (
         <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Recherche du serveur…</p>
       )}
       {detection === "absent" && (
-        <p className="text-sm text-muted-foreground flex items-center gap-2"><Server className="size-4" /> Aucun serveur Overcal détecté sur cette adresse : l&rsquo;application lit les calendriers directement.</p>
+        <p className="text-sm text-muted-foreground flex items-center gap-2"><Server className="size-4" /> Aucun serveur Overcal détecté{base ? " à cette adresse" : " sur ce site"} : l&rsquo;application lit les calendriers directement.</p>
       )}
 
       {detection === "available" && !linked && (
         <div className="space-y-3">
           {!passphraseSet ? (
             <>
-              <p className="text-sm">Premier lancement : choisis une passphrase. Tu pourras ensuite connecter chaque appareil avec elle, sans retaper le jeton d&rsquo;administration.</p>
+              <p className="text-sm">Premier lancement : choisis une passphrase. Le jeton d&rsquo;administration n&rsquo;est demandé que cette fois et n&rsquo;est pas conservé : ensuite chaque appareil se connecte avec la passphrase.</p>
               <label className="block text-sm font-medium" htmlFor="server-token">Jeton d&rsquo;administration</label>
               <Input id="server-token" type="password" autoComplete="off" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="OVERCAL_ADMIN_TOKEN" />
               <label className="block text-sm font-medium" htmlFor="server-passphrase">Passphrase (10 caractères minimum)</label>
@@ -267,28 +294,13 @@ export function ServerTab() {
             </>
           )}
           {formError && <p className="text-sm text-destructive flex items-center gap-2"><AlertCircle className="size-4" /> {formError}</p>}
-
-          <div className="pt-1">
-            <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setShowAdmin((v) => !v)}>
-              {showAdmin ? "Masquer" : "Utiliser plutôt le jeton d’administration"}
-            </button>
-            {showAdmin && (
-              <div className="mt-2 space-y-2">
-                <Input aria-label="Jeton d’administration" type="password" autoComplete="off" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="OVERCAL_ADMIN_TOKEN" />
-                <Button variant="outline" onClick={() => check(draft.trim(), true)} disabled={!draft.trim() || test.phase === "testing"}>
-                  {test.phase === "testing" ? <Loader2 className="animate-spin" /> : <Server />} Enregistrer et tester
-                </Button>
-                {test.phase === "error" && <p className="text-sm text-destructive flex items-center gap-2"><AlertCircle className="size-4" /> {test.message}</p>}
-              </div>
-            )}
-          </div>
         </div>
       )}
 
       {detection === "available" && linked && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm text-muted-foreground flex items-center gap-2 mr-auto"><Check className="size-4" /> Cet appareil lit depuis le serveur{session ? "" : " (jeton d’administration)"}.</p>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mr-auto"><Check className="size-4" /> Cet appareil lit depuis le serveur{base ? ` ${base}` : ""}.</p>
             <Button variant="outline" size="sm" onClick={logout}>Se déconnecter</Button>
           </div>
           {test.phase === "ok" && (
@@ -335,7 +347,7 @@ export function ServerTab() {
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">La session reste dans un cookie de ce navigateur et n’expire pas : révoque-la ici si l&rsquo;appareil est perdu.</p>
+          <p className="text-xs text-muted-foreground">La session reste dans ce navigateur et n’expire pas : révoque-la ici si l&rsquo;appareil est perdu.</p>
         </div>
       )}
     </div>
