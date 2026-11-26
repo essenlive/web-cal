@@ -8,7 +8,6 @@
  */
 
 import { useMemo } from "react";
-import Link from "next/link";
 import { Check, Circle, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { ActionButton } from "../ui/action-button";
@@ -30,10 +29,9 @@ export function useOnboardingSteps(): OnboardingStep[] {
   const { rules } = useRuleStore();
   const { presets } = usePresetStore();
   const { customThemes, selectedThemeId } = useThemeStore();
-  const { aiImported } = useOnboardingStore();
   return useMemo(
-    () => onboardingSteps({ connections, types, rules, presets, customThemes, selectedThemeId, aiImported }, SEEDED_TYPE_IDS, BUILTIN_THEME_IDS),
-    [connections, types, rules, presets, customThemes, selectedThemeId, aiImported],
+    () => onboardingSteps({ connections, types, rules, presets, customThemes, selectedThemeId }, SEEDED_TYPE_IDS, BUILTIN_THEME_IDS),
+    [connections, types, rules, presets, customThemes, selectedThemeId],
   );
 }
 
@@ -68,11 +66,6 @@ function StepRow({ step }: { step: OnboardingStep }) {
         >
           <Trash2 size={12} />Supprimer
         </ActionButton>
-      )}
-      {!step.done && step.id === "ai" && (
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
-          <Link href="/data#ai">Ouvrir</Link>
-        </Button>
       )}
     </li>
   );

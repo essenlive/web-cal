@@ -24,10 +24,9 @@ export type SyncStatus =
   | { phase: "error"; message: string };
 
 function errorMessage(message: string, type?: string): string {
-  if (type === "peer-unavailable") return "Ce lien n'est plus valable (déjà utilisé, expiré, ou l'autre appareil n'est plus là).";
-  if (type === "network" || type === "server-error" || type === "socket-error" || type === "socket-closed") {
-    return "Impossible de joindre le service de connexion — vérifiez votre connexion internet.";
-  }
+  if (type === "timeout") return "Ce lien n'est plus valable (déjà utilisé, expiré, ou l'autre appareil n'est plus là).";
+  if (type === "unavailable") return "Ce serveur ne propose pas de relais de synchronisation — utilisez l'export/import JSON.";
+  if (type === "network") return "Impossible de joindre le serveur Overcal — vérifiez votre connexion internet.";
   return `Erreur de connexion : ${message}${type ? ` (${type})` : ""}`;
 }
 

@@ -10,7 +10,7 @@ Deep-dive reference for how web-cal is built. For a quick start, see [README.md]
 src/
   app/                # Next.js App Router — routes only, no logic
     page.tsx           # / — calendar
-    data/ stats/ debug/  # /data (export, import, AI settings, sync, reset), /stats, /debug
+    data/ stats/ debug/  # /data (export, import, sync, server, reset), /stats, /debug
     settings/page.tsx  # /settings — kept as a bookmark: opens the Préférences drawer
     api/proxy/route.ts # same-origin WebCal (.ics) fetch relay
     layout.tsx, providers.tsx, globals.css
@@ -168,7 +168,7 @@ Display types can use the same textures: `EventType.pattern` is drawn in the typ
 
 ## Onboarding ("Bien démarrer")
 
-A checklist at the top of the Help drawer ([GettingStarted.tsx](../src/components/settings/GettingStarted.tsx)). Its steps are **derived from the stores, not tracked** ([lib/onboarding.ts](../src/lib/onboarding.ts) `onboardingSteps()`): a non-demo source exists; a type outside `DEFAULT_EVENT_TYPES`; a name/event rule whose id isn't a seeded `seed-…` one; and, as bonus steps, removing the demo source (offered once a real source exists), a preset, a custom or non-"Clair" theme, and a successful AI import. That last one is the only thing not derivable, so it's a flag in the one new persisted key, `overcal:onboarding` (`aiImported`, plus `dismissed`). Deleting what ticked a step un-ticks it, and importing settings ticks whatever they contain.
+A checklist at the top of the Help drawer ([GettingStarted.tsx](../src/components/settings/GettingStarted.tsx)). Its steps are **derived from the stores, not tracked** ([lib/onboarding.ts](../src/lib/onboarding.ts) `onboardingSteps()`): a non-demo source exists; a type outside `DEFAULT_EVENT_TYPES`; a name/event rule whose id isn't a seeded `seed-…` one; and, as bonus steps, removing the demo source (offered once a real source exists), a preset and a custom or non-"Clair" theme. The only persisted flag is `dismissed`, in `overcal:onboarding`. Deleting what ticked a step un-ticks it, and importing settings ticks whatever they contain.
 
 `CalendarPage`'s `useOnboarding()` opens the Help drawer by itself on a fresh instance (only the demo source, not dismissed) — at most once per tab session (a `sessionStorage` flag) — and toasts "C'est prêt" on the transition to all core steps done (never on load). "Réinitialiser" clears `overcal:onboarding` too.
 
@@ -224,7 +224,7 @@ Everything below opens in one shared side drawer (`SettingsDrawer`, [components/
 - **Types** — sidebar **Types** section, see [Display types](#display-types).
 - **Règles** — sidebar **Règles** section, see [Display rules engine](#display-rules-engine).
 - **Thème** — sidebar **Thème** section: every theme, including the two built-ins, is listed and selectable inline; editing opens the same drawer. See [Global theming](#global-theming).
-- **Réglages** — sidebar **Réglages** section (toggles and timezone inline); its label opens `PreferencesPanel` ([components/settings/PreferencesPanel.tsx](../src/components/settings/PreferencesPanel.tsx)) with the same options described. Export, import, AI settings, sync and reset live on the `/data` page. `/settings` is kept only as a redirect (`src/app/settings/page.tsx`) that opens this panel then bounces to `/`.
+- **Réglages** — sidebar **Réglages** section (toggles and timezone inline); its label opens `PreferencesPanel` ([components/settings/PreferencesPanel.tsx](../src/components/settings/PreferencesPanel.tsx)) with the same options described. Export, import, sync, server and reset live on the `/data` page. `/settings` is kept only as a redirect (`src/app/settings/page.tsx`) that opens this panel then bounces to `/`.
 - **Aide** — sidebar footer "?" button: the "Bien démarrer" checklist and how the app fits together (`HelpPanel`).
 
 ## Server feed (009-server-ics-presets)
