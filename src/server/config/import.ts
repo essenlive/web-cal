@@ -63,6 +63,11 @@ export function getConfig(db: SqliteDb, key: "connections" | "eventTypes" | "rul
   return row ? (JSON.parse(row.json) as unknown[]) : [];
 }
 
+export function getConfigValue(db: SqliteDb, key: string): unknown {
+  const row = db.prepare("SELECT json FROM config WHERE key = ?").get(key) as { json: string } | undefined;
+  return row ? JSON.parse(row.json) : null;
+}
+
 export function importConfig(db: SqliteDb, config: ImportableConfig): ImportResult {
   // A client may only know some sources as `serverOnly` (no usable url of its own): keep the
   // server's own definition for those, and drop any it doesn't have.
@@ -83,6 +88,8 @@ export function importConfig(db: SqliteDb, config: ImportableConfig): ImportResu
     upsert.run("eventTypes", JSON.stringify(cfg.eventTypes));
     upsert.run("rules", JSON.stringify(cfg.rules));
     upsert.run("presets", JSON.stringify(cfg.presets));
+    const bump = db.prepare("INSERT INTO config_rev (key, rev) VALUES (?, 1) ON CONFLICT(key) DO UPDATE SET rev = rev + 1");
+    for (const key of ["connections", "eventTypes", "rules", "presets"]) bump.run(key);
     // Endpoints are server-only: a client bundle that carries none must not wipe the ones already attached.
     if (!keepEndpoints) {
       const endpoints = (cfg.endpoints ?? []).map((e) => ({ ...e, password: encryptSecret(e.password) }));

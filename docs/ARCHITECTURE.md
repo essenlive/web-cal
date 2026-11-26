@@ -237,3 +237,8 @@ Optional read/write server slice under `src/server/`. Sources are read through *
 - `AGGREGATION_INTERVAL_MS` — aggregation cadence (default 5 min).
 
 `POST /api/admin/import` takes a settings-export JSON, optionally with an `endpoints` array (`{ connectionId, kind: "caldav", url, username, password, calendar? }`) that attaches a CalDAV endpoint to a connection by id, and returns each preset's feed URL. `GET /api/feed/[token]` serves a preset as `.ics`. `POST /api/events` (`{ connectionId, calendarId?, event: { title, start, end, allDay? } }`) creates an event on a writable endpoint.
+
+
+## Server-side settings (source of truth)
+
+When a browser is linked to an Overcal server, the server owns the settings. `GET /api/settings` returns every section (`connections`, `eventTypes`, `rules`, `presets`, `themes`, `ui`) with one integer revision each; `PUT /api/settings/<section>` takes `{ baseRev, value }` and answers `409 { rev, value }` when the section moved since (`src/server/config/settings.ts`). The client (`src/lib/sync/server-settings.ts`, started by `SessionSync`) pulls on load, pushes each edited section after 800 ms, and adopts the server's value on a conflict. Revisions and a hash of the last synced value sit in `overcal:server-settings-meta`, so an edit made offline is pushed on the next load. Granularity is the section for now (per-item revisions later); `ui.view` stays per device. The admin import (`/api/admin/import`) still works and bumps the same revisions.
