@@ -8,8 +8,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
-import { useServerStore } from "../../store";
-import { serverHeaders } from "../../lib/server-api";
+import { BackendError, useBackend } from "../../lib/backend";
 import { useSourceSync } from "../../context/DataProviderContext";
 import type { CalendarEvent } from "../../types";
 
@@ -28,16 +27,18 @@ export function buildEventPatch(f: { title: string; allDay: boolean; start: stri
   };
 }
 
-async function readError(res: Response): Promise<string> {
-  if (res.status === 412) return "Cet événement a été modifié ailleurs entre-temps. Il vient d'être rechargé : rouvre-le puis recommence.";
-  if (res.status === 422) return "Les événements récurrents ne sont pas modifiables ici.";
-  const detail = ((await res.json().catch(() => null)) as { error?: string } | null)?.error;
-  return detail ?? `Le serveur a répondu HTTP ${res.status}.`;
+function describe(err: unknown, fallback: string): string {
+  if (err instanceof BackendError) {
+    if (err.status === 412) return "Cet événement a été modifié ailleurs entre-temps. Il vient d'être rechargé : rouvre-le puis recommence.";
+    if (err.status === 422) return "Les événements récurrents ne sont pas modifiables ici.";
+    return err.message;
+  }
+  return err instanceof Error ? err.message : fallback;
 }
 
 /** Edit / delete an event of a source the server can write to (CalDAV). The etag of the last sync guards against overwriting a concurrent change. */
 export function EventEditDialog({ event, onClose }: { event: CalendarEvent; onClose: () => void }) {
-  const token = useServerStore((s) => s.token);
+  const backend = useBackend();
   const { refresh } = useSourceSync();
   const start = new Date(event.start);
   const [form, setForm] = useState({
@@ -53,15 +54,12 @@ export function EventEditDialog({ event, onClose }: { event: CalendarEvent; onCl
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function call(method: "PATCH" | "DELETE", extra: Record<string, unknown>) {
-    const res = await fetch("/api/events", {
-      method,
-      headers: serverHeaders(token, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ connectionId: event.calendarId, id: event.id, etag: event.etag, ...extra }),
-    });
-    if (!res.ok) {
-      if (res.status === 412) void refresh();
-      throw new Error(await readError(res));
+  async function run(action: () => Promise<void>) {
+    try {
+      await action();
+    } catch (err) {
+      if (err instanceof BackendError && err.status === 412) void refresh();
+      throw new Error(describe(err, "Opération impossible."), { cause: err });
     }
   }
 
@@ -70,7 +68,7 @@ export function EventEditDialog({ event, onClose }: { event: CalendarEvent; onCl
     setBusy("save");
     setError(null);
     try {
-      await call("PATCH", { patch: buildEventPatch(form) });
+      await run(() => backend!.updateEvent(event.calendarId, event.id, event.etag, buildEventPatch(form)));
       toast.success("Événement modifié");
       void refresh();
       onClose();
@@ -86,7 +84,7 @@ export function EventEditDialog({ event, onClose }: { event: CalendarEvent; onCl
     setBusy("delete");
     setError(null);
     try {
-      await call("DELETE", {});
+      await run(() => backend!.deleteEvent(event.calendarId, event.id, event.etag));
       toast.success("Événement supprimé");
       void refresh();
       onClose();

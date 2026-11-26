@@ -8,6 +8,7 @@ import { Input } from "../ui/input";
 import { toast } from "sonner";
 import { useConnectionStore, useServerStore } from "../../store";
 import { useSourceSync } from "../../context/DataProviderContext";
+import { BackendError, ServerBackend } from "../../lib/backend";
 import { defaultDeviceName, fetchServerStatus, serverHeaders, type ServerStatus } from "../../lib/server-api";
 
 type Detection = "checking" | "available" | "absent";
@@ -32,11 +33,13 @@ export function missingSources(server: Record<string, { name: string; color: str
 
 async function queryServer(token: string) {
   const now = new Date();
-  const params = new URLSearchParams({ from: now.toISOString(), to: new Date(now.getTime() + 86_400_000).toISOString() });
-  const res = await fetch(`/api/events?${params}`, { headers: serverHeaders(token) });
-  if (res.status === 401) throw new Error("Accès refusé par le serveur.");
-  if (!res.ok) throw new Error(`Le serveur a répondu HTTP ${res.status}.`);
-  return ((await res.json()) as { connections: Record<string, { name: string; color: string; writable: boolean }> }).connections;
+  try {
+    return await new ServerBackend(token).events(now, new Date(now.getTime() + 86_400_000));
+  } catch (err) {
+    if (err instanceof BackendError && err.status === 401) throw new Error("Accès refusé par le serveur.", { cause: err });
+    if (err instanceof BackendError) throw new Error(`Le serveur a répondu HTTP ${err.status}.`, { cause: err });
+    throw err;
+  }
 }
 
 interface Device {

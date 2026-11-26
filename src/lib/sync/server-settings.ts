@@ -9,7 +9,7 @@
  */
 
 import { useConnectionStore, useEventTypeStore, useRuleStore, usePresetStore, useThemeStore, useUIStore } from "../../store";
-import { serverHeaders } from "../server-api";
+import { ServerBackend } from "../backend";
 
 export const SECTIONS = ["connections", "eventTypes", "rules", "presets", "themes", "ui"] as const;
 export type Section = (typeof SECTIONS)[number];
@@ -84,41 +84,34 @@ function adopt(section: Section, rev: number, value: unknown) {
   writeMeta(meta);
 }
 
-async function putSection(section: Section, token: string): Promise<"ok" | "conflict" | "error"> {
+async function putSection(section: Section, backend: ServerBackend): Promise<"ok" | "conflict" | "error"> {
   const meta = readMeta();
   const value = readLocal(section);
-  let res: Response;
+  let result;
   try {
-    res = await fetch(`/api/settings/${section}`, {
-      method: "PUT",
-      headers: serverHeaders(token, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ baseRev: meta[section]?.rev ?? 0, value }),
-    });
+    result = await backend.putSection(section, meta[section]?.rev ?? 0, value);
   } catch {
     return "error";
   }
-  if (res.status === 409) {
-    const body = (await res.json()) as { rev: number; value: unknown };
-    adopt(section, body.rev, body.value);
+  if (!result.ok) {
+    adopt(section, result.rev, result.value);
     return "conflict";
   }
-  if (!res.ok) return "error";
-  const { rev } = (await res.json()) as { rev: number };
   const next = readMeta();
-  next[section] = { rev, hash: hashOf(value) };
+  next[section] = { rev: result.rev, hash: hashOf(value) };
   writeMeta(next);
   return "ok";
 }
 
 /** Pushes every section whose local value differs from what was last synced. Returns the sections the server overrode. */
-export async function pushDirty(token: string): Promise<Section[]> {
+export async function pushDirty(backend: ServerBackend): Promise<Section[]> {
   const overridden: Section[] = [];
   for (const section of SECTIONS) {
     if (pushing.has(section)) continue;
     if (hashOf(readLocal(section)) === readMeta()[section]?.hash) continue;
     pushing.add(section);
     try {
-      if ((await putSection(section, token)) === "conflict") overridden.push(section);
+      if ((await putSection(section, backend)) === "conflict") overridden.push(section);
     } finally {
       pushing.delete(section);
     }
@@ -126,26 +119,20 @@ export async function pushDirty(token: string): Promise<Section[]> {
   return overridden;
 }
 
-interface ServerSettings {
-  revs: Record<Section, number>;
-  [key: string]: unknown;
-}
-
 /**
  * First sync of a page load. Per section: the server has nothing yet → push ours (first device
  * seeds the server); we never synced or the server moved on → adopt the server's value; we have
  * unsynced local edits and the server did not move → push them.
- * Returns the sections whose local value changed because of the server.
+ * Returns the sections whose local value changed because of the server, or null when the
+ * server has no (versioned) settings.
  */
-export async function pullSettings(token: string): Promise<Section[] | null> {
-  let res: Response;
+export async function pullSettings(backend: ServerBackend): Promise<Section[] | null> {
+  let server;
   try {
-    res = await fetch("/api/settings", { headers: serverHeaders(token), cache: "no-store" });
+    server = await backend.getSettings();
   } catch {
     return null;
   }
-  if (!res.ok) return null;
-  const server = (await res.json()) as ServerSettings;
   if (!server.revs) return null; // an older server without versioned settings
 
   const meta = readMeta();
@@ -166,13 +153,13 @@ export async function pullSettings(token: string): Promise<Section[] | null> {
 }
 
 /** Wires store changes to debounced pushes. Returns an unsubscribe function. */
-export function watchLocalChanges(token: string, onOverridden: (sections: Section[]) => void): () => void {
+export function watchLocalChanges(backend: ServerBackend, onOverridden: (sections: Section[]) => void): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const schedule = () => {
     if (applying) return;
     clearTimeout(timer);
     timer = setTimeout(() => {
-      void pushDirty(token).then((overridden) => overridden.length && onOverridden(overridden));
+      void pushDirty(backend).then((overridden) => overridden.length && onOverridden(overridden));
     }, 800);
   };
   const unsubs = [useConnectionStore, useEventTypeStore, useRuleStore, usePresetStore, useThemeStore, useUIStore].map((s) =>

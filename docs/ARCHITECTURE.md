@@ -246,3 +246,7 @@ When a browser is linked to an Overcal server, the server owns the settings. `GE
 ## Editing events through the server
 
 Sources with a CalDAV endpoint are writable. The snapshot keeps each event's CalDAV `etag` and a `writable` flag (`server/events/query.ts`); `PATCH /api/events` ({ connectionId, id, etag, patch }) and `DELETE /api/events` pass the etag as `If-Match` (`server/connectors/caldav.ts`), so an event changed elsewhere answers `412` instead of being overwritten. Edits go through the event's own VEVENT (other properties are preserved); recurring events (`RRULE` / `RECURRENCE-ID`) are refused with `422`. The UI is `EventEditDialog`, opened from the event detail. `tests/server/caldav.integration.test.ts` covers it against a real Radicale (`CALDAV_TEST_URL`).
+
+## Client backend interface
+
+All client → server calls for events and settings go through `ServerBackend` ([lib/backend.ts](../src/lib/backend.ts)): `events`, `createEvent`, `updateEvent`, `deleteEvent`, `getSettings`, `putSection`, with one `BackendError` (status, Retry-After). `useBackend()` returns it while the browser is linked and `null` in client-only mode, so components just test for `null`. The sources' direct fetching (`WebCalProvider`) stays a separate path for client-only. Login, pairing and device management (`/api/auth/*`) stay in the Server tab since they run before any session exists.

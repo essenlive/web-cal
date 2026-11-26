@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useServerStore } from "../../store";
 import { fetchServerStatus } from "../../lib/server-api";
 import { useSourceSync } from "../../context/DataProviderContext";
+import { useBackend } from "../../lib/backend";
 import { pullSettings, pushDirty, watchLocalChanges } from "../../lib/sync/server-settings";
 
 /**
@@ -14,7 +15,7 @@ import { pullSettings, pushDirty, watchLocalChanges } from "../../lib/sync/serve
  */
 export function SessionSync() {
   const { refresh } = useSourceSync();
-  const { token, session } = useServerStore();
+  const backend = useBackend();
 
   useEffect(() => {
     let cancelled = false;
@@ -32,25 +33,24 @@ export function SessionSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const linked = Boolean(token) || session;
   useEffect(() => {
-    if (!linked) return;
+    if (!backend) return;
     let cancelled = false;
     let stop: (() => void) | undefined;
     void (async () => {
-      const changed = await pullSettings(token);
+      const changed = await pullSettings(backend);
       if (cancelled || changed === null) return; // no versioned settings on this origin
       if (changed.includes("connections")) void refresh();
-      await pushDirty(token);
+      await pushDirty(backend);
       if (cancelled) return;
-      stop = watchLocalChanges(token, () => toast.info("Réglages modifiés ailleurs : la version du serveur a été appliquée."));
+      stop = watchLocalChanges(backend, () => toast.info("Réglages modifiés ailleurs : la version du serveur a été appliquée."));
     })();
     return () => {
       cancelled = true;
       stop?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linked, token]);
+  }, [backend]);
 
   return null;
 }
