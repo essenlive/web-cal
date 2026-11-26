@@ -55,6 +55,10 @@ export interface CalendarEvent {
   allDay: boolean;
   location?: string;
   notes?: string;
+  /** CalDAV entity tag at the last sync (server-provided): sent back on edit/delete so a concurrent change is detected. */
+  etag?: string;
+  /** Server-provided: the source accepts edits through the server. */
+  writable?: boolean;
 }
 
 export type CalendarView = "month" | "week" | "day" | "agenda";

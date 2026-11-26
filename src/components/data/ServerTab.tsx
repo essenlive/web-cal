@@ -6,9 +6,9 @@ import QRCode from "qrcode";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { toast } from "sonner";
-import { useConnectionStore, useEventTypeStore, usePresetStore, useRuleStore, useServerStore } from "../../store";
-import type { Connection, EventType, Preset, Rule } from "../../types";
+import { useConnectionStore, useServerStore } from "../../store";
 import { useSourceSync } from "../../context/DataProviderContext";
+import { BackendError, ServerBackend } from "../../lib/backend";
 import { defaultDeviceName, fetchServerStatus, serverHeaders, type ServerStatus } from "../../lib/server-api";
 
 type Detection = "checking" | "available" | "absent";
@@ -33,11 +33,13 @@ export function missingSources(server: Record<string, { name: string; color: str
 
 async function queryServer(token: string) {
   const now = new Date();
-  const params = new URLSearchParams({ from: now.toISOString(), to: new Date(now.getTime() + 86_400_000).toISOString() });
-  const res = await fetch(`/api/events?${params}`, { headers: serverHeaders(token) });
-  if (res.status === 401) throw new Error("Accès refusé par le serveur.");
-  if (!res.ok) throw new Error(`Le serveur a répondu HTTP ${res.status}.`);
-  return ((await res.json()) as { connections: Record<string, { name: string; color: string; writable: boolean }> }).connections;
+  try {
+    return await new ServerBackend(token).events(now, new Date(now.getTime() + 86_400_000));
+  } catch (err) {
+    if (err instanceof BackendError && err.status === 401) throw new Error("Accès refusé par le serveur.", { cause: err });
+    if (err instanceof BackendError) throw new Error(`Le serveur a répondu HTTP ${err.status}.`, { cause: err });
+    throw err;
+  }
 }
 
 interface Device {
@@ -218,45 +220,6 @@ export function ServerTab() {
     }
   }
 
-  async function pushToServer() {
-    if (!window.confirm("Remplacer la configuration du serveur (sources, types, règles, presets) par celle de cet appareil ?")) return;
-    try {
-      const res = await fetch("/api/admin/import", {
-        method: "POST",
-        headers: serverHeaders(token, { "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          v: 1,
-          connections: useConnectionStore.getState().connections,
-          eventTypes: useEventTypeStore.getState().types,
-          rules: useRuleStore.getState().rules,
-          presets: usePresetStore.getState().presets,
-        }),
-      });
-      if (!res.ok) throw new Error(`Le serveur a répondu HTTP ${res.status}.`);
-      toast.success("Configuration envoyée au serveur");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Envoi impossible.");
-    }
-  }
-
-  async function pullFromServer() {
-    if (!window.confirm("Remplacer les sources, types, règles et presets de cet appareil par ceux du serveur ?")) return;
-    try {
-      const res = await fetch("/api/settings", { headers: serverHeaders(token) });
-      if (!res.ok) throw new Error(`Le serveur a répondu HTTP ${res.status}.`);
-      const body = (await res.json()) as { connections: Connection[]; eventTypes: EventType[]; rules: Rule[]; presets: Preset[] };
-      useConnectionStore.setState({ connections: body.connections });
-      useEventTypeStore.setState({ types: body.eventTypes });
-      useRuleStore.setState({ rules: body.rules });
-      usePresetStore.setState({ presets: body.presets });
-      toast.success("Configuration récupérée depuis le serveur");
-      setTest({ phase: "idle" });
-      void refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Récupération impossible.");
-    }
-  }
-
   const passphraseSet = status !== "checking" && status?.passphraseSet === true;
 
   return (
@@ -343,14 +306,7 @@ export function ServerTab() {
             <p className="text-sm text-destructive flex items-center gap-2"><AlertCircle className="size-4" /> {test.message}</p>
           )}
 
-          <div className="rounded-lg border border-border p-3 space-y-2">
-            <p className="text-sm font-medium">Réglages</p>
-            <p className="text-xs text-muted-foreground">Sources, types, règles et presets existent sur cet appareil et sur le serveur. Choisis le sens de la copie ; l&rsquo;autre côté est remplacé.</p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={pullFromServer}>Récupérer du serveur</Button>
-              <Button size="sm" variant="outline" onClick={pushToServer}>Envoyer au serveur</Button>
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground">Sources, types, règles, presets et thèmes sont synchronisés automatiquement avec le serveur, qui fait foi : toute modification est envoyée, et si un autre appareil a modifié la même rubrique entre-temps, sa version est appliquée ici.</p>
 
           <div className="rounded-lg border border-border p-3 space-y-2">
             <p className="text-sm font-medium">Appareils connectés</p>
@@ -379,7 +335,7 @@ export function ServerTab() {
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">La session reste dans un cookie de ce navigateur et n’expire pas : révoque-la ici si l&rsquo;appareil est perdu. Rien n&rsquo;est exporté ni synchronisé avec tes réglages.</p>
+          <p className="text-xs text-muted-foreground">La session reste dans un cookie de ce navigateur et n’expire pas : révoque-la ici si l&rsquo;appareil est perdu.</p>
         </div>
       )}
     </div>

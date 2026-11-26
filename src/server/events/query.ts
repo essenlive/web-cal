@@ -37,6 +37,7 @@ export function listServerEvents(
         id: e.id.includes("::") ? e.id : `${conn.id}::${e.id}`,
         calendarId: conn.id,
         eventTypeId: e.eventTypeId || "meeting",
+        writable: writableIds.has(conn.id),
       }));
     result[conn.id] = {
       name: conn.name,

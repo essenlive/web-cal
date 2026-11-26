@@ -5,35 +5,32 @@
  * origin, server mode off, connection unknown to it, or never synced yet).
  */
 
-import { HttpError, parseRetryAfterMs, type DataProvider } from "./data-provider";
+import { HttpError, type DataProvider } from "./data-provider";
+import { BackendError, ServerBackend } from "./backend";
 import type { CalendarEvent } from "../types";
-import { serverHeaders } from "./server-api";
-
-interface ServerEventsResponse {
-  connections?: Record<string, { events: CalendarEvent[]; lastSyncedAt: number | null } | undefined>;
-}
 
 export class ServerProvider implements DataProvider {
+  private backend: ServerBackend;
+
   constructor(
     private connectionId: string,
-    private token: string,
+    token: string,
     private fallback: DataProvider,
-  ) {}
+  ) {
+    this.backend = new ServerBackend(token);
+  }
 
   async getEvents(start: Date, end: Date): Promise<CalendarEvent[]> {
-    const params = new URLSearchParams({ from: start.toISOString(), to: end.toISOString(), connectionId: this.connectionId });
-    let res: Response;
+    let entries;
     try {
-      res = await fetch(`/api/events?${params}`, { headers: serverHeaders(this.token) });
-    } catch {
-      return this.fallback.getEvents(start, end);
+      entries = await this.backend.events(start, end, this.connectionId);
+    } catch (err) {
+      // No server on this origin (static host, Netlify) or server mode off: behave as before.
+      if (!(err instanceof BackendError)) return this.fallback.getEvents(start, end);
+      if (err.status === 404 || err.status === 503) return this.fallback.getEvents(start, end);
+      throw new HttpError(err.status, err.retryAfterMs);
     }
-
-    // No server on this origin (static host, Netlify) or server mode off: behave as before.
-    if (res.status === 404 || res.status === 503) return this.fallback.getEvents(start, end);
-    if (!res.ok) throw new HttpError(res.status, parseRetryAfterMs(res.headers.get("retry-after")));
-
-    const entry = ((await res.json()) as ServerEventsResponse).connections?.[this.connectionId];
+    const entry = entries[this.connectionId];
     if (!entry || entry.lastSyncedAt === null) return this.fallback.getEvents(start, end);
     return entry.events;
   }
