@@ -70,3 +70,24 @@ describe("QR pairing", () => {
     expect(list.sessions.map((s) => s.deviceName)).toContain("Tablet");
   });
 });
+
+describe("bearer sessions (cross-origin clients)", () => {
+  it("login returns a session token that works as a bearer, and logout revokes it", async () => {
+    await setup(post({ passphrase: "long enough pass" }, { authorization: "Bearer admin-secret" }));
+    const res = await login(post({ passphrase: "long enough pass", deviceName: "Static host" }));
+    const { token } = (await res.json()) as { token: string };
+    expect(token).toBeTruthy();
+    expect(token).not.toBe("admin-secret");
+
+    const bearer = { authorization: `Bearer ${token}` };
+    expect((await settings(new Request(url, { headers: bearer }))).status).toBe(200);
+    expect(await (await status(new Request(url, { headers: bearer }))).json()).toMatchObject({ authenticated: true, deviceName: "Static host" });
+
+    await logout(new Request(url, { method: "POST", headers: bearer }));
+    expect((await settings(new Request(url, { headers: bearer }))).status).toBe(401);
+  });
+
+  it("a made-up bearer is refused", async () => {
+    expect((await settings(new Request(url, { headers: { authorization: "Bearer nope" } }))).status).toBe(401);
+  });
+});

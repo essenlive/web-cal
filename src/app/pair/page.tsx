@@ -30,7 +30,10 @@ export default function PairPage() {
           const detail = ((await res.json().catch(() => null)) as { error?: string } | null)?.error;
           throw new Error(detail ?? `Erreur HTTP ${res.status}`);
         }
+        const body = (await res.json().catch(() => null)) as { token?: string } | null;
+        // The QR points at the server serving this very page: same origin, so the cookie already works.
         useServerStore.getState().setSession(true);
+        if (body?.token) useServerStore.getState().setSessionToken(body.token);
         window.location.replace("/");
       })
       .catch((err: unknown) => {

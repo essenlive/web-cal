@@ -59,11 +59,12 @@ export interface ServerSettingsDocument {
 export type PutSectionResult = { ok: true; rev: number } | { ok: false; rev: number; value: unknown };
 
 export class ServerBackend {
-  constructor(private token: string) {}
+  /** `token`: the device-session bearer ("" relies on the same-origin cookie). `base`: server URL, "" = same origin. */
+  constructor(private token: string, private base = "") {}
 
   private async request(path: string, init: RequestInit = {}): Promise<Response> {
     const json = init.body !== undefined;
-    return fetch(path, { ...init, headers: serverHeaders(this.token, json ? { "Content-Type": "application/json" } : {}) });
+    return fetch(`${this.base}${path}`, { ...init, headers: serverHeaders(this.token, json ? { "Content-Type": "application/json" } : {}) });
   }
 
   private async fail(res: Response): Promise<never> {
@@ -117,7 +118,8 @@ export class ServerBackend {
 
 /** The backend this browser is linked to, or null when it runs client-only. */
 export function useBackend(): ServerBackend | null {
-  const token = useServerStore((s) => s.token);
+  const base = useServerStore((s) => s.serverUrl);
+  const token = useServerStore((s) => s.sessionToken);
   const session = useServerStore((s) => s.session);
-  return useMemo(() => (token || session ? new ServerBackend(token) : null), [token, session]);
+  return useMemo(() => (token || (base === "" && session) ? new ServerBackend(token, base) : null), [base, token, session]);
 }

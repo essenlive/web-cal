@@ -12,6 +12,7 @@ import { encryptEnvelope, decryptEnvelope, type Envelope } from "./crypto";
 import { openPeerChannel, type PeerChannel } from "./peer";
 import { captureBundle, applyBundle, isSettingsBundle, type SettingsBundle } from "./bundle";
 import { getSettingsUpdatedAt } from "./clock";
+import { useServerStore } from "../../store/server";
 
 const WAIT_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -88,7 +89,7 @@ export function useSync() {
     (role: "initiate" | "join", roomId: string, key: CryptoKey) => {
       cleanup();
       keyRef.current = key;
-      teardownRef.current = openPeerChannel(role, roomId, { onOpen, onMessage, onClose, onError });
+      teardownRef.current = openPeerChannel(role, roomId, { onOpen, onMessage, onClose, onError }, useServerStore.getState().serverUrl);
     },
     [cleanup, onOpen, onMessage, onClose, onError]
   );

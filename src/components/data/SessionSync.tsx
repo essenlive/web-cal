@@ -19,13 +19,16 @@ export function SessionSync() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchServerStatus().then((status) => {
+    const { serverUrl, sessionToken } = useServerStore.getState();
+    void fetchServerStatus(serverUrl, sessionToken).then((status) => {
       if (cancelled || !status) return;
       const authenticated = status.enabled && status.authenticated;
-      if (useServerStore.getState().session !== authenticated) {
+      if (serverUrl === "" && useServerStore.getState().session !== authenticated) {
         useServerStore.getState().setSession(authenticated);
         void refresh();
       }
+      // A revoked bearer: forget it, so this device stops presenting a dead session.
+      if (sessionToken && status.enabled && !status.authenticated) useServerStore.getState().setSessionToken("");
     });
     return () => {
       cancelled = true;

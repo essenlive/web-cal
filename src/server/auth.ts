@@ -7,7 +7,10 @@ function hasAdminToken(request: Request): boolean {
   return Boolean(adminToken) && request.headers.get("authorization") === `Bearer ${adminToken}`;
 }
 
+/** The device-session token a request carries: `Authorization: Bearer <token>` (cross-origin clients) or the session cookie. */
 export function sessionTokenOf(request: Request): string | null {
+  const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (bearer && bearer !== process.env.ADMIN_TOKEN) return bearer;
   const cookie = request.headers.get("cookie") ?? "";
   for (const part of cookie.split(";")) {
     const [name, ...rest] = part.trim().split("=");
@@ -16,13 +19,13 @@ export function sessionTokenOf(request: Request): string | null {
   return null;
 }
 
-/** The device session carried by the request's cookie, if it is still valid. */
+/** The device session carried by the request (bearer token or cookie), if it is still valid. */
 export function currentSession(request: Request): DeviceSession | null {
   const token = sessionTokenOf(request);
   return token ? findSession(getDb(), token) : null;
 }
 
-/** True when the request carries the admin bearer token or a valid device-session cookie. */
+/** True when the request carries the admin bearer token or a valid device session. */
 export function isAuthenticated(request: Request): boolean {
   return hasAdminToken(request) || currentSession(request) !== null;
 }

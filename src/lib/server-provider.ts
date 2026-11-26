@@ -16,8 +16,9 @@ export class ServerProvider implements DataProvider {
     private connectionId: string,
     token: string,
     private fallback: DataProvider,
+    base = "",
   ) {
-    this.backend = new ServerBackend(token);
+    this.backend = new ServerBackend(token, base);
   }
 
   async getEvents(start: Date, end: Date): Promise<CalendarEvent[]> {

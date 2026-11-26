@@ -28,3 +28,17 @@ describe("ServerBackend", () => {
     expect(await new ServerBackend("").putSection("rules", 3, [])).toEqual({ ok: false, rev: 4, value: [1] });
   });
 });
+
+describe("ServerBackend base URL", () => {
+  it("prefixes requests with the server URL and sends the bearer", async () => {
+    const calls: Array<[string, RequestInit | undefined]> = [];
+    vi.stubGlobal("fetch", async (u: string, init?: RequestInit) => {
+      calls.push([u, init]);
+      return new Response(JSON.stringify({ v: 2, revs: {} }), { status: 200 });
+    });
+    await new ServerBackend("sess", "https://cal.example").getSettings();
+    expect(calls[0][0]).toBe("https://cal.example/api/settings");
+    expect(JSON.stringify(calls[0][1]?.headers)).toContain("Bearer sess");
+    vi.unstubAllGlobals();
+  });
+});
