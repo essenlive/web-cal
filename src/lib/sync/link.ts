@@ -1,7 +1,7 @@
 /**
  * Pairing link generation/parsing for device-to-device sync. `roomId` and `key` live
  * only in the URL fragment (after #) — fragments are never sent in any HTTP request,
- * including to the PeerJS signaling broker, so neither ever reaches a third party.
+ * including to the Overcal relay, so the server never sees the key and only stores ciphertext.
  */
 
 const ROOM_ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — read off a QR/screen by eye if needed

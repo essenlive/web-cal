@@ -4,7 +4,6 @@ import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { ExportTab } from "./ExportTab";
 import { ImportTab } from "./ImportTab";
-import { AiRulesTab } from "./AiRulesTab";
 import { SyncTab } from "./SyncTab";
 import { ServerTab } from "./ServerTab";
 import { ResetTab } from "./ResetTab";
@@ -21,14 +20,9 @@ const TABS = [
     description: "Restaure des réglages depuis un fichier JSON précédemment exporté.",
   },
   {
-    id: "ai",
-    label: "Réglages IA",
-    description: "Génère un prompt et tes données pour une IA, puis importe les types, règles, presets et thèmes qu'elle propose.",
-  },
-  {
     id: "sync",
     label: "Synchroniser",
-    description: "Connecte cet appareil à un autre en direct (pair-à-pair, chiffré) pour transférer les réglages.",
+    description: "Transfère tes réglages vers un autre appareil via le serveur Overcal (relais chiffré de bout en bout, rien n'est conservé).",
   },
   {
     id: "server",
@@ -45,10 +39,9 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 /** A sync pairing link (?room=...&key=... in the hash) always opens straight into the Sync tab;
- *  `/data#ai` (the Help drawer's AI step) opens the AI tab. */
+ */
 function initialTab(): TabId {
   if (typeof window !== "undefined" && window.location.hash.includes("room=")) return "sync";
-  if (typeof window !== "undefined" && window.location.hash === "#ai") return "ai";
   return "export";
 }
 
@@ -77,7 +70,6 @@ export function DataView() {
 
       {tab === "export" && <ExportTab />}
       {tab === "import" && <ImportTab />}
-      {tab === "ai" && <AiRulesTab />}
       {tab === "sync" && <SyncTab />}
       {tab === "server" && <ServerTab />}
       {tab === "reset" && <ResetTab />}

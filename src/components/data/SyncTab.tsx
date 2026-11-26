@@ -48,7 +48,7 @@ export function SyncTab() {
   return (
     <div className="space-y-4 max-w-lg">
       <p className="text-sm text-muted-foreground">
-        Connecte cet appareil directement à un autre (aucun serveur ne voit vos réglages) pour synchroniser sources, types d&rsquo;événements, règles, presets, thèmes et préférences. La version la plus récente des deux appareils l&rsquo;emporte.
+        Transfère vos réglages vers un autre appareil par le serveur Overcal, qui ne relaie que des données chiffrées de bout en bout (la clé reste dans le lien) et ne les garde que quelques minutes, pour synchroniser sources, types d&rsquo;événements, règles, presets, thèmes et préférences. La version la plus récente des deux appareils l&rsquo;emporte.
       </p>
 
       {status.phase === "idle" && (

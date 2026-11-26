@@ -1,15 +1,14 @@
 /**
  * "Bien démarrer" checklist (HelpPanel): which steps are done, derived from the stores'
  * current state rather than tracked separately — deleting a type un-ticks its step, and
- * an imported settings file ticks whatever it contains. Only the AI step needs its own
- * flag (useOnboardingStore.aiImported).
+ * an imported settings file ticks whatever it contains..
  */
 import type { Connection, EventType, Preset, Rule, Theme } from "../types";
 import type { DrawerPanel } from "../store";
 
 export const DEMO_CONNECTION_ID = "demo";
 
-export type OnboardingStepId = "source" | "removeDemo" | "type" | "rule" | "preset" | "theme" | "ai";
+export type OnboardingStepId = "source" | "removeDemo" | "type" | "rule" | "preset" | "theme";
 
 export interface OnboardingStep {
   id: OnboardingStepId;
@@ -30,7 +29,6 @@ export interface OnboardingState {
   presets: Preset[];
   customThemes: Theme[];
   selectedThemeId: string;
-  aiImported: boolean;
 }
 
 export function onboardingSteps(s: OnboardingState, seededTypeIds: ReadonlySet<string>, builtinThemeIds: ReadonlySet<string>): OnboardingStep[] {
@@ -44,7 +42,6 @@ export function onboardingSteps(s: OnboardingState, seededTypeIds: ReadonlySet<s
     { id: "rule", title: "Créer une règle", done: s.rules.some((r) => (r.matchType === "name" || r.matchType === "event") && !r.id.startsWith("seed-")), bonus: false, visible: true, panel: "rules" },
     { id: "preset", title: "Enregistrer un preset", done: s.presets.length > 0, bonus: true, visible: true, panel: "preset" },
     { id: "theme", title: "Personnaliser le thème", done: s.selectedThemeId !== "light" || s.customThemes.some((t) => !builtinThemeIds.has(t.id)), bonus: true, visible: true, panel: "theme" },
-    { id: "ai", title: "Générer ses réglages avec l'IA", done: s.aiImported, bonus: true, visible: true },
   ];
 }
 

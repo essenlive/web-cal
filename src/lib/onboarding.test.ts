@@ -16,13 +16,12 @@ const fresh: OnboardingState = {
   presets: [],
   customThemes: [],
   selectedThemeId: "light",
-  aiImported: false,
 };
 const done = (s: OnboardingState) => Object.fromEntries(onboardingSteps(s, seeded, builtins).map((x) => [x.id, x.done]));
 
 describe("onboardingSteps", () => {
   it("a fresh instance has nothing done — seeded types/rules and the source rule don't count", () => {
-    expect(done(fresh)).toEqual({ source: false, removeDemo: false, type: false, rule: false, preset: false, theme: false, ai: false });
+    expect(done(fresh)).toEqual({ source: false, removeDemo: false, type: false, rule: false, preset: false, theme: false });
     expect(isFreshInstance(fresh.connections)).toBe(true);
     expect(onboardingSteps(fresh, seeded, builtins).find((s) => s.id === "removeDemo")?.visible).toBe(false);
   });
@@ -38,7 +37,7 @@ describe("onboardingSteps", () => {
     expect(steps.find((x) => x.id === "removeDemo")).toMatchObject({ visible: true, done: false });
     expect(coreDone(steps)).toBe(true);
     expect(isFreshInstance(s.connections)).toBe(false);
-    expect(done({ ...s, selectedThemeId: "dark", presets: [{ id: "p", name: "P", connections: {}, eventTypes: {} }], aiImported: true }))
-      .toMatchObject({ theme: true, preset: true, ai: true });
+    expect(done({ ...s, selectedThemeId: "dark", presets: [{ id: "p", name: "P", connections: {}, eventTypes: {} }]}))
+      .toMatchObject({ theme: true, preset: true });
   });
 });
